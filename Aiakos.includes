@@ -1,0 +1,6 @@
+./
+/home/christoph/Programs/arduino-1.5.2/hardware/arduino/cores/arduino
+/home/christoph/Programs/arduino-1.5.2/hardware/arduino/avr/cores/arduino
+/home/christoph/Programs/arduino-1.5.2/hardware/tools/avr/lib/avr/include
+/home/christoph/Programs/arduino-1.5.2/hardware/arduino/avr/libraries/EEPROM
+/home/christoph/Programs/arduino-1.5.2/hardware/arduino/avr/libraries/SoftwareSerial
