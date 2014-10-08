@@ -17,12 +17,6 @@
 extern "C" {
 #endif
 
-typedef enum{
-    WAITING_FOR_STX,
-    READING_DATA,
-    DATA_VALID
-}state;
-
 void loop();
 void setup();
 #ifdef __cplusplus
