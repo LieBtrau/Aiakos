@@ -1,14 +1,12 @@
-
-ARDUINO_DIR  = /home/christoph/Programs/arduino-1.5.4
-
 TARGET       = Aiakos
-ARDUINO_LIBS =  hardware/arduino/avr/libraries/SoftwareSerial hardware/arduino/avr/libraries/SPI
-LOCAL_LIBS = ./RadioHead
-LOCAL_STATIC_LIBS =
+ARDUINO_LIBS = SoftwareSerial
 
-BOARD_TAG    = uno
+MCU          = atmega328p
+F_CPU        = 16000000
+
+# Avrdude code
 ARDUINO_PORT = /dev/ttyACM0
+AVRDUDE_ARD_PROGRAMMER = arduino
+AVRDUDE_ARD_BAUDRATE = 115200
 
-include Arduino.mk
-
-
+include /usr/share/arduino/Arduino.mk
