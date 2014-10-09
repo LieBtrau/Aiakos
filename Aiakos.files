@@ -49,3 +49,5 @@ RadioHead/RHDatagram.cpp
 RadioHead/RHCRC.cpp
 RadioHead/RH_ASK.cpp
 Arduino.mk
+RDM630/rdm630.h
+RDM630/rdm630.cpp

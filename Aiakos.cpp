@@ -1,3 +1,5 @@
+//Arduino & QtCreator: http://lucidarme.me/?p=3282
+
 // Do not remove the include below
 #include "Aiakos.h"
 #include <RDM630/rdm630.h>
