@@ -2,7 +2,7 @@
 
 // Do not remove the include below
 #include "Aiakos.h"
-#include <RDM630/rdm630.h>
+#include "RDM630/rdm630.h"
 
 rdm630 rfid(2,3);
 byte data[6];

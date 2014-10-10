@@ -23,10 +23,10 @@ RH_MRF89XA::RH_MRF89XA(
         uint8_t irq0pin,
         uint8_t irq1pin, RHGenericSPI& spi)
     :
+      RHNRFSPIDriver(slaveSelectPinData, slaveSelectPinCommand, spi),
       _irq0pin(irq0pin),
       _irq1pin(irq1pin),
-      _rxBufValid(false),
-      RHNRFSPIDriver(slaveSelectPinData, slaveSelectPinCommand, spi)
+      _rxBufValid(false)
 {
     pinMode(_irq0pin, INPUT);
     pinMode(_irq1pin, INPUT);

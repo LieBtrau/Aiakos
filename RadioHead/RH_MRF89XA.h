@@ -288,6 +288,7 @@ private:
     uint8_t readFifo();
     uint8_t _irq0pin;
     uint8_t _irq1pin;
+    bool _rxBufValid;
     uint8_t _opMode;
 
     //    /// This idle mode chip configuration
@@ -303,6 +304,5 @@ private:
     uint8_t             _buf[RH_MRF89XA_MAX_PAYLOAD_LEN];
 
     //    /// True when there is a valid message in the buffer
-    bool                _rxBufValid;
 };
 #endif

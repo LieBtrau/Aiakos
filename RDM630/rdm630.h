@@ -4,8 +4,6 @@
 #include "Arduino.h"
 #include "SoftwareSerial.h"
 
-SoftwareSerial RFID(2, 3); // RX and TX
-
 class rdm630
 {
 public:
@@ -25,10 +23,10 @@ private:
     byte AsciiCharToNum(byte data);
     state dataParser(state s, byte c);
 
-    int _iNibbleCtr;
-    state _s;
-    byte _data[6];
     SoftwareSerial _rfid;
+    state _s;
+    int _iNibbleCtr;
+    byte _data[6];
 };
 
 #endif // RDM630_H
