@@ -4,7 +4,7 @@
 #include "Aiakos.h"
 #include "RDM630/rdm630.h"
 
-rdm630 rfid(2,3);
+rdm630 rfid(6, 0);
 byte data[6];
 byte length;
 
