@@ -18,8 +18,8 @@
 #ifndef RH_MRF89XA_h
 #define RH_MRF89XA_h
 
-#include <RHGenericSPI.h>
-#include <RHNRFSPIDriver.h>
+#include "RHGenericSPI.h"
+#include "RHNRFSPIDriver.h"
 
 // This is the maximum number of bytes that can be carried by the MRF89XA.
 // We use some for headers, keeping fewer for RadioHead messages

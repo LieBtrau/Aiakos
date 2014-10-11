@@ -15,7 +15,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <RH_MRF89XA.h>
+#include "RH_MRF89XA.h"
 
 RH_MRF89XA::RH_MRF89XA(
         uint8_t slaveSelectPinData,

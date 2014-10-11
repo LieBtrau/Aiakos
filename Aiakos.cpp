@@ -1,12 +1,26 @@
-//Arduino & QtCreator: http://lucidarme.me/?p=3282
+/*  Garage door opener + remote control application
+    Copyright (C) 2014  Christoph Tack
 
-// Do not remove the include below
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+//Howto: Setting up the build environment: Arduino & QtCreator: http://lucidarme.me/?p=3282
+
 #include "Aiakos.h"
 #include "RDM630/rdm630.h"
 
-rdm630 rfid(6, 0);
-byte data[6];
-byte length;
+rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
 
 void setup()
 {
@@ -14,9 +28,11 @@ void setup()
     rfid.begin();
 }
 
-
 void loop()
 {
+    byte data[6];
+    byte length;
+
     if(rfid.available()){
         rfid.getData(data,length);
         Serial.println("Data valid");
