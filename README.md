@@ -1,3 +1,56 @@
+#Main application
+##Remote
+###Functionality
+* Sleep until a key is pressed
+* Start the authentication algorithm to establish the symmetric secret key
+* Send the command to the controller to operate the garage door
+	* get serial number from ATECC108A
+	* get counter value from Arduino EEPROM
+	* add command byte to message
+	* calculate MAC using ATECC108A
+###Needed memory
+* message counter
+* symmetric secret key
+* private keyring: contains private key of the remote
+* public keyring: 
+	* CA's public key, write protected
+	* certificate, signed by CA
+		* unique serial number
+		* public key of the remote
+		* signature (signs all of the forementioned using the private key of CA) 
+##Garage Controller
+###Functionality
+* Always waiting for incoming data
+* Command mode
+	* Ignore learn mode messages
+	* Verify MAC of incoming message
+		* Find serial number of the remote in the local list of remotes
+		* Get the symmetric secret key belonging to that remote
+		* Check in rolling window if message counter is accepted
+		* Check validity of the message by checking the MAC
+		* Update the list with the message counter for that remote
+		* Execute the command requested by the remote
+* Learn mode
+	* User puts device in learn mode
+	* Ignore command mode messages
+	* Erase the list of known remotes
+	* Authenticate remotes and establish a symmetric secret key with them
+	* Add authenticated remotes to the garage controller
+	* Update counter of valid keys in EEPROM
+	* Leave learn mode by user action or after timeout
+###Needed memory
+* number of known transmitters
+* array with transmitter info
+	* serial number of transmitter
+	* symmetric secret key with that transmitter
+	* message counter associated with that transmitter
+* private keyring: contains private key of the controller
+* public keyring: 
+	* CA's public key, write protected
+	* certificate, signed by CA
+		* unique serial number
+		* public key of the garage controller
+		* signature (signs all of the forementioned using the private key of CA) 
 #RFID
 ## General
 The key of my bike has an attached EM4100-compatible RFID-tag.
@@ -11,11 +64,11 @@ and compare with the hashed version in the EEPROM
 * [Datasheet](http://seeedstudio.com/depot/datasheet/RDM630-Spec..pdf)
 * [Source code](http://marioboehmer.blogspot.be/2011/01/rfid-with-arduino.html)
 
-#Cryptography
-##Authentication protocols
+#Authentication
+The implementation is based on the [AVR411 application note from Atmel](http://www.atmel.com/Images/Atmel-2600-AVR411-Secure-Rolling-Code-Algorithm-for-Wireless-Link_Application-Note.pdf).  The application note uses symmetric keys for establishing the symmetric secret key.  In this implementation asymmetric keys will be used to establish the symmetric secret key.
+##Authentication protocols for establishing the symmetric secret key
 ###Symmetric key
-####AVR-kryptoknight
-2PAP (this is 2way authentication.  We don't need this.  It's not needed that the key knows that the garage door is really the needed one).
+####AVR-kryptoknight: 2PAP 
 
 	A -> B : ID_A | ID_B | RANDOMNR_A+MSG
 	B <- A : ID_B | ID_A | RANDOMBR_B | HMAC(ID_B, RANDOMNR_A+MSG, RANDOMNR_B)
@@ -31,8 +84,8 @@ and compare with the hashed version in the EEPROM
 	A -> B : ID_A | ID_B | HMAC(RANDOMNR_B)
 
 ###Conclusion
-Ok, all of this above is very nice, but before all of this can happen, both devices need to share a common secret key.
-How to get that secret key in these devices?  If we give all devices the same factory default secret key, then the compromise of one
+Ok, all of this above is very nice, but before all of this can happen, both devices need to share a common symmetric secret key.
+How to get that symmetric secret key in these devices?  If we give all devices the same factory default symmetric secret key, then the compromise of one
 device will compromise all the others as well -> low resiliency (In fact, they would only be compromised when a user is in the process of adding a key to the receiver).  This is the only case where the common key is used.
 
 ### Asymmetric key
@@ -40,7 +93,7 @@ device will compromise all the others as well -> low resiliency (In fact, they w
 * [IETF Securing smart objects](http://tools.ietf.org/html/draft-aks-crypto-sensors-01#section-9)
 * [AVR Cryptolib](https://trac.cryptolib.org/avr-crypto-lib/browser) Documentation is lacking
 * [micro-ecc](https://github.com/myrual/micro-ecc)
-* Hardware random number generator (needed to generate secret keys)
+* Hardware random number generator (needed to generate symmetric secret keys)
 	* [Hardware random number generation on AVR](https://code.google.com/p/avr-hardware-random-number-generation/)
 	* [Arduino RNG](https://gitorious.org/benediktkr/ardrand/source/db826463ec1bc96e5d073d2957fac1bc137d5b02:)
 	* [Quality of RNG on Arduino](http://www.academia.edu/1161820/Ardrand_The_Arduino_as_a_Hardware_Random-Number_Generator)
@@ -95,12 +148,6 @@ device will compromise all the others as well -> low resiliency (In fact, they w
 * Bob (door)
 * CA (Certification authority)
 
-Alice & Bob have:
-* two keyrings: 
-	* private keyring: contains its own private key
-	* public keyring: contains CA's public key
-* their own certificate, signed by CA.  The certificate contains: subject ID + subject public key + signature (signs all of the forementioned using the private key of CA) 
-
 ####Protocol
 Setting up a session key between Alice & Bob (Computer Networks, §8.7.5):
 * Ea, Eb = public key or encryption function of that key with A's or B's public key respectively
@@ -109,17 +156,22 @@ Setting up a session key between Alice & Bob (Computer Networks, §8.7.5):
 * cert(x) = certificate of subject x
 
 
-	A -> B : cert(B)? (to get Eb)
+	A -> B : cert(B)?
+
+A wants to get Eb
+
 	A <- B : cert(B)
 
 A checks with the CA's public key if cert(B) is valid 
 
 	A -> B : Eb(A,Ra), cert(A)
 
-B checks with the CA's public key if cert(A) is valid
+B checks with the CA's public key if cert(A) is valid.
 
 	A <- B : Ea(Ra,Rb,Ks)
 	A -> B : Ks(Rb)
+
+B knows now that A also got Ks
 
 #Wireless
 ##2.4GHz Modules
@@ -148,33 +200,27 @@ Hmm...Maybe 2.4GHz modules are not ideal after all.  Let's try 868MHz modules.  
 ###MRF24J40MA 
 * 2.4GHz, output 0dBm, input -95dBm, 400ft?
 * Distributors
-	* RS: &#8364 9.70
-	* Farnell: &#8364 8.43, [Link](http://be.farnell.com/microchip/mrf24j40mat-i-rm/module-rf-module-2-4-ghz-ieee-802/dp/2315747) (at Farnell only available per 10pcs), [Link](http://be.farnell.com/microchip/mrf24j40ma-i-rm/rf-module-txrx-250kbps-pcb-ant/dp/1630202)
-	* Mouser: &#8364 7.44
+	* RS: €9.70
+	* Farnell: €8.43, [Link](http://be.farnell.com/microchip/mrf24j40mat-i-rm/module-rf-module-2-4-ghz-ieee-802/dp/2315747) (at Farnell only available per 10pcs), [Link](http://be.farnell.com/microchip/mrf24j40ma-i-rm/rf-module-txrx-250kbps-pcb-ant/dp/1630202)
+	* Mouser: €7.44
 
 ###MRF24J40MB
 * 2.4GHz, output +20dBm, input -95dBm, 4000ft?
-* [RS: &#8364 15](http://benl.rs-online.com/web/p/rf-transceivers/6811168/)
+* [RS: €15](http://benl.rs-online.com/web/p/rf-transceivers/6811168/)
 
 ###RFM73-S
 * Manufacturer: HopeRF
 * 2.4GHz, output +3dBm, input -97dBm for 250KSPS, 70m? open air
-* [RS: &#8364 3.00](http://benl.rs-online.com/web/p/telemetry-modules/7932002/)
+* [RS: €3.00](http://benl.rs-online.com/web/p/telemetry-modules/7932002/)
 * Libraries: 
 	* [RadioHead](http://www.airspayce.com/mikem/arduino/RadioHead/index.html)
 	* [Voti](http://www.voti.nl/rfm73/)
 	* [Tindie](https://www.tindie.com/products/Heye/arduino-clone-with-24ghz-wireless/)
 
 ##868MHz Modules
-###HOPERF RFM69W-868-S2 
-* 868MHz, output 13dBm
-* also available in 433MHz & 915MHz version, also 20dBm version available
-* [RS: &#8364 7.5](http://benl.rs-online.com/web/p/telemetry-modules/7931998/)
-* Probably compatible with SX1231 (currently in Hoermann remote)
-
 ###MRF89XAM8A-I/RM
-* RS: &#8364 6.88, Farnell: &#8364 7.63, Mouser: &#8364 7.92, Digikey: &#8364 7.95
-* 915MHz band version of this module: MRF89XAM9A-I/RM (Farnell: &#8364 7.63)
+* RS: €6.88, Farnell: €7.63, Mouser: €7.92, Digikey: €7.95
+* 915MHz band version of this module: MRF89XAM9A-I/RM (Farnell: €7.63)
 * Output: +10dBm, input: -107dBm
 * More results on Google than HopeRF, but HopeRF has more links to libraries etc.  Maybe Microchip is more popular for professionals, 
 while HopeRF modules are more used by hobbyists.
@@ -186,8 +232,14 @@ while HopeRF modules are more used by hobbyists.
 	* Reset line of the module must be HiZ, pull up to reset the module.
 	* Range of this module is comparable with the original Hörmann remote
 
+###HOPERF RFM69W-868-S2 
+* 868MHz, output 13dBm
+* also available in 433MHz & 915MHz version, also 20dBm version available
+* [RS: €7.5](http://benl.rs-online.com/web/p/telemetry-modules/7931998/)
+* Probably compatible with SX1231 (currently in Hoermann remote)
+
 ###TRM-868-EUR
-* Available at Mouser.be: &#8364 28,20 (expensive!)
+* Available at Mouser.be: €28,20 (expensive!)
 * The module with professional 868MHz antenna hung upside down in garage (antenna vertical).
 * The module in the street has a 82mm wire soldered to it.
 * The range is satisfying with the factory default settings.
