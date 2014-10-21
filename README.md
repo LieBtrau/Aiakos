@@ -8,6 +8,7 @@
 	* get counter value from Arduino EEPROM
 	* add command byte to message
 	* calculate MAC using ATECC108A
+
 ###Needed memory
 * message counter
 * symmetric secret key
@@ -18,6 +19,7 @@
 		* unique serial number
 		* public key of the remote
 		* signature (signs all of the forementioned using the private key of CA) 
+
 ##Garage Controller
 ###Functionality
 * Always waiting for incoming data
@@ -38,19 +40,21 @@
 	* Add authenticated remotes to the garage controller
 	* Update counter of valid keys in EEPROM
 	* Leave learn mode by user action or after timeout
+
 ###Needed memory
 * number of known transmitters
 * array with transmitter info
-	* serial number of transmitter
-	* symmetric secret key with that transmitter
-	* message counter associated with that transmitter
+	* serial number of transmitter (72bit = 9bytes)
+	* symmetric secret key associated with that transmitter (256bit = 32bytes)
 * private keyring: contains private key of the controller
 * public keyring: 
 	* CA's public key, write protected
 	* certificate, signed by CA
 		* unique serial number
 		* public key of the garage controller
-		* signature (signs all of the forementioned using the private key of CA) 
+		* signature (signs all of the forementioned using the private key of CA)
+* Info of remotes can be stored in a ["database"](http://playground.arduino.cc/Code/DatabaseLibrary).
+
 #RFID
 ## General
 The key of my bike has an attached EM4100-compatible RFID-tag.
@@ -65,90 +69,20 @@ and compare with the hashed version in the EEPROM
 * [Source code](http://marioboehmer.blogspot.be/2011/01/rfid-with-arduino.html)
 
 #Authentication
-The implementation is based on the [AVR411 application note from Atmel](http://www.atmel.com/Images/Atmel-2600-AVR411-Secure-Rolling-Code-Algorithm-for-Wireless-Link_Application-Note.pdf).  The application note uses symmetric keys for establishing the symmetric secret key.  In this implementation asymmetric keys will be used to establish the symmetric secret key.
-##Authentication protocols for establishing the symmetric secret key
-###Symmetric key
-####AVR-kryptoknight: 2PAP 
-
-	A -> B : ID_A | ID_B | RANDOMNR_A+MSG
-	B <- A : ID_B | ID_A | RANDOMBR_B | HMAC(ID_B, RANDOMNR_A+MSG, RANDOMNR_B)
-	A -> B : ID_A | ID_B | HMAC(RANDOMNR_A, RANDOMNR_B)
-
-	HMAC(X) = SHA1(X + SECRETKEY);
-[AVR Kryptoknight](http://books.google.be/books?id=GEz1sYwz494C&lpg=PA167&ots=PPK7nyTvQf&dq=2PAKDP&pg=PA166#v=onepage&q=2PAKDP&f=false
-)
-
-####CHAP
-	A -> B : ID_A | ID_B | HELLO?
-	B <- A : ID_B | ID_A | RANDOMBR_B
-	A -> B : ID_A | ID_B | HMAC(RANDOMNR_B)
-
-###Conclusion
-Ok, all of this above is very nice, but before all of this can happen, both devices need to share a common symmetric secret key.
-How to get that symmetric secret key in these devices?  If we give all devices the same factory default symmetric secret key, then the compromise of one
-device will compromise all the others as well -> low resiliency (In fact, they would only be compromised when a user is in the process of adding a key to the receiver).  This is the only case where the common key is used.
-
-### Asymmetric key
-####Algorithm implementation in firmware on AVR microcontrollers.
-* [IETF Securing smart objects](http://tools.ietf.org/html/draft-aks-crypto-sensors-01#section-9)
-* [AVR Cryptolib](https://trac.cryptolib.org/avr-crypto-lib/browser) Documentation is lacking
-* [micro-ecc](https://github.com/myrual/micro-ecc)
-* Hardware random number generator (needed to generate symmetric secret keys)
-	* [Hardware random number generation on AVR](https://code.google.com/p/avr-hardware-random-number-generation/)
-	* [Arduino RNG](https://gitorious.org/benediktkr/ardrand/source/db826463ec1bc96e5d073d2957fac1bc137d5b02:)
-	* [Quality of RNG on Arduino](http://www.academia.edu/1161820/Ardrand_The_Arduino_as_a_Hardware_Random-Number_Generator)
-* [Relic toolkit](https://github.com/relic-toolkit/relic)
-	* Better documentation
-	* Build Instructions Relic Toolkit
-
-
-    sudo apt-get install gcc-avr avr-libc
-	unzip relic-master.zip to folder relic-master
-	mkdir -p relic-build/
-	cd relic-build
-	../relic-master/preset/avr-ecc-80k.sh ../relic-master/
-	make
-	make doc
-	sudo make install
-
-
-####Algorithm implementation on specialized microcontrollers
-* ATECC108-SSH Atmel secure EEPROM + CoCPU uses ECC (available at Digikey)
-	* Full documentation only available under NDA.  Full documentation is not needed for implementation.
-	* EEPROM for 16keys (private key, public key, signature components)
-	* possibility to lock sections of EEPROM
-	* 72bit unique serial number
-	* I²C interface
-	* Truly random number generator
-	* Lower risk for private key exposure than cryptographic calculation in standard MCU.
-	* Generate private key inside the device
-	* Challenge response based MAC (with symmetric keys also possible)
-	* GenDig -> Generate Digest based on 1 or more keys
-	* DeriveKey -> Derives a key from another one: e.g. for rolling code scheme, 
-	* CheckMac
-	* [Cryptocape Example implementation](https://learn.sparkfun.com/tutorials/cryptocape-hookup-guide/all)
-	* [Eclet Linux driver](http://cryptotronix.com/2014/05/26/atecc108_eclet_linux_driver/)
-* ATSHA204A 
-	* older ATSHA204 not recommended for new designs
-	* securely store secrets, 
-	* generate true random numbers, 
-	* perform SHA-256 cryptographic hashes
-	* unique non-modifiable serial number
-	* Can be used with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client needs to store this unique 	diversified key.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, 		all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the 		devices.
-	* [Hashlet](https://github.com/cryptotronix/hashlet)
-* MAXQ1103 Maxim DeepCover Secure Microcontroller with Rapid Zeroization Technology and Cryptography
-	Full documentation only available under NDA.
-* DS28E35
-	Full documentation only available under NDA.
-
-####Authentication protocol
-#####Parties & Objects
+The implementation is loosely based on the [AVR411 application note from Atmel](http://www.atmel.com/Images/Atmel-2600-AVR411-Secure-Rolling-Code-Algorithm-for-Wireless-Link_Application-Note.pdf).  The application note uses symmetric keys for establishing the local secret key.  In this implementation asymmetric keys will be used to establish the local secret key.
+In the AVR411, setting up the local secret key goes out from the assumption that both devices already share a secret key.
+How to get that shared secret key in these devices?  If we give all devices the same factory default shared secret key, then the compromise of one device will compromise all the others as well.  This is what's called "low resiliency".
+The shared secret key is only used in setting up the local secret key between two distinct devices.  The Hoermann implementation circumvents this weakness by limiting the radiated power of the remote when setting up the local secret key.  
+The AVR411 application note uses rolling code to prevent replay attacks, but the code scheme is still vulnerable to [jam-and-replay attacks](http://spencerwhyte.blogspot.be/2014/03/delay-attack-jam-intercept-and-replay.html).  In our implementation, the 2PAP authentication scheme below will be used to avoid this vulnerability.  The drawback is that the remote as well as the garage door controllers need to be transponder devices (i.e. capable of receiving and transmitting).  More messages will be sent, which will increase current consumption (especially important for the remote).
+##Asymmetric authentication protocols for establishing the local secret key
+###Authentication protocol
+####Parties & Objects
 3 Parties:
 * Alice (remote)
 * Bob (door)
 * CA (Certification authority)
 
-####Protocol
+###Protocol
 Setting up a session key between Alice & Bob (Computer Networks, §8.7.5):
 * Ea, Eb = public key or encryption function of that key with A's or B's public key respectively
 * Ra, Rb = nonce (=big random number) generated by A or B respectively
@@ -172,6 +106,77 @@ B checks with the CA's public key if cert(A) is valid.
 	A -> B : Ks(Rb)
 
 B knows now that A also got Ks
+
+### Asymmetric key Algorithm implementation in firmware on AVR microcontrollers.
+* [IETF Securing smart objects](http://tools.ietf.org/html/draft-aks-crypto-sensors-01#section-9)
+* [AVR Cryptolib](https://trac.cryptolib.org/avr-crypto-lib/browser) Documentation is lacking
+* [micro-ecc](https://github.com/myrual/micro-ecc)
+* Hardware random number generator (needed to generate symmetric secret keys)
+	* [Hardware random number generation on AVR](https://code.google.com/p/avr-hardware-random-number-generation/)
+	* [Arduino RNG](https://gitorious.org/benediktkr/ardrand/source/db826463ec1bc96e5d073d2957fac1bc137d5b02:)
+	* [Quality of RNG on Arduino](http://www.academia.edu/1161820/Ardrand_The_Arduino_as_a_Hardware_Random-Number_Generator)
+* [Relic toolkit](https://github.com/relic-toolkit/relic)
+	* Better documentation
+	* Build Instructions Relic Toolkit
+
+
+    sudo apt-get install gcc-avr avr-libc
+	unzip relic-master.zip to folder relic-master
+	mkdir -p relic-build/
+	cd relic-build
+	../relic-master/preset/avr-ecc-80k.sh ../relic-master/
+	make
+	make doc
+	sudo make install
+
+
+###Algorithm implementation on specialized microcontrollers
+* ATECC108-SSH Atmel secure EEPROM + CoCPU uses ECC (available at Digikey)
+	* Full documentation only available under NDA.  Full documentation is not needed for implementation.
+	* EEPROM for 16keys (private key, public key, signature components)
+	* possibility to lock sections of EEPROM
+	* 72bit unique serial number
+	* I²C interface
+	* Truly random number generator
+	* Lower risk for private key exposure than cryptographic calculation in standard MCU.
+	* Generate private key inside the device
+	* Challenge response based MAC (with symmetric keys also possible)
+	* GenDig -> Generate Digest based on 1 or more keys
+	* DeriveKey -> Derives a key from another one: e.g. for rolling code scheme, 
+	* CheckMac
+	* [Cryptocape Example implementation](https://learn.sparkfun.com/tutorials/cryptocape-hookup-guide/all)
+	* [Eclet Linux driver](http://cryptotronix.com/2014/05/26/atecc108_eclet_linux_driver/)
+	* [Atmel ATECC108 driver](http://www.atmel.com/tools/cryptoauthentication_atecc108_development_library.aspx)
+* ATSHA204A 
+	* older ATSHA204 not recommended for new designs
+	* securely store secrets, 
+	* generate true random numbers, 
+	* perform SHA-256 cryptographic hashes
+	* unique non-modifiable serial number
+	* Can be used with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client needs to store this unique 	diversified key.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, 		all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the 		devices.
+	* [Hashlet](https://github.com/cryptotronix/hashlet)
+* MAXQ1103 Maxim DeepCover Secure Microcontroller with Rapid Zeroization Technology and Cryptography
+	Full documentation only available under NDA.
+* DS28E35
+	Full documentation only available under NDA.
+
+##Symmetric authentication protocols for control of the garage door
+###Kryptoknight: 2PAP 
+
+	A -> B : ID_A | ID_B | RANDOMNR_A+MSG
+	B <- A : ID_B | ID_A | RANDOMBR_B | HMAC(ID_B, RANDOMNR_A+MSG, RANDOMNR_B)
+	A -> B : ID_A | ID_B | HMAC(RANDOMNR_A, RANDOMNR_B)
+
+	HMAC(X) = SHA(X + SECRETKEY);
+[IBM Kryptoknight](http://books.google.be/books?id=GEz1sYwz494C&lpg=PA167&ots=PPK7nyTvQf&dq=2PAKDP&pg=PA166#v=onepage&q=2PAKDP&f=false
+)
+
+###CHAP
+	A -> B : ID_A | ID_B | HELLO?
+	B <- A : ID_B | ID_A | RANDOMBR_B
+	A -> B : ID_A | ID_B | HMAC(RANDOMNR_B)
+
+I think this is not as secure as 2PAP.
 
 #Wireless
 ##2.4GHz Modules
@@ -227,6 +232,7 @@ while HopeRF modules are more used by hobbyists.
 * Below is the only useful code that could be found on the internet.  It has to be rewritten from scratch due to the Microchip copyright notice.
 	* [MRF89XA.c](https://github.com/x893/Microchip/blob/master/Microchip/Transceivers/MRF89XA/MRF89XA.c)
 	* [MRF89XA headers](https://github.com/x893/Microchip/tree/master/Microchip/Include/Transceivers/MRF89XA)
+	* [Simple application, incomplete code](http://www.microchip.com/wwwregister/default.aspx?ReturnURL=http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en548019&DownloadDocLink=4F47C92917033199A94C14F24CE299BEDE02EDEC72CBE8C75628CEB0B60C1E3D33CAAEF0AA36F5BF667ABD973B73FF3C74BEDEAD7796DAE57B1363E0D7E380A23B83645C2BBBD0A89BA619CCE50FC019DA40DBBADBE3284C49193F5E4A42BA6FDAFB7FBE16B33D31CACDB09654A8DA367F6181875D2A4FB54C8ECBFEFB32658905B86D7BD1D2DFBAF8EDF86E048E6FDA989786C157D1CBFD2D400C9BAF6AE725)
 * Hardware
 	* Convert the Arduino Uno to 3V3.
 	* Reset line of the module must be HiZ, pull up to reset the module.

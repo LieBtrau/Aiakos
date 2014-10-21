@@ -17,8 +17,11 @@
 
 //Howto: Setting up the build environment: Arduino & QtCreator: http://lucidarme.me/?p=3282
 
+#include <stddef.h>            // data type definitions
 #include "Aiakos.h"
 #include "RDM630/rdm630.h"
+#include "ATECC108/ecc108_examples.h"  // definitions and declarations for example functions
+#include "ATECC108/ecc108_physical.h"   // function definitions for the physical layer
 
 rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
 
@@ -26,6 +29,7 @@ void setup()
 {
     Serial.begin(9600);  // start serial to PC
     rfid.begin();
+    ecc108p_init();
 }
 
 void loop()

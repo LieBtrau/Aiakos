@@ -52,3 +52,17 @@ RDM630/rdm630.h
 RDM630/rdm630.cpp
 aiakos.ino
 README.md
+ATECC108/ecc108_comm.c
+ATECC108/ecc108_comm.h
+ATECC108/ecc108_comm_marshaling.c
+ATECC108/ecc108_comm_marshaling.h
+ATECC108/ecc108_config.h
+ATECC108/ecc108_examples.c
+ATECC108/ecc108_examples.h
+ATECC108/ecc108_helper.c
+ATECC108/ecc108_helper.h
+ATECC108/ecc108_i2c.c
+ATECC108/ecc108_lib_return_codes.h
+ATECC108/ecc108_physical.h
+ATECC108/i2c_phys.h
+ATECC108/timer_utilities.h
