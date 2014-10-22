@@ -45,13 +45,13 @@
 
 #ifdef ECC108_I2C_BITBANG
 #   include "i2c_phys_bitbang.h"        // hardware dependent declarations for bit-banged I2C
-#else
-#   include "i2c_phys.h"                // hardware dependent declarations for I2C
 #endif
 #include "ecc108_config.h"
 #include "ecc108_physical.h"            // declarations that are common to all interface implementations
 #include "ecc108_lib_return_codes.h"    // declarations of function return codes
 #include "timer_utilities.h"            // definitions for delay functions
+#include "Arduino.h"
+#include <Wire.h>
 
 /** \defgroup ecc108_i2c Module 05: I2C Abstraction Module
  *
@@ -67,17 +67,17 @@
  * Data are only sent after a word address of value #ECC108_I2C_PACKET_FUNCTION_NORMAL.
  */
 enum i2c_word_address {
-	ECC108_I2C_PACKET_FUNCTION_RESET,  //!< Reset device.
-	ECC108_I2C_PACKET_FUNCTION_SLEEP,  //!< Put device into Sleep mode.
-	ECC108_I2C_PACKET_FUNCTION_IDLE,   //!< Put device into Idle mode.
-	ECC108_I2C_PACKET_FUNCTION_NORMAL  //!< Write / evaluate data that follow this word address byte.
+    ECC108_I2C_PACKET_FUNCTION_RESET,  //!< Reset device.
+    ECC108_I2C_PACKET_FUNCTION_SLEEP,  //!< Put device into Sleep mode.
+    ECC108_I2C_PACKET_FUNCTION_IDLE,   //!< Put device into Idle mode.
+    ECC108_I2C_PACKET_FUNCTION_NORMAL  //!< Write / evaluate data that follow this word address byte.
 };
 
 
 /** \brief This enumeration lists flags for I2C read or write addressing. */
 enum i2c_read_write_flag {
-	I2C_WRITE = (uint8_t) 0x00,  //!< write command flag
-	I2C_READ  = (uint8_t) 0x01   //!< read command flag
+    I2C_WRITE = (uint8_t) 0x00,  //!< write command flag
+    I2C_READ  = (uint8_t) 0x01   //!< read command flag
 };
 
 
@@ -92,7 +92,7 @@ static uint8_t device_address;
  */
 void ecc108p_set_device_id(uint8_t id)
 {
-	device_address = id;
+    device_address = id;
 }
 
 
@@ -100,8 +100,8 @@ void ecc108p_set_device_id(uint8_t id)
  */
 void ecc108p_init(void)
 {
-	i2c_enable();
-	device_address = ECC108_I2C_DEFAULT_ADDRESS;
+    Wire.begin();
+    device_address = ECC108_I2C_DEFAULT_ADDRESS;
 }
 
 
@@ -113,68 +113,18 @@ void ecc108p_init(void)
  */
 uint8_t ecc108p_wakeup(void)
 {
-#if !defined(ECC108_GPIO_WAKEUP) && !defined(ECC108_I2C_BITBANG)
+    // Generate wakeup pulse by writing a 0 on the I2C bus.
+    Wire.beginTransmission(0);
+    // We have to send at least one byte between an I2C Start and an I2C Stop.
+    Wire.write(1);
+    if(Wire.endTransmission()!=0)
+    {
+        return ECC108_COMM_FAIL;
+    }
+    delay_10us(ECC108_WAKEUP_DELAY);
 
-	// Generate wakeup pulse by writing a 0 on the I2C bus.
-	uint8_t dummy_byte = 0;
-	uint8_t i2c_status = i2c_send_start();
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-
-	// To send eight zero bits it takes 10E6 / I2C clock * 8 us.
-	delay_10us(ECC108_WAKEUP_PULSE_WIDTH - (uint8_t) (1000000.0 / 10.0 / I2C_CLOCK * 8.0));
-
-	// We have to send at least one byte between an I2C Start and an I2C Stop.
-	(void) i2c_send_bytes(1, &dummy_byte);
-	i2c_status = i2c_send_stop();
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-#else
-#  if defined(ECC108_I2C_BITBANG)
-	// Generate wakeup pulse using the GPIO pin that is connected to SDA.
-	I2C_DATA_LOW();
-	delay_10us(ECC108_WAKEUP_PULSE_WIDTH);
-	I2C_DATA_HIGH();
-#  else
-	// Generate wakeup pulse by disabling the I2C peripheral and
-	// pulling SDA low. The I2C peripheral gets automatically
-	// re-enabled when calling i2c_send_start().
-	// PORTD is used on the Microbase. You might have to use another
-	// port for a different target.
-	TWCR = 0;           // Disable I2C.
-	DDRD |= _BV(PD1);   // Set SDA as output.
-	PORTD &= ~_BV(PD1); // Set SDA low.
-	delay_10us(ECC108_WAKEUP_PULSE_WIDTH);
-	PORTD |= _BV(PD1);  // Set SDA high.
-#   endif
-#endif
-
-	delay_10us(ECC108_WAKEUP_DELAY);
-
-	return ECC108_SUCCESS;
+    return ECC108_SUCCESS;
 }
-
-
-/** \brief This function creates a Start condition and sends the
- * I2C address.
- * \param[in] read #I2C_READ for reading, #I2C_WRITE for writing
- * \return status of the I2C operation
- */
-static uint8_t ecc108p_send_slave_address(uint8_t read)
-{
-	uint8_t sla = device_address | read;
-	uint8_t ret_code = i2c_send_start();
-	if (ret_code != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ret_code;
-
-	ret_code = i2c_send_bytes(1, &sla);
-
-	if (ret_code != I2C_FUNCTION_RETCODE_SUCCESS)
-		(void) i2c_send_stop();
-
-	return ret_code;
-}
-
 
 /** \brief This function sends a I2C packet enclosed by
  *         a I2C start and stop to the device.
@@ -190,28 +140,12 @@ expected to be non-zero.
  */
 static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *buffer)
 {
-	uint8_t i2c_status = ecc108p_send_slave_address(I2C_WRITE);
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-
-	i2c_status = i2c_send_bytes(1, &word_address);
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-
-	if (count == 0) {
-		// We are done for packets that are not commands (Sleep, Idle, Reset).
-		(void) i2c_send_stop();
-		return ECC108_SUCCESS;
-	}
-
-	i2c_status = i2c_send_bytes(count, buffer);
-
-	(void) i2c_send_stop();
-
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-	else
-		return ECC108_SUCCESS;
+    Wire.beginTransmission(device_address);
+    for(int i=0;i<count;i++)
+    {
+        Wire.write(buffer[i]);
+    }
+    return(Wire.endTransmission()!=0 ? ECC108_COMM_FAIL : ECC108_SUCCESS);
 }
 
 
@@ -222,7 +156,7 @@ static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *bu
  */
 uint8_t ecc108p_send_command(uint8_t count, uint8_t *command)
 {
-	return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_NORMAL, count, command);
+    return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_NORMAL, count, command);
 }
 
 
@@ -231,7 +165,7 @@ uint8_t ecc108p_send_command(uint8_t count, uint8_t *command)
  */
 uint8_t ecc108p_idle(void)
 {
-	return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_IDLE, 0, NULL);
+    return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_IDLE, 0, NULL);
 }
 
 
@@ -240,7 +174,7 @@ uint8_t ecc108p_idle(void)
  */
 uint8_t ecc108p_sleep(void)
 {
-	return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_SLEEP, 0, NULL);
+    return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_SLEEP, 0, NULL);
 }
 
 
@@ -249,7 +183,7 @@ uint8_t ecc108p_sleep(void)
  */
 uint8_t ecc108p_reset_io(void)
 {
-	return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_RESET, 0, NULL);
+    return ecc108p_i2c_send(ECC108_I2C_PACKET_FUNCTION_RESET, 0, NULL);
 }
 
 
@@ -261,37 +195,22 @@ uint8_t ecc108p_reset_io(void)
  */
 uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response)
 {
-	uint8_t count;
+    uint8_t count,i=0;
 
-	// Address the device and indicate that bytes are to be read.
-	uint8_t i2c_status = ecc108p_send_slave_address(I2C_READ);
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS) {
-		// Translate error so that the Communication layer
-		// can distinguish between a real error or the
-		// device being busy executing a command.
-		if (i2c_status == I2C_FUNCTION_RETCODE_NACK)
-			i2c_status = ECC108_RX_NO_RESPONSE;
-
-		return i2c_status;
-	}
-
-	// Receive count byte.
-	i2c_status = i2c_receive_byte(response);
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-
-	count = response[ECC108_BUFFER_POS_COUNT];
-	if ((count < ECC108_RSP_SIZE_MIN) || (count > size)) {
-		(void) i2c_send_stop();
-		return ECC108_INVALID_SIZE;
-	}
-
-	i2c_status = i2c_receive_bytes(count - 1, &response[ECC108_BUFFER_POS_DATA]);
-
-	if (i2c_status != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
-	else
-		return ECC108_SUCCESS;
+    count=Wire.requestFrom(device_address, 256);
+    if(count>0)
+    {
+        count--;
+    }
+    if ((count < ECC108_RSP_SIZE_MIN) || (count > size)) {
+        return ECC108_INVALID_SIZE;
+    }
+    while(Wire.available())
+    {
+        response[ECC108_BUFFER_POS_DATA + i]=Wire.read();
+        i++;
+    }
+    return ECC108_SUCCESS;
 }
 
 
@@ -345,29 +264,29 @@ uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response)
  */
 uint8_t ecc108p_resync(uint8_t size, uint8_t *response)
 {
-	uint8_t nine_clocks = 0xFF;
-	uint8_t ret_code = i2c_send_start();
+    uint8_t nine_clocks = 0xFF;
+    uint8_t ret_code = i2c_send_start();
 
-	// Do not evaluate the return code that most likely indicates error,
-	// since nine_clocks is unlikely to be acknowledged.
-	(void) i2c_send_bytes(1, &nine_clocks);
+    // Do not evaluate the return code that most likely indicates error,
+    // since nine_clocks is unlikely to be acknowledged.
+    (void) i2c_send_bytes(1, &nine_clocks);
 
-	// Send another Start. The function sends also one byte,
-	// the I2C address of the device, because I2C specification
-	// does not allow sending a Stop right after a Start condition.
-	ret_code = ecc108p_send_slave_address(I2C_READ);
+    // Send another Start. The function sends also one byte,
+    // the I2C address of the device, because I2C specification
+    // does not allow sending a Stop right after a Start condition.
+    ret_code = ecc108p_send_slave_address(I2C_READ);
 
-	// Send only a Stop if the above call succeeded.
-	// Otherwise the above function has sent it already.
-	if (ret_code == I2C_FUNCTION_RETCODE_SUCCESS)
-		ret_code = i2c_send_stop();
+    // Send only a Stop if the above call succeeded.
+    // Otherwise the above function has sent it already.
+    if (ret_code == I2C_FUNCTION_RETCODE_SUCCESS)
+        ret_code = i2c_send_stop();
 
-	// Return error status if we failed to re-sync.
-	if (ret_code != I2C_FUNCTION_RETCODE_SUCCESS)
-		return ECC108_COMM_FAIL;
+    // Return error status if we failed to re-sync.
+    if (ret_code != I2C_FUNCTION_RETCODE_SUCCESS)
+        return ECC108_COMM_FAIL;
 
-	// Try to send a Reset IO command if re-sync succeeded.
-	return ecc108p_reset_io();
+    // Try to send a Reset IO command if re-sync succeeded.
+    return ecc108p_reset_io();
 }
 
 /** @} */

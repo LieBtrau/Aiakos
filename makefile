@@ -1,5 +1,5 @@
 TARGET       = Aiakos
-ARDUINO_LIBS = RadioHead RDM630 SPI SoftwareSerial ATECC108
+ARDUINO_LIBS = ATECC108 RadioHead RDM630 SoftwareSerial SPI Wire
 
 MCU          = atmega328p
 F_CPU        = 16000000

@@ -89,7 +89,6 @@ Setting up a session key between Alice & Bob (Computer Networks, §8.7.5):
 * Ks = shared session key
 * cert(x) = certificate of subject x
 
-
 	A -> B : cert(B)?
 
 A wants to get Eb
