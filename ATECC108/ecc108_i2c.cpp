@@ -197,7 +197,7 @@ uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response)
 {
     uint8_t count,i=0;
 
-    count=Wire.requestFrom(device_address, 256);
+    count=Wire.requestFrom(device_address, (uint8_t)256);
     if(count>0)
     {
         count--;
@@ -265,25 +265,8 @@ uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response)
 uint8_t ecc108p_resync(uint8_t size, uint8_t *response)
 {
     uint8_t nine_clocks = 0xFF;
-    uint8_t ret_code = i2c_send_start();
-
-    // Do not evaluate the return code that most likely indicates error,
-    // since nine_clocks is unlikely to be acknowledged.
-    (void) i2c_send_bytes(1, &nine_clocks);
-
-    // Send another Start. The function sends also one byte,
-    // the I2C address of the device, because I2C specification
-    // does not allow sending a Stop right after a Start condition.
-    ret_code = ecc108p_send_slave_address(I2C_READ);
-
-    // Send only a Stop if the above call succeeded.
-    // Otherwise the above function has sent it already.
-    if (ret_code == I2C_FUNCTION_RETCODE_SUCCESS)
-        ret_code = i2c_send_stop();
-
-    // Return error status if we failed to re-sync.
-    if (ret_code != I2C_FUNCTION_RETCODE_SUCCESS)
-        return ECC108_COMM_FAIL;
+    Wire.requestFrom(nine_clocks,(uint8_t)0,(uint8_t)false);
+    Wire.requestFrom(device_address,(uint8_t)0);
 
     // Try to send a Reset IO command if re-sync succeeded.
     return ecc108p_reset_io();

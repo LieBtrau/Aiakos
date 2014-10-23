@@ -111,7 +111,7 @@
 #include "timer_utilities.h"          // definitions and declarations for timer functions
 
 #if defined ECC108_I2C
-#   include "i2c_phys.h"
+#   include "ecc108_physical.h"
 #elif defined ECC108_I2C_BITBANG
 #   include  "i2c_phys_bitbang.h"
 #else
