@@ -62,26 +62,30 @@
 #define ECC108_BUFFER_POS_DATA       (1)             //!< buffer index of data in response
 
 /** width of Wakeup pulse in 10 us units
-	Device versions <= 0x1001 need a longer pulse of 120 us instead of 60 us.
+    Device versions <= 0x1001 need a longer pulse of 120 us instead of 60 us.
 */
 #define ECC108_WAKEUP_PULSE_WIDTH    (uint8_t) (12.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5)
 
 /** delay between Wakeup pulse and communication in 10 us units
-	Device versions <= 0x1001 need a longer delay of 2 ms instead of 0.5 ms.
+    Device versions <= 0x1001 need a longer delay of 2 ms instead of 0.5 ms.
 */
 #define ECC108_WAKEUP_DELAY          (uint8_t) (200.0 * CPU_CLOCK_DEVIATION_POSITIVE + 0.5)
 
-
-uint8_t ecc108p_send_command(uint8_t count, uint8_t *command);
-uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response);
-void    ecc108p_init(void);
-void    ecc108p_set_device_id(uint8_t id);
-uint8_t ecc108p_wakeup(void);
-uint8_t ecc108p_idle(void);
-uint8_t ecc108p_sleep(void);
-uint8_t ecc108p_reset_io(void);
-uint8_t ecc108p_resync(uint8_t size, uint8_t *response);
-
+#ifdef __cplusplus
+extern "C" {
+#endif
+    uint8_t ecc108p_send_command(uint8_t count, uint8_t *command);
+    uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response);
+    void    ecc108p_init(void);
+    void    ecc108p_set_device_id(uint8_t id);
+    uint8_t ecc108p_wakeup(void);
+    uint8_t ecc108p_idle(void);
+    uint8_t ecc108p_sleep(void);
+    uint8_t ecc108p_reset_io(void);
+    uint8_t ecc108p_resync(uint8_t size, uint8_t *response);
+#ifdef __cplusplus
+} // extern "C"
+#endif
 /** @} */
 
 #endif

@@ -42,7 +42,13 @@
 
 #include <stdint.h>                    // data type definitions
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 void delay_10us(uint8_t delay);
 void delay_ms(uint8_t delay);
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif
