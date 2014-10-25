@@ -26,7 +26,7 @@ void setup()
     Serial.begin(9600);  // start serial to PC
     rfid.begin();
     ecc108p_init();
-    Serial.println(ecc108e_send_info_command());
+    Serial.println(ecc108e_send_info_command(),HEX);
 }
 
 void loop()

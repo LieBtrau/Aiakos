@@ -37,6 +37,8 @@
 *
 * \atmel_crypto_device_library_license_stop
  */
+// Changes made: 2014, Christoph Tack
+
 #define ECC108_GPIO_WAKEUP
 
 #ifdef ECC108_GPIO_WAKEUP
@@ -92,8 +94,9 @@ static uint8_t device_address;
  */
 void ecc108p_set_device_id(uint8_t id)
 {
-    device_address = id;
+    device_address = id>>1;
 }
+
 
 
 /** \brief This function initializes the hardware.
@@ -104,27 +107,6 @@ void ecc108p_init(void)
     device_address = ECC108_I2C_DEFAULT_ADDRESS;
 }
 
-
-//#ifndef DEBUG_DIAMOND
-//#   define DEBUG_DIAMOND
-//#endif
-/** \brief This I2C function generates a Wake-up pulse and delays.
- * \return status of the operation
- */
-uint8_t ecc108p_wakeup(void)
-{
-    // Generate wakeup pulse by writing a 0 on the I2C bus.
-    Wire.beginTransmission(0);
-    // We have to send at least one byte between an I2C Start and an I2C Stop.
-    Wire.write(1);
-    if(Wire.endTransmission()!=0)
-    {
-        return ECC108_COMM_FAIL;
-    }
-    delay_10us(ECC108_WAKEUP_DELAY);
-
-    return ECC108_SUCCESS;
-}
 
 /** \brief This function sends a I2C packet enclosed by
  *         a I2C start and stop to the device.
@@ -146,6 +128,37 @@ static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *bu
         Wire.write(buffer[i]);
     }
     return(Wire.endTransmission()!=0 ? ECC108_COMM_FAIL : ECC108_SUCCESS);
+}
+
+
+//#ifndef DEBUG_DIAMOND
+//#   define DEBUG_DIAMOND
+//#endif
+/** \brief This I2C function generates a Wake-up pulse and delays.
+ * \return status of the operation
+ */
+uint8_t ecc108p_wakeup(void)
+{
+    //If we take the ATSHA204 datasheet as a reference:
+    //Wake the device by keeping SDA low for at least 60us.  SCL is ignored when the device is sleeping.
+    //Wire library seems to work at 100kHz, so sending a 0x00 will keep SDA low long enough.
+    Wire.beginTransmission(0);
+    Wire.endTransmission();
+    //After that, wait for 2.5ms
+    delay(3);
+
+    //to trigger the oscilloscope here with the external trigger
+    pinMode(2,OUTPUT);
+    digitalWrite(2,HIGH);
+    digitalWrite(2,LOW);
+
+    byte data=0;
+    ecc108p_i2c_send(0,1,&data);
+    return ECC108_COMM_FAIL;
+
+    delay_10us(ECC108_WAKEUP_DELAY);
+
+    return ECC108_SUCCESS;
 }
 
 
