@@ -145,7 +145,7 @@ uint8_t ecc108p_wakeup(void)
     Wire.beginTransmission(0);
     Wire.endTransmission();
     //After that, wait for 2.5ms
-    delay(3);
+    delay_10us(ECC108_WAKEUP_DELAY);
 
     //to trigger the oscilloscope here with the external trigger
     pinMode(2,OUTPUT);
@@ -153,12 +153,7 @@ uint8_t ecc108p_wakeup(void)
     digitalWrite(2,LOW);
 
     byte data=0;
-    ecc108p_i2c_send(0,1,&data);
-    return ECC108_COMM_FAIL;
-
-    delay_10us(ECC108_WAKEUP_DELAY);
-
-    return ECC108_SUCCESS;
+    return ecc108p_i2c_send(0,1,&data);
 }
 
 
@@ -208,20 +203,26 @@ uint8_t ecc108p_reset_io(void)
  */
 uint8_t ecc108p_receive_response(uint8_t size, uint8_t *response)
 {
-    uint8_t count,i=0;
+    uint8_t count;
 
-    count=Wire.requestFrom(device_address, (uint8_t)256);
-    if(count>0)
+    Wire.requestFrom(device_address, (uint8_t)1,(uint8_t)false);
+    if(!Wire.available())
     {
-        count--;
+        Wire.requestFrom(device_address,(uint8_t)0);//send a stop
+        return ECC108_COMM_FAIL;
     }
+    count=Wire.read();
+
     if ((count < ECC108_RSP_SIZE_MIN) || (count > size)) {
         return ECC108_INVALID_SIZE;
     }
-    while(Wire.available())
-    {
+    response[ECC108_BUFFER_POS_COUNT]=count;
+    Wire.requestFrom(device_address, (uint8_t)(count-1));
+    for(uint8_t i=0;i<count-1;i++){
+        if(!Wire.available()){
+            return ECC108_INVALID_SIZE;
+        }
         response[ECC108_BUFFER_POS_DATA + i]=Wire.read();
-        i++;
     }
     return ECC108_SUCCESS;
 }
