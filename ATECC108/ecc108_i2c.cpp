@@ -144,14 +144,8 @@ uint8_t ecc108p_wakeup(void)
     //Wire library seems to work at 100kHz, so sending a 0x00 will keep SDA low long enough.
     Wire.beginTransmission(0);
     Wire.endTransmission();
-    //After that, wait for 2.5ms
+    //Wait for the device to wake up
     delay_10us(ECC108_WAKEUP_DELAY);
-
-    //to trigger the oscilloscope here with the external trigger
-    pinMode(2,OUTPUT);
-    digitalWrite(2,HIGH);
-    digitalWrite(2,LOW);
-
     byte data=0;
     return ecc108p_i2c_send(0,1,&data);
 }
