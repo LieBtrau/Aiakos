@@ -51,9 +51,9 @@
  *
  *  \return pointer to the version string
  */
-char *ecc108h_get_library_version(void)
+const char *ecc108h_get_library_version(void)
 {
-	static char *version= "\x1\x2\x0";
+    static const char* version= "\x1\x2\x0";
 	return version;
 }
 
@@ -177,9 +177,10 @@ uint8_t ecc108h_mac(struct ecc108h_mac_in_out *param)
 {
 	uint8_t temporary[ECC108_MSG_SIZE_MAC];
 	uint8_t *p_temp;
-	struct ecc108h_include_data_in_out include_data = {
-		.otp = param->otp, .sn = param->sn, .mode = param->mode
-	};
+    struct ecc108h_include_data_in_out include_data;
+    include_data.otp = param->otp;
+    include_data.sn = param->sn;
+    include_data.mode = param->mode;
 
 	// Check parameters
 	if (!param->response
@@ -352,9 +353,10 @@ The TempKey has to be valid (temp_key.valid = 1) before executing this function.
 uint8_t ecc108h_hmac(struct ecc108h_hmac_in_out *param)
 {
 	// Local Variables
-	struct ecc108h_include_data_in_out include_data = {
-		.otp = param->otp, .sn = param->sn, .mode = param->mode
-	};
+    struct ecc108h_include_data_in_out include_data;
+    include_data.otp = param->otp;
+    include_data.sn = param->sn;
+    include_data.mode = param->mode;
 	uint8_t temporary[ECC108_MSG_SIZE_HMAC_INNER];
 	uint8_t i;
 	uint8_t *p_temp;

@@ -90,6 +90,9 @@ uint8_t ecc108c_check_crc(uint8_t *response)
 /** \brief This function wakes up a ECC108 device
  *         and receives a response.
  *  \param[out] response pointer to four-byte response
+ *      byte 0: length of response (including this byte)
+ *      byte 1: status byte
+ *      byete 2 & 3: CRC
  *  \return status of the operation
  */
 uint8_t ecc108c_wakeup(uint8_t *response)

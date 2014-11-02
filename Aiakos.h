@@ -29,13 +29,13 @@
 #include <stddef.h>            // data type definitions
 #include "RDM630/rdm630.h"
 #include "ATECC108/ecc108_physical.h"   // function definitions for the physical layer
+#include "ATECC108/ecc108_examples.h"  // definitions and declarations for example functions
 
 //end of add your includes here
 #ifdef __cplusplus
 extern "C" {    //define avr-gcc compiled headers & sources here
 #endif
 
-#include "ATECC108/ecc108_examples.h"  // definitions and declarations for example functions
 
 void loop();
 void setup();

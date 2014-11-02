@@ -102,8 +102,7 @@
 */
 
 #include <string.h>                   // needed for memset(), memcpy()
-#include <stdbool.h>                  // definitions for boolean types
-
+#include "Arduino.h"
 #include "ecc108_lib_return_codes.h"  // declarations of function return codes
 #include "ecc108_comm_marshaling.h"   // definitions and declarations for the Command Marshaling module
 #include "ecc108_helper.h"            // definitions of functions that calculate SHA256 for every command
@@ -556,7 +555,7 @@ uint8_t ecc108e_checkmac_device(void)
 
 	// data for challenge in MAC mode 0 command
 	const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
-		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x00, 0x12, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
 		0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
 		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
 		0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
@@ -577,17 +576,23 @@ uint8_t ecc108e_checkmac_device(void)
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
+    Serial.println("device awake");
 
 	// Mac command with mode = 0.
 	memset(response_mac, 0, sizeof(response_mac));
 	ret_code = ecc108m_execute(ECC108_MAC, MAC_MODE_CHALLENGE, ECC108_KEY_ID,
 				sizeof(challenge), (uint8_t *) challenge, 0, NULL, 0, NULL,
 				sizeof(command), command, sizeof(response_mac), response_mac);
+    if (ret_code != ECC108_SUCCESS) {
+        return ret_code;
+    }
+    Serial.println("MAC calculated");
 	// Put client device to sleep.
 	ecc108p_sleep();
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
+    Serial.println("sleeps");
 
 	// Now check the MAC using the CheckMac command.
 
@@ -595,6 +600,7 @@ uint8_t ecc108e_checkmac_device(void)
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
+    Serial.println("device awake again");
 
 	// CheckMac command with mode = 0.
 	memset(response_checkmac, 0, sizeof(response_checkmac));
@@ -607,13 +613,15 @@ uint8_t ecc108e_checkmac_device(void)
 				CHECKMAC_CLIENT_RESPONSE_SIZE, &response_mac[ECC108_BUFFER_POS_DATA],
 				sizeof(other_data), other_data,	sizeof(command), command,
 				sizeof(response_checkmac), response_checkmac);
-
-	// Put host device to sleep.
+    Serial.println("MAC executed");
+    if (ret_code != ECC108_SUCCESS) {
+        return ret_code;
+    }
+    // Put host device to sleep.
 	ecc108p_sleep();
-
 	// Status byte = 0 means success. This line serves only a debug purpose.
 	ret_code = response_checkmac[ECC108_BUFFER_POS_STATUS];
-
+    Serial.println("MAC checked");
 	return ret_code;
 }
 

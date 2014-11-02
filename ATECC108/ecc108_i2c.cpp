@@ -123,6 +123,7 @@ expected to be non-zero.
 static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *buffer)
 {
     Wire.beginTransmission(device_address);
+    Wire.write(word_address);
     for(int i=0;i<count;i++)
     {
         Wire.write(buffer[i]);

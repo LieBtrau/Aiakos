@@ -410,8 +410,7 @@ struct ecc108h_verify_in_out {
 	struct ecc108h_temp_key *temp_key;
 };
 
-
-char   *ecc108h_get_library_version(void);
+const char *ecc108h_get_library_version(void);
 uint8_t ecc108h_nonce(struct ecc108h_nonce_in_out *param);
 uint8_t ecc108h_mac(struct ecc108h_mac_in_out *param);
 uint8_t ecc108h_check_mac(struct ecc108h_check_mac_in_out *param);
