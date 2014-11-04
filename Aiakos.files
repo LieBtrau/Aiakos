@@ -66,3 +66,10 @@ ATECC108/ecc108_lib_return_codes.h
 ATECC108/ecc108_physical.h
 ATECC108/timer_utilities.h
 ATECC108/timer_utilities.cpp
+Wire/twi.h
+Wire/Wire.cpp
+Wire/Wire.h
+Wire2/twi.c
+Wire2/twi.h
+Wire2/Wire.cpp
+Wire2/Wire.h

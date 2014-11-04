@@ -576,8 +576,6 @@ uint8_t ecc108e_checkmac_device(void)
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
-    Serial.println("device awake");
-
 	// Mac command with mode = 0.
 	memset(response_mac, 0, sizeof(response_mac));
 	ret_code = ecc108m_execute(ECC108_MAC, MAC_MODE_CHALLENGE, ECC108_KEY_ID,
@@ -586,34 +584,35 @@ uint8_t ecc108e_checkmac_device(void)
     if (ret_code != ECC108_SUCCESS) {
         return ret_code;
     }
-    Serial.println("MAC calculated");
 	// Put client device to sleep.
 	ecc108p_sleep();
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
-    Serial.println("sleeps");
-
 	// Now check the MAC using the CheckMac command.
-
 	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
 	if (ret_code != ECC108_SUCCESS) {
 		return ret_code;
 	}
-    Serial.println("device awake again");
-
 	// CheckMac command with mode = 0.
 	memset(response_checkmac, 0, sizeof(response_checkmac));
 	// Copy Mac command byte 1 to 5 (op-code, param1, param2) to other_data.
 	memcpy(other_data, &command[ECC108_OPCODE_IDX], CHECKMAC_CLIENT_COMMAND_SIZE);
 	// Set the remaining nine bytes of other_data to 0.
 	memset(&other_data[CHECKMAC_CLIENT_COMMAND_SIZE - 1], 0, sizeof(other_data) - CHECKMAC_CLIENT_COMMAND_SIZE);
+    //opcode(8b) = ECC108_CHECKMAC
+    //param1(8b) = CHECKMAC_MODE_CHALLENGE,
+    //param2(16b) = ECC108_KEY_ID
+    //data1 (32bytes) = challenge
+    //data2 (32bytes) = response_mac
+    //data3 (13bytes) = other_data
+    //TX-buffer(84bytes) = command
+    //RX-buffer(4bytes) = response_checkmac
 	ret_code = ecc108m_execute(ECC108_CHECKMAC, CHECKMAC_MODE_CHALLENGE,
 				ECC108_KEY_ID, sizeof(challenge), (uint8_t *) challenge,
 				CHECKMAC_CLIENT_RESPONSE_SIZE, &response_mac[ECC108_BUFFER_POS_DATA],
 				sizeof(other_data), other_data,	sizeof(command), command,
 				sizeof(response_checkmac), response_checkmac);
-    Serial.println("MAC executed");
     if (ret_code != ECC108_SUCCESS) {
         return ret_code;
     }
@@ -621,7 +620,6 @@ uint8_t ecc108e_checkmac_device(void)
 	ecc108p_sleep();
 	// Status byte = 0 means success. This line serves only a debug purpose.
 	ret_code = response_checkmac[ECC108_BUFFER_POS_STATUS];
-    Serial.println("MAC checked");
 	return ret_code;
 }
 

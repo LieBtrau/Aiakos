@@ -205,6 +205,14 @@ uint8_t ecc108m_check_parameters(uint8_t op_code, uint8_t param1, uint16_t param
 
 
 /** \brief This function creates a command packet, sends it, and receives its response.
+ * Command structure is as follows (see datasheet ATSHA204, table 8.5):
+ * byte 0:  Control flag: COMMAND   0x03
+ * byte 1:  Count: packet size
+ * byte 2:  OpCode (e.g. READ_INFO)
+ * byte 3:  Param1 (8bit)
+ * byte 4&5:Param2 (16bit)
+ * [data]:  optional
+ * byte n-1 & n: Checksum 16bit
  *
  * \param[in] op_code command op-code
  * \param[in] param1 first parameter

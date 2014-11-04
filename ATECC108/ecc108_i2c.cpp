@@ -53,7 +53,7 @@
 #include "ecc108_lib_return_codes.h"    // declarations of function return codes
 #include "timer_utilities.h"            // definitions for delay functions
 #include "Arduino.h"
-#include <Wire.h>
+#include "Wire2/Wire.h"
 
 /** \defgroup ecc108_i2c Module 05: I2C Abstraction Module
  *
@@ -124,10 +124,19 @@ static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *bu
 {
     Wire.beginTransmission(device_address);
     Wire.write(word_address);
-    for(int i=0;i<count;i++)
-    {
-        Wire.write(buffer[i]);
-    }
+    byte i=0;
+    Serial.print("count: ");Serial.println(count);
+    /*
+    while(i<count){
+        Wire.write(buffer+i,min(count-i,20));
+        i+=min(count-i,20);
+        if(i!=count){
+            Wire.endTransmission(false);
+            Wire.beginTransmission(device_address);
+        }
+    }*/
+    Serial.println(Wire.write(buffer,count));
+
     return(Wire.endTransmission()!=0 ? ECC108_COMM_FAIL : ECC108_SUCCESS);
 }
 
