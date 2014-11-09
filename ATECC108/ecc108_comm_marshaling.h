@@ -551,8 +551,10 @@
 /** @} */
 
 uint8_t ecc108m_execute(uint8_t op_code, uint8_t param1, uint16_t param2,
-			uint8_t datalen1, uint8_t *data1, uint8_t datalen2, uint8_t *data2, uint8_t datalen3, uint8_t *data3,
-			uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer);
+                        uint8_t datalen1, const uint8_t *data1,
+                        uint8_t datalen2, const uint8_t *data2,
+                        uint8_t datalen3, const uint8_t *data3,
+                        uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer);
 
 /** @} */
 

@@ -124,19 +124,7 @@ static uint8_t ecc108p_i2c_send(uint8_t word_address, uint8_t count, uint8_t *bu
 {
     Wire.beginTransmission(device_address);
     Wire.write(word_address);
-    byte i=0;
-    Serial.print("count: ");Serial.println(count);
-    /*
-    while(i<count){
-        Wire.write(buffer+i,min(count-i,20));
-        i+=min(count-i,20);
-        if(i!=count){
-            Wire.endTransmission(false);
-            Wire.beginTransmission(device_address);
-        }
-    }*/
-    Serial.println(Wire.write(buffer,count));
-
+    Wire.write(buffer,count);
     return(Wire.endTransmission()!=0 ? ECC108_COMM_FAIL : ECC108_SUCCESS);
 }
 

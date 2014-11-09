@@ -39,12 +39,12 @@
  */
 
 #include <string.h>                    // needed for memcpy()
-
+#include "Arduino.h"
 #include "ecc108_lib_return_codes.h"   // declarations of function return codes
 #include "ecc108_comm_marshaling.h"    // definitions and declarations for the Command Marshaling module
 
 // Define this to compile and link this function.
-//#define ECC108_CHECK_PARAMETERS
+#define ECC108_CHECK_PARAMETERS
 
 /** \ingroup atecc108_command_marshaling
  * \brief This function checks the parameters for ecc108m_execute().
@@ -66,7 +66,9 @@
  * \return status of the operation
  */
 uint8_t ecc108m_check_parameters(uint8_t op_code, uint8_t param1, uint16_t param2,
-		uint8_t datalen1, uint8_t *data1, uint8_t datalen2, uint8_t *data2, uint8_t datalen3, uint8_t *data3,
+        uint8_t datalen1, const uint8_t *data1,
+        uint8_t datalen2, const uint8_t *data2,
+        uint8_t datalen3, const uint8_t *data3,
 		uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer)
 {
 #ifdef ECC108_CHECK_PARAMETERS
@@ -230,7 +232,9 @@ uint8_t ecc108m_check_parameters(uint8_t op_code, uint8_t param1, uint16_t param
  * \return status of the operation
  */
 uint8_t ecc108m_execute(uint8_t op_code, uint8_t param1, uint16_t param2,
-			uint8_t datalen1, uint8_t *data1, uint8_t datalen2, uint8_t *data2, uint8_t datalen3, uint8_t *data3,
+            uint8_t datalen1, const uint8_t *data1,
+            uint8_t datalen2, const uint8_t *data2,
+            uint8_t datalen3, const uint8_t *data3,
 			uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer)
 {
 	uint8_t poll_delay, poll_timeout, response_size;
@@ -382,10 +386,9 @@ uint8_t ecc108m_execute(uint8_t op_code, uint8_t param1, uint16_t param2,
 	}
 
 	ecc108c_calculate_crc(len - ECC108_CRC_SIZE, tx_buffer, p_buffer);
-
 	// Send command and receive response.
-	ret_code = ecc108c_send_and_receive(&tx_buffer[0], response_size,
-				&rx_buffer[0],	poll_delay, poll_timeout);
+    ret_code = ecc108c_send_and_receive(tx_buffer, response_size,
+                rx_buffer,	poll_delay, poll_timeout);
 
 	// Put device to sleep if command fails
 	if (ret_code != ECC108_SUCCESS)

@@ -125,64 +125,6 @@
 #define ecc108e_wakeup_sleep()   {ecc108p_wakeup(); ecc108p_sleep();}
 
 
-/**
- * \brief This function wraps \ref ecc108p_sleep().
- *        It puts both devices to sleep if two devices (client and host) are used.
- *        This function is also called when a Wakeup did not succeed.
- *        This would not make sense if a device did not wakeup and it is the only
- *        device on SDA, but if there are two devices (client and host) that
- *        share SDA, the device that is not selected might have woken up.
- */
-void ecc108e_sleep(void)
-{
-#if defined(ECC108_I2C) && (ECC108_CLIENT_ADDRESS != ECC108_HOST_ADDRESS)
-	// Select host device...
-	ecc108p_set_device_id(ECC108_HOST_ADDRESS);
-	// and put it to sleep.
-	(void) ecc108p_sleep();
-	// Select client device...
-	ecc108p_set_device_id(ECC108_CLIENT_ADDRESS);
-	// and put it to sleep.
-	(void) ecc108p_sleep();
-#else
-	(void) ecc108p_sleep();
-#endif
-}
-
-
-/** \brief This function wakes up two I2C devices and puts one back to
-           sleep, effectively waking up only one device among two that
-		   share SDA.
-	\param[in] device_id which device to wake up
-	\return status of the operation
-*/
-uint8_t ecc108e_wakeup_device(uint8_t device_id)
-{
-	uint8_t ret_code;
-	uint8_t wakeup_response[ECC108_RSP_SIZE_MIN];
-
-	ecc108p_set_device_id(device_id);
-
-	// Wake up the devices.
-	memset(wakeup_response, 0, sizeof(wakeup_response));
-	ret_code = ecc108c_wakeup(wakeup_response);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_sleep();
-		return ret_code;
-	}
-
-#if defined(ECC108_I2C) && (ECC108_CLIENT_ADDRESS != ECC108_HOST_ADDRESS)
-	// ECC108 I2C devices share SDA. We have to put the other device back to sleep.
-	// Select other device...
-	ecc108p_set_device_id(device_id == ECC108_CLIENT_ADDRESS ? ECC108_HOST_ADDRESS : ECC108_CLIENT_ADDRESS);
-	// and put it to sleep.
-	ret_code = ecc108p_sleep();
-#endif
-
-	return ret_code;
-}
-
-
 /** \brief This function checks the response status byte and puts the device
            to sleep if there was an error.
     \param[in] ret_code return code of function
@@ -244,40 +186,40 @@ uint8_t ecc108e_check_lock_status(void)
 }
 
 
-/** \brief This function is a simple example for how to use the library.
-           It wakes up the device, sends a Info command, receives its
-		   response, and puts the device to sleep. It uses a total of
-		   four library functions from all three layers, physical,
-		   communication, and command marshaling layer.
+///** \brief This function is a simple example for how to use the library.
+//           It wakes up the device, sends a Info command, receives its
+//		   response, and puts the device to sleep. It uses a total of
+//		   four library functions from all three layers, physical,
+//		   communication, and command marshaling layer.
 
-		   Use this example to familiarize yourself with the library
-		   and device communication before proceeding to examples that
-		   deal with the security features of the device.
-	\return status of the operation
-*/
-uint8_t ecc108e_send_info_command(void)
-{
-	uint8_t ret_code;
-	uint8_t wakeup_response[ECC108_RSP_SIZE_MIN];
-	uint8_t command[INFO_COUNT];
-	uint8_t response[INFO_RSP_SIZE];
+//		   Use this example to familiarize yourself with the library
+//		   and device communication before proceeding to examples that
+//		   deal with the security features of the device.
+//	\return status of the operation
+//*/
+//uint8_t ecc108e_send_info_command(void)
+//{
+//	uint8_t ret_code;
+//	uint8_t wakeup_response[ECC108_RSP_SIZE_MIN];
+//	uint8_t command[INFO_COUNT];
+//	uint8_t response[INFO_RSP_SIZE];
 
-	ecc108p_set_device_id(ECC108_CLIENT_ADDRESS);
+//	ecc108p_set_device_id(ECC108_CLIENT_ADDRESS);
 
-	// Wake up the device.
-	memset(wakeup_response, 0, sizeof(wakeup_response));
-	ret_code = ecc108c_wakeup(wakeup_response);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
+//	// Wake up the device.
+//	memset(wakeup_response, 0, sizeof(wakeup_response));
+//	ret_code = ecc108c_wakeup(wakeup_response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
 
-	ret_code = ecc108m_execute(ECC108_INFO, INFO_MODE_REVISION, INFO_NO_STATE, 0, NULL, 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response), response);
+//	ret_code = ecc108m_execute(ECC108_INFO, INFO_MODE_REVISION, INFO_NO_STATE, 0, NULL, 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response), response);
 
-	ecc108p_sleep();
+//	ecc108p_sleep();
 
-	return ret_code;
-}
+//	return ret_code;
+//}
 
 
 /** \brief This function locks the configuration zone.
@@ -326,1196 +268,1105 @@ uint8_t ecc108e_lock_config_zone(uint8_t device_id)
 }
 
 
-/** \brief This function checks the configuration of the device for verify external example.
- *
- *         SlotConfig0 to 0x8F20
- *           - ReadKey      0xF
- *           - NoMac          0
- *           - SingleUse      0
- *           - EncryptRead    0
- *           - IsSecret       1
- *           - WriteKey     0x0
- *           - WriteConfig  0x2
- *         KeyConfig0 to 0x3300
- *           - Private      1
- *           - PubInfo      1
- *           - KeyType  0b100
- *           - Lockable     1
- *           - ReqRandom    0
- *           - ReqAuth      0
- *           - AuthKey    0x0
- *           - RFU        0x0
- * \return status of the configuration
- */
-uint8_t ecc108e_check_private_key_slot0_config(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Slot configuration address for key (e.g. 48, 49)
-	uint16_t slot_config_address = 20;
-
-	const uint8_t read_config = 0x8F;
-	const uint8_t write_config = 0x20;
-
-	// Key configuration address for key (e.g. 48, 49)
-	uint16_t key_config_address = 96;
-
-	const uint8_t key_config_lsb = 0x33;
-	const uint8_t key_config_msb = 0x00;
-
-	// Make the command buffer the size of a Read command.
-	uint8_t command[READ_COUNT];
-
-	// Make the response buffer the minimum size of a Read response.
-	uint8_t response[READ_4_RSP_SIZE];
-
-	// Wake up the client device.
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Read device configuration of SlotConfig0.
-	memset(response, 0, sizeof(response));
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, slot_config_address >> 2, 0, NULL,
-				0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Check the configuration of SlotConfig0.
-	if (response[ECC108_BUFFER_POS_DATA] != read_config ||
-			response[ECC108_BUFFER_POS_DATA + 1] != write_config) {
-		// The Slot have not been configured correctly.
-		// Throw error code.
-		ecc108p_sleep();
-		return ECC108_FUNC_FAIL;
-	}
-
-	// Read device configuration of KeyConfig0.
-	memset(response, 0, sizeof(response));
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, key_config_address >> 2, 0, NULL, 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Check the configuration of KeyConfig0.
-	if (response[ECC108_BUFFER_POS_DATA] != key_config_lsb ||
-			response[ECC108_BUFFER_POS_DATA + 1] != key_config_msb) {
-		// The Key have not been configured correctly.
-		// Throw error code.
-		ecc108p_sleep();
-		return ECC108_FUNC_FAIL;
-	}
-
-// For this example, lock should be done by using ACES.
-// This function is only to show users how to lock the configuration zone
-// using a library function.
-#if defined(ECC108_EXAMPLE_CONFIG_WITH_LOCK)
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108e_lock_config_zone(ECC108_HOST_ADDRESS);
-#endif
-
-	// Check the configuration zone lock status
-	ret_code = ecc108e_check_lock_status();
-
-	return ret_code;
-}
-
-/** \brief This function checks the configuration of the device for verify external using B283 example.
- *
- *         SlotConfig0 to 0x8F20
- *           - ReadKey      0xF
- *           - NoMac          0
- *           - SingleUse      0
- *           - EncryptRead    0
- *           - IsSecret       1
- *           - WriteKey     0x0
- *           - WriteConfig  0x2
- *         KeyConfig0 to 0x2300
- *           - Private      1
- *           - PubInfo      1
- *           - KeyType  0b000
- *           - Lockable     1
- *           - ReqRandom    0
- *           - ReqAuth      0
- *           - AuthKey    0x0
- *           - RFU        0x0
- * \return status of the configuration
- */
-uint8_t ecc108e_check_private_key_slot0_config_283(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Slot configuration address for key (e.g. 48, 49)
-	uint16_t slot_config_address = 20;
-
-	const uint8_t read_config = 0x8F;
-	const uint8_t write_config = 0x20;
-
-	// Key configuration address for key (e.g. 48, 49)
-	uint16_t key_config_address = 96;
-
-	const uint8_t key_config_lsb = 0x23;
-	const uint8_t key_config_msb = 0x00;
-
-	// Make the command buffer the size of a Read command.
-	uint8_t command[READ_COUNT];
-
-	// Make the response buffer the minimum size of a Read response.
-	uint8_t response[READ_4_RSP_SIZE];
-
-	// Wake up the client device.
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Read device configuration of SlotConfig0.
-	memset(response, 0, sizeof(response));
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, slot_config_address >> 2, 0, NULL,
-				0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Check the configuration of SlotConfig0.
-	if (response[ECC108_BUFFER_POS_DATA] != read_config ||
-			response[ECC108_BUFFER_POS_DATA + 1] != write_config) {
-		// The Slot have not been configured correctly.
-		// Throw error code.
-		ecc108p_sleep();
-		return ECC108_FUNC_FAIL;
-	}
-
-	// Read device configuration of KeyConfig0.
-	memset(response, 0, sizeof(response));
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, key_config_address >> 2, 0, NULL, 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Check the configuration of KeyConfig0.
-	if (response[ECC108_BUFFER_POS_DATA] != key_config_lsb ||
-			response[ECC108_BUFFER_POS_DATA + 1] != key_config_msb) {
-		// The Key have not been configured correctly.
-		// Throw error code.
-		ecc108p_sleep();
-		return ECC108_FUNC_FAIL;
-	}
-
-// For this example, lock should be done by using ACES.
-// This function is only to show users how to lock the configuration zone
-// using a library function.
-#if defined(ECC108_EXAMPLE_CONFIG_WITH_LOCK)
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108e_lock_config_zone(ECC108_HOST_ADDRESS);
-#endif
-
-	// Check the configuration zone lock status
-	ret_code = ecc108e_check_lock_status();
-
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for authenticating a client by
- *         using MAC and CheckMac commands.
- *
- *  \return status of the operation
- */
-uint8_t ecc108e_checkmac_device(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Make the command buffer the size of the CheckMac command.
-	static uint8_t command[CHECKMAC_COUNT];
-
-	// Make the response buffer the size of a MAC response.
-	static uint8_t response_mac[MAC_RSP_SIZE];
-
-	// First four bytes of Mac command are needed for CheckMac command.
-	static uint8_t other_data[CHECKMAC_OTHER_DATA_SIZE];
-
-	// CheckMac response buffer
-	static uint8_t response_checkmac[CHECKMAC_RSP_SIZE];
-
-	// data for challenge in MAC mode 0 command
-	const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
-        0x00, 0x12, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-		0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-		0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-		0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
-	};
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-	// The following command sequence wakes up the device, issues a MAC command in mode 0
-	// using the Command Marshaling layer, puts the device to sleep.
-	// Then it wakes up the same device, issues a CheckMac command supplying data obtained
-	// from the previous Mac command, verifies the response status byte, and puts the
-	// device to sleep.
-
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-	// Mac command with mode = 0.
-	memset(response_mac, 0, sizeof(response_mac));
-	ret_code = ecc108m_execute(ECC108_MAC, MAC_MODE_CHALLENGE, ECC108_KEY_ID,
-				sizeof(challenge), (uint8_t *) challenge, 0, NULL, 0, NULL,
-				sizeof(command), command, sizeof(response_mac), response_mac);
-    if (ret_code != ECC108_SUCCESS) {
-        return ret_code;
-    }
-	// Put client device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-	// Now check the MAC using the CheckMac command.
-	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-	// CheckMac command with mode = 0.
-	memset(response_checkmac, 0, sizeof(response_checkmac));
-	// Copy Mac command byte 1 to 5 (op-code, param1, param2) to other_data.
-	memcpy(other_data, &command[ECC108_OPCODE_IDX], CHECKMAC_CLIENT_COMMAND_SIZE);
-	// Set the remaining nine bytes of other_data to 0.
-	memset(&other_data[CHECKMAC_CLIENT_COMMAND_SIZE - 1], 0, sizeof(other_data) - CHECKMAC_CLIENT_COMMAND_SIZE);
-    //opcode(8b) = ECC108_CHECKMAC
-    //param1(8b) = CHECKMAC_MODE_CHALLENGE,
-    //param2(16b) = ECC108_KEY_ID
-    //data1 (32bytes) = challenge
-    //data2 (32bytes) = response_mac
-    //data3 (13bytes) = other_data
-    //TX-buffer(84bytes) = command
-    //RX-buffer(4bytes) = response_checkmac
-	ret_code = ecc108m_execute(ECC108_CHECKMAC, CHECKMAC_MODE_CHALLENGE,
-				ECC108_KEY_ID, sizeof(challenge), (uint8_t *) challenge,
-				CHECKMAC_CLIENT_RESPONSE_SIZE, &response_mac[ECC108_BUFFER_POS_DATA],
-				sizeof(other_data), other_data,	sizeof(command), command,
-				sizeof(response_checkmac), response_checkmac);
-    if (ret_code != ECC108_SUCCESS) {
-        return ret_code;
-    }
-    // Put host device to sleep.
-	ecc108p_sleep();
-	// Status byte = 0 means success. This line serves only a debug purpose.
-	ret_code = response_checkmac[ECC108_BUFFER_POS_STATUS];
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for authenticating a client by
- *         using System software
- *
- *  \return status of the operation
- */
-uint8_t ecc108e_checkmac_firmware(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-	uint8_t i;
-	uint8_t comparison_result;
-	uint8_t mac_mode = MAC_MODE_BLOCK1_TEMPKEY | MAC_MODE_BLOCK2_TEMPKEY;
-	struct ecc108h_nonce_in_out nonce_param;	//parameter for nonce helper function
-	struct ecc108h_gen_dig_in_out gendig_param;	//parameter for gendig helper function
-	struct ecc108h_mac_in_out mac_param;		//parameter for mac helper function
-	struct ecc108h_temp_key tempkey;			//tempkey parameter for nonce and mac helper function
-	static uint8_t wakeup_response[ECC108_RSP_SIZE_MIN];
-	static uint8_t tx_buffer[CHECKMAC_COUNT];
-	static uint8_t rx_buffer[MAC_RSP_SIZE];
-	static uint8_t mac[CHECKMAC_CLIENT_RESPONSE_SIZE];
-	uint8_t num_in[NONCE_NUMIN_SIZE] = {
-		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-		0x30, 0x31, 0x32, 0x33
-	};
-	uint8_t key_slot_0[ECC108_KEY_SIZE] = {
-		0x00, 0x00, 0xA1, 0xAC, 0x57, 0xFF, 0x40, 0x4E,
-		0x45, 0xD4,	0x04, 0x01, 0xBD, 0x0E, 0xD3, 0xC6,
-		0x73, 0xD3, 0xB7, 0xB8,	0x2D, 0x85, 0xD9, 0xF3,
-		0x13, 0xB5, 0x5E, 0xDA, 0x3D, 0x94,	0x00, 0x00
-	};
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-	// Check the lock status. If the device has been configured, then the configuration
-	// zone must have been locked.
-	ret_code = ecc108e_check_lock_status();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// The following command sequence wakes up the device, issues a Nonce, a GenDig, and
-	// a Mac command and puts the device to sleep.
-	// In parallel, it calculates in firmware the TempKey and the MAC using helper
-	// functions and compares the Mac command response with the calculated result.
-
-	// ----------------------- Nonce --------------------------------------------
-	// Wake up the device.
-	memset(wakeup_response, 0, sizeof(wakeup_response));
-	ret_code = ecc108c_wakeup(wakeup_response);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Issue a Nonce command. When the configuration zone of the device is not locked the
-	// random number returned is a constant 0xFFFF0000FFFF0000...
-	memset(rx_buffer, 0, sizeof(rx_buffer));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_NO_SEED_UPDATE, 0,
-				NONCE_NUMIN_SIZE, num_in, 0, NULL, 0, NULL, sizeof(tx_buffer),
-				tx_buffer, sizeof(rx_buffer), rx_buffer);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Put device into Idle mode since the TempKey calculation in firmware might take longer
-	// than the device timeout. Putting the device into Idle instead of Sleep mode
-	// maintains the TempKey.
-	ecc108p_idle();
-
-	// Calculate TempKey using helper function.
-	nonce_param.mode = NONCE_MODE_NO_SEED_UPDATE;
-	nonce_param.num_in = num_in;
-	nonce_param.rand_out = &rx_buffer[ECC108_BUFFER_POS_DATA];
-	nonce_param.temp_key = &tempkey;
-	ret_code = ecc108h_nonce(&nonce_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	// ----------------------- GenDig --------------------------------------------
-	// Wake up the device from Idle mode.
-	memset(wakeup_response, 0, sizeof(wakeup_response));
-	ret_code = ecc108c_wakeup(wakeup_response);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	memset(rx_buffer, 0, sizeof(rx_buffer));
-	ret_code = ecc108m_execute(ECC108_GENDIG, GENDIG_ZONE_DATA, ECC108_KEY_ID,
-				0, NULL, 0, NULL, 0, NULL, sizeof(tx_buffer), tx_buffer,
-				sizeof(rx_buffer), rx_buffer);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-	// Check response status byte for error.
-	if (rx_buffer[ECC108_BUFFER_POS_STATUS] != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-	ecc108p_idle();
-
-	// Update TempKey using helper function.
-	gendig_param.zone = GENDIG_ZONE_DATA;
-	gendig_param.key_id = ECC108_KEY_ID;
-	gendig_param.stored_value = key_slot_0;
-	gendig_param.temp_key = &tempkey;
-	ret_code = ecc108h_gen_dig(&gendig_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	// ----------------------- Mac --------------------------------------------
-	// Wake up the device from Idle mode.
-	memset(wakeup_response, 0, sizeof(wakeup_response));
-	ret_code = ecc108c_wakeup(wakeup_response);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Issue a Mac command with mode = 3.
-	memset(rx_buffer, 0, sizeof(rx_buffer));
-	ret_code = ecc108m_execute(ECC108_MAC, mac_mode, ECC108_KEY_ID, 0, NULL, 0,
-				NULL, 0, NULL, sizeof(tx_buffer), tx_buffer, sizeof(rx_buffer),
-				rx_buffer);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-	ecc108p_sleep();
-
-	// Calculate MAC using helper function.
-	mac_param.mode = mac_mode;
-	mac_param.key_id = ECC108_KEY_ID;
-	mac_param.challenge = NULL;
-	mac_param.key = NULL;
-	mac_param.otp = NULL;
-	mac_param.sn = NULL;
-	mac_param.response = mac;
-	mac_param.temp_key = &tempkey;
-	ret_code = ecc108h_mac(&mac_param);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Compare the Mac response with the calculated MAC.
-	// Compare all bytes before exiting loop to prevent timing attack.
-	comparison_result = 0;
-	for (i = 0; i < sizeof(mac); i++) {
-		comparison_result |= (rx_buffer[i + ECC108_BUFFER_POS_STATUS] != mac[i]);
-	}
-	ret_code = comparison_result ? ECC108_GEN_FAIL : ECC108_SUCCESS;
-
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for verifying a signature by using
- *         Sign and Verify commands.
- *
- *         First, Slot0 is configured to store the P256 private key. The SlotConfig0
- *         is configured to 0x8F20, while KeyConfig is configured to 0x3300. Then
- *         the Configuration need to be locked to enable GenKey command to write
- *         the private key to the slot.
- *         The next sequence is to generate a Signature using Sign command. The
- *         message to be signed is passed to the device by using Nonce command in
- *         passthrough mode.
- *         The following sequence is to verify the signature using Verify command.
- *         The message to be verified is passed to the device using Nonce command,
- *         while the signature and the public key is passed as input of Verify
- *         command.
- * \return status of the operation
- */
-uint8_t ecc108e_verify_external(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Make the command buffer the size of the Verify command.
-	static uint8_t command[VERIFY_256_EXTERNAL_COUNT];
-
-	// Random response buffer
-	static uint8_t response_random[RANDOM_RSP_SIZE];
-
-	// Make the response buffer the minimum size.
-	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
-
-	// GenKey response buffer
-	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
-
-	// Dymmy random response buffer
-	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
-
-	// Sign response buffer
-	static uint8_t response_sign[SIGN_RSP_SIZE];
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-#if defined(ECC108_EXAMPLE_ACTIVATE_GPIO_AUTH_MODE) && (defined(ECC108_SWI_UART) || defined(ECC108_SWI_BITBANG))
-	// Set the GPIO in Authorization Output mode
-	ret_code = ecc108e_activate_gpio_auth_mode(ECC108_SET_HIGH, ECC108_KEY_ID);
-	if (ret_code != ECC108_SUCCESS) {
-		if (ret_code == ECC108_FUNC_FAIL) {
-			// The configuration zone has been locked.
-			// Do nothing
-		} else {
-			return ret_code;
-		}
-	}
-#endif
-
-	// Check configuration of Slot0 to store private key for signing process.
-	ret_code = ecc108e_check_private_key_slot0_config();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Obtain random challenge from host device
-	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_random), response_random);
-
-	// Put host device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Wake up client device
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	memset(response_genkey, 0, sizeof(response_genkey));
-#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
-	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
-	// This step is required if slot0 has not been programmed with private key.
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#else
-	// Generate only public key from the existing private key
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#endif
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Perform dummy random command for updating the random seed
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-	NULL, 0, NULL, 0, NULL, sizeof(command), command,
-	sizeof(response_dummy_random), response_dummy_random);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Pass the message to be signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Sign the message using Sign command with mode = 0x80.
-	memset(response_sign, 0, sizeof(response_sign));
-	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
-				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_sign), response_sign);
-
-	// Put client device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Now check the Signature using the Verify command.
-
-	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Pass the message which has been signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Verify Signature by using Verify command with mode = 0x02.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_VERIFY, VERIFY_MODE_EXTERNAL,
-				VERIFY_KEY_P256, VERIFY_256_SIGNATURE_SIZE,
-				&response_sign[ECC108_BUFFER_POS_DATA], VERIFY_256_KEY_SIZE,
-				&response_genkey[ECC108_BUFFER_POS_DATA], 0, NULL,
-				sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Put host device to sleep.
-	ecc108p_sleep();
-
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for verifying a signature by using
- *         Sign and Verify commands. In this example, a 283-bit key is used.
- *
- *         First, Slot0 is configured to store the B283 private key. The SlotConfig0
- *         is configured to 0x8F20, while KeyConfig is configured to 0x2300. Then
- *         the Configuration need to be locked to enable GenKey command to write
- *         the private key to the slot.
- *         The next sequence is to generate a Signature using Sign command. The
- *         message to be signed is passed to the device by using Nonce command in
- *         passthrough mode.
- *         The following sequence is to verify the signature using Verify command.
- *         The message to be verified is passed to the device using Nonce command,
- *         while the signature and the public key is passed as input of Verify
- *         command.
- * \return status of the operation
- */
-uint8_t ecc108e_verify_external_283(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Make the command buffer the size of the Verify command.
-	static uint8_t command[VERIFY_283_EXTERNAL_COUNT];
-
-	// Random response buffer
-	static uint8_t response_random[RANDOM_RSP_SIZE];
-
-	// Make the response buffer the minimum size.
-	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
-
-	// GenKey response buffer
-	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
-
-	// Dymmy random response buffer
-	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
-
-	// Sign response buffer
-	static uint8_t response_sign[SIGN_RSP_SIZE];
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-#if defined(ECC108_EXAMPLE_ACTIVATE_GPIO_AUTH_MODE) && (defined(ECC108_SWI_UART) || defined(ECC108_SWI_BITBANG))
-	// Set the GPIO in Authorization Output mode
-	ret_code = ecc108e_activate_gpio_auth_mode(ECC108_SET_HIGH, ECC108_KEY_ID);
-	if (ret_code != ECC108_SUCCESS) {
-		if (ret_code == ECC108_FUNC_FAIL) {
-			// The configuration zone has been locked.
-			// Do nothing
-		} else {
-			return ret_code;
-		}
-	}
-#endif
-
-	// Check configuration of Slot0 to store private key for signing process.
-	ret_code = ecc108e_check_private_key_slot0_config_283();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Obtain random challenge from host device
-	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_random), response_random);
-
-	// Put host device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Wake up client device
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	memset(response_genkey, 0, sizeof(response_genkey));
-#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
-	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
-	// This step is required if slot0 has not been programmed with private key.
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#else
-	// Generate only public key from the existing private key
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#endif
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Perform dummy random command for updating the random seed
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_dummy_random), response_dummy_random);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Pass the message to be signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Sign the message using Sign command with mode = 0x80.
-	memset(response_sign, 0, sizeof(response_sign));
-	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
-				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_sign), response_sign);
-
-	// Put client device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Now check the Signature using the Verify command.
-
-	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Pass the message which has been signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Verify Signature by using Verify command with mode = 0x02.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_VERIFY, VERIFY_MODE_EXTERNAL,
-				VERIFY_KEY_B283, VERIFY_283_SIGNATURE_SIZE,
-				&response_sign[ECC108_BUFFER_POS_DATA], VERIFY_283_KEY_SIZE,
-				&response_genkey[ECC108_BUFFER_POS_DATA], 0, NULL,
-				sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Put host device to sleep.
-	ecc108p_sleep();
-
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for verifying a signature by using
- *         host algorithm.
- *
- *         First, Slot0 is configured to store the P256 private key. The SlotConfig0
- *         is configured to 0x8F20, while KeyConfig is configured to 0x3300. Then
- *         the Configuration need to be locked to enable GenKey command to write
- *         the private key to the slot.
- *         The next sequence is to generate a Signature using Sign command. The
- *         message to be signed is passed to the device by using Nonce command in
- *         passthrough mode.
- *         The following sequence is to verify the signature using host algorithm.
- *         The message to be verified is passed to the device using Nonce software,
- *         while the signature and the public key is passed as input of Verify
- *         software.
- * \return status of the operation
- */
-uint8_t ecc108e_verify_host(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Make the command buffer the size of the Verify command.
-	static uint8_t command[VERIFY_256_EXTERNAL_COUNT];
-
-	// Random response buffer
-	static uint8_t response_random[RANDOM_RSP_SIZE];
-
-	// Make the response buffer the minimum size.
-	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
-
-	// GenKey response buffer
-	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
-
-	// Dymmy random response buffer
-	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
-
-	// Sign response buffer
-	static uint8_t response_sign[SIGN_RSP_SIZE];
-
-	// Parameter for nonce helper function
-	struct ecc108h_nonce_in_out nonce_param;
-
-	// Tempkey parameter for nonce and verify helper function
-	struct ecc108h_temp_key tempkey;
-
-	// Parameter for verify helper function
-	struct ecc108h_verify_in_out verify_param;
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-	// Check configuration of Slot0 to store private key for signing process.
-	ret_code = ecc108e_check_private_key_slot0_config();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Generate random challenge
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_random), response_random);
-
-	memset(response_genkey, 0, sizeof(response_genkey));
-#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
-	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
-	// This step is required if slot0 has not been programmed with private key.
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#else
-	// Generate only public key from the existing private key
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#endif
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Perform dummy random command for updating the random seed
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-	NULL, 0, NULL, 0, NULL, sizeof(command), command,
-	sizeof(response_dummy_random), response_dummy_random);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Pass the message to be signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Sign the message using Sign command with mode = 0x80.
-	memset(response_sign, 0, sizeof(response_sign));
-	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
-				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_sign), response_sign);
-
-	// Put the device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Now check the Signature using the Verify command.
-
-	// Pass the message which has been signed using Nonce in software
-	// Execute Nonce using helper function.
-	nonce_param.mode = NONCE_MODE_PASSTHROUGH;
-	nonce_param.num_in = &response_random[ECC108_BUFFER_POS_DATA];
-	nonce_param.temp_key = &tempkey;
-	ret_code = ecc108h_nonce(&nonce_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	// Verify Signature by using Verify in software
-	verify_param.curve_type = VERIFY_KEY_P256;
-	verify_param.signature = &response_sign[ECC108_BUFFER_POS_DATA];
-	verify_param.public_key = &response_genkey[ECC108_BUFFER_POS_DATA];
-	verify_param.temp_key = &tempkey;
-	ret_code = ecc108h_verify(&verify_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	return ret_code;
-}
-
-
-/** \brief This function serves as an example for verifying a signature by using
- *         host algorithm. The kry type used is B283
- *
- *         First, Slot0 is configured to store the B283 private key. The SlotConfig0
- *         is configured to 0x8F20, while KeyConfig is configured to 0x2300. Then
- *         the Configuration need to be locked to enable GenKey command to write
- *         the private key to the slot.
- *         The next sequence is to generate a Signature using Sign command. The
- *         message to be signed is passed to the device by using Nonce command in
- *         passthrough mode.
- *         The following sequence is to verify the signature using host algorithm.
- *         The message to be verified is passed to the device using Nonce software,
- *         while the signature and the public key is passed as input of Verify
- *         software.
- * \return status of the operation
- */
-uint8_t ecc108e_verify_host_283(void)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	// Make the command buffer the size of the Verify command.
-	static uint8_t command[VERIFY_283_EXTERNAL_COUNT];
-
-	// Random response buffer
-	static uint8_t response_random[RANDOM_RSP_SIZE];
-
-	// Make the response buffer the minimum size.
-	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
-
-	// GenKey response buffer
-	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
-
-	// Dymmy random response buffer
-	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
-
-	// Sign response buffer
-	static uint8_t response_sign[SIGN_RSP_SIZE];
-
-	// Parameter for nonce helper function
-	struct ecc108h_nonce_in_out nonce_param;
-
-	// Tempkey parameter for nonce and verify helper function
-	struct ecc108h_temp_key tempkey;
-
-	// Parameter for verify helper function
-	struct ecc108h_verify_in_out verify_param;
-
-	// Initialize the hardware interface.
-	// Depending on which interface you have linked the
-	// library to, it initializes SWI UART, SWI GPIO, or TWI.
-	ecc108p_init();
-
-	// Check configuration of Slot0 to store private key for signing process.
-	ret_code = ecc108e_check_private_key_slot0_config_283();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Generate random challenge
-	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_random), response_random);
-
-	memset(response_genkey, 0, sizeof(response_genkey));
-#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
-	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
-	// This step is required if slot0 has not been programmed with private key.
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#else
-	// Generate only public key from the existing private key
-	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
-				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
-				command, sizeof(response_genkey), response_genkey);
-#endif
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Perform dummy random command for updating the random seed
-	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
-				NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_dummy_random), response_dummy_random);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Pass the message to be signed using Nonce command with mode = 0x03.
-	memset(response_status, 0, sizeof(response_status));
-	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
-				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
-				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response_status),
-				response_status);
-	ret_code = ecc108e_check_response_status(ret_code, response_status);
-	if (ret_code != ECC108_SUCCESS) {
-		(void) ecc108p_sleep();
-		return ret_code;
-	}
-
-	// Sign the message using Sign command with mode = 0x80.
-	memset(response_sign, 0, sizeof(response_sign));
-	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
-				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
-				sizeof(response_sign), response_sign);
-
-	// Put the device to sleep.
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS) {
-		return ret_code;
-	}
-
-	// Now check the Signature using the Verify command.
-
-	// Pass the message which has been signed using Nonce in software
-	// Execute Nonce using helper function.
-	nonce_param.mode = NONCE_MODE_PASSTHROUGH;
-	nonce_param.num_in = &response_random[ECC108_BUFFER_POS_DATA];
-	nonce_param.temp_key = &tempkey;
-	ret_code = ecc108h_nonce(&nonce_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	// Verify Signature by using Verify in software
-	verify_param.curve_type = VERIFY_KEY_B283;
-	verify_param.signature = &response_sign[ECC108_BUFFER_POS_DATA];
-	verify_param.public_key = &response_genkey[ECC108_BUFFER_POS_DATA];
-	verify_param.temp_key = &tempkey;
-	ret_code = ecc108h_verify(&verify_param);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108e_wakeup_sleep();
-		return ret_code;
-	}
-
-	return ret_code;
-}
-
-
-/** \brief This function changes the I2C address of a device.
-           Running it will access the device with I2C address ECC108_HOST_ADDRESS
-		   and change it to the desired address as long as the configuration zone is
-		   not locked (byte under address 87 = 0x55). Be aware that bit 3 of the I2C address
-		   is also used as a TTL enable bit. So make sure you give it a value that
-		   agrees with your system (see data sheet).
- * \param[in] i2c_address to be set
- * \return status of the operation
- */
-uint8_t ecc108e_change_i2c_address(uint8_t i2c_address)
-{
-	// declared as "volatile" for easier debugging
-	volatile uint8_t ret_code;
-
-	uint16_t config_address;
-
-	// Make the command buffer the minimum size of the Write command.
-	uint8_t command[WRITE_COUNT_SHORT];
-
-	uint8_t config_data[ECC108_ZONE_ACCESS_4];
-
-	// Make the response buffer the size of a Read response.
-	uint8_t response[READ_4_RSP_SIZE];
-
-	ecc108p_init();
-
-	ecc108p_set_device_id(ECC108_HOST_ADDRESS);
-
-	ret_code = ecc108c_wakeup(response);
-	if (ret_code != ECC108_SUCCESS)
-		return ret_code;
-
-	// Make sure that configuration zone is not locked.
-	memset(response, 0, sizeof(response));
-	config_address = 84;
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, config_address >> 2, 0, NULL, 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108p_sleep();
-		return ret_code;
-	}
-	if (response[4] != 0x55) {
-		// Configuration zone is locked. We cannot change the I2C address.
-		ecc108p_sleep();
-		return ECC108_FUNC_FAIL;
-	}
-
-	// Read device configuration at address 16 that contains the I2C address.
-	memset(response, 0, sizeof(response));
-	config_address = 16;
-	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, config_address >> 2, 0, NULL, 0, NULL,
-				0, NULL, sizeof(command), command, sizeof(response), response);
-	if (ret_code != ECC108_SUCCESS) {
-		ecc108p_sleep();
-		return ret_code;
-	}
-	config_data[0] = i2c_address;
-    //Changed by CT, was this a bug? Certainly it gave a compile warning.
-    memcpy(&config_data[1], &response[ECC108_BUFFER_POS_DATA + 1], sizeof(config_data) - 1);
-
-	// Write I2C address
-	ret_code = ecc108m_execute(ECC108_WRITE, ECC108_ZONE_CONFIG, config_address >> 2, sizeof(config_data),
-				config_data, 0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
-
-	ecc108p_sleep();
-	if (ret_code != ECC108_SUCCESS)
-		return ret_code;
-
-#if defined(ECC108_I2C)
-	// Check whether we had success.
-	ecc108p_set_device_id(i2c_address);
-	ret_code = ecc108c_wakeup(response);
-	ecc108p_sleep();
-#endif
-
-	return ret_code;
-}
+///** \brief This function checks the configuration of the device for verify external example.
+// *
+// *         SlotConfig0 to 0x8F20
+// *           - ReadKey      0xF
+// *           - NoMac          0
+// *           - SingleUse      0
+// *           - EncryptRead    0
+// *           - IsSecret       1
+// *           - WriteKey     0x0
+// *           - WriteConfig  0x2
+// *         KeyConfig0 to 0x3300
+// *           - Private      1
+// *           - PubInfo      1
+// *           - KeyType  0b100
+// *           - Lockable     1
+// *           - ReqRandom    0
+// *           - ReqAuth      0
+// *           - AuthKey    0x0
+// *           - RFU        0x0
+// * \return status of the configuration
+// */
+//uint8_t ecc108e_check_private_key_slot0_config(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Slot configuration address for key (e.g. 48, 49)
+//	uint16_t slot_config_address = 20;
+
+//	const uint8_t read_config = 0x8F;
+//	const uint8_t write_config = 0x20;
+
+//	// Key configuration address for key (e.g. 48, 49)
+//	uint16_t key_config_address = 96;
+
+//	const uint8_t key_config_lsb = 0x33;
+//	const uint8_t key_config_msb = 0x00;
+
+//	// Make the command buffer the size of a Read command.
+//	uint8_t command[READ_COUNT];
+
+//	// Make the response buffer the minimum size of a Read response.
+//	uint8_t response[READ_4_RSP_SIZE];
+
+//	// Wake up the client device.
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Read device configuration of SlotConfig0.
+//	memset(response, 0, sizeof(response));
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, slot_config_address >> 2, 0, NULL,
+//				0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Check the configuration of SlotConfig0.
+//	if (response[ECC108_BUFFER_POS_DATA] != read_config ||
+//			response[ECC108_BUFFER_POS_DATA + 1] != write_config) {
+//		// The Slot have not been configured correctly.
+//		// Throw error code.
+//		ecc108p_sleep();
+//		return ECC108_FUNC_FAIL;
+//	}
+
+//	// Read device configuration of KeyConfig0.
+//	memset(response, 0, sizeof(response));
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, key_config_address >> 2, 0, NULL, 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Check the configuration of KeyConfig0.
+//	if (response[ECC108_BUFFER_POS_DATA] != key_config_lsb ||
+//			response[ECC108_BUFFER_POS_DATA + 1] != key_config_msb) {
+//		// The Key have not been configured correctly.
+//		// Throw error code.
+//		ecc108p_sleep();
+//		return ECC108_FUNC_FAIL;
+//	}
+
+//// For this example, lock should be done by using ACES.
+//// This function is only to show users how to lock the configuration zone
+//// using a library function.
+//#if defined(ECC108_EXAMPLE_CONFIG_WITH_LOCK)
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108e_lock_config_zone(ECC108_HOST_ADDRESS);
+//#endif
+
+//	// Check the configuration zone lock status
+//	ret_code = ecc108e_check_lock_status();
+
+//	return ret_code;
+//}
+
+///** \brief This function checks the configuration of the device for verify external using B283 example.
+// *
+// *         SlotConfig0 to 0x8F20
+// *           - ReadKey      0xF
+// *           - NoMac          0
+// *           - SingleUse      0
+// *           - EncryptRead    0
+// *           - IsSecret       1
+// *           - WriteKey     0x0
+// *           - WriteConfig  0x2
+// *         KeyConfig0 to 0x2300
+// *           - Private      1
+// *           - PubInfo      1
+// *           - KeyType  0b000
+// *           - Lockable     1
+// *           - ReqRandom    0
+// *           - ReqAuth      0
+// *           - AuthKey    0x0
+// *           - RFU        0x0
+// * \return status of the configuration
+// */
+//uint8_t ecc108e_check_private_key_slot0_config_283(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Slot configuration address for key (e.g. 48, 49)
+//	uint16_t slot_config_address = 20;
+
+//	const uint8_t read_config = 0x8F;
+//	const uint8_t write_config = 0x20;
+
+//	// Key configuration address for key (e.g. 48, 49)
+//	uint16_t key_config_address = 96;
+
+//	const uint8_t key_config_lsb = 0x23;
+//	const uint8_t key_config_msb = 0x00;
+
+//	// Make the command buffer the size of a Read command.
+//	uint8_t command[READ_COUNT];
+
+//	// Make the response buffer the minimum size of a Read response.
+//	uint8_t response[READ_4_RSP_SIZE];
+
+//	// Wake up the client device.
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Read device configuration of SlotConfig0.
+//	memset(response, 0, sizeof(response));
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, slot_config_address >> 2, 0, NULL,
+//				0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Check the configuration of SlotConfig0.
+//	if (response[ECC108_BUFFER_POS_DATA] != read_config ||
+//			response[ECC108_BUFFER_POS_DATA + 1] != write_config) {
+//		// The Slot have not been configured correctly.
+//		// Throw error code.
+//		ecc108p_sleep();
+//		return ECC108_FUNC_FAIL;
+//	}
+
+//	// Read device configuration of KeyConfig0.
+//	memset(response, 0, sizeof(response));
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, key_config_address >> 2, 0, NULL, 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Check the configuration of KeyConfig0.
+//	if (response[ECC108_BUFFER_POS_DATA] != key_config_lsb ||
+//			response[ECC108_BUFFER_POS_DATA + 1] != key_config_msb) {
+//		// The Key have not been configured correctly.
+//		// Throw error code.
+//		ecc108p_sleep();
+//		return ECC108_FUNC_FAIL;
+//	}
+
+//// For this example, lock should be done by using ACES.
+//// This function is only to show users how to lock the configuration zone
+//// using a library function.
+//#if defined(ECC108_EXAMPLE_CONFIG_WITH_LOCK)
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108e_lock_config_zone(ECC108_HOST_ADDRESS);
+//#endif
+
+//	// Check the configuration zone lock status
+//	ret_code = ecc108e_check_lock_status();
+
+//	return ret_code;
+//}
+
+
+
+
+///** \brief This function serves as an example for authenticating a client by
+// *         using System software
+// *
+// *  \return status of the operation
+// */
+//uint8_t ecc108e_checkmac_firmware(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+//	uint8_t i;
+//	uint8_t comparison_result;
+//	uint8_t mac_mode = MAC_MODE_BLOCK1_TEMPKEY | MAC_MODE_BLOCK2_TEMPKEY;
+//	struct ecc108h_nonce_in_out nonce_param;	//parameter for nonce helper function
+//	struct ecc108h_gen_dig_in_out gendig_param;	//parameter for gendig helper function
+//	struct ecc108h_mac_in_out mac_param;		//parameter for mac helper function
+//	struct ecc108h_temp_key tempkey;			//tempkey parameter for nonce and mac helper function
+//	static uint8_t wakeup_response[ECC108_RSP_SIZE_MIN];
+//	static uint8_t tx_buffer[CHECKMAC_COUNT];
+//	static uint8_t rx_buffer[MAC_RSP_SIZE];
+//	static uint8_t mac[CHECKMAC_CLIENT_RESPONSE_SIZE];
+//	uint8_t num_in[NONCE_NUMIN_SIZE] = {
+//		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+//		0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+//		0x30, 0x31, 0x32, 0x33
+//	};
+//	uint8_t key_slot_0[ECC108_KEY_SIZE] = {
+//		0x00, 0x00, 0xA1, 0xAC, 0x57, 0xFF, 0x40, 0x4E,
+//		0x45, 0xD4,	0x04, 0x01, 0xBD, 0x0E, 0xD3, 0xC6,
+//		0x73, 0xD3, 0xB7, 0xB8,	0x2D, 0x85, 0xD9, 0xF3,
+//		0x13, 0xB5, 0x5E, 0xDA, 0x3D, 0x94,	0x00, 0x00
+//	};
+
+//	// Initialize the hardware interface.
+//	// Depending on which interface you have linked the
+//	// library to, it initializes SWI UART, SWI GPIO, or TWI.
+//	ecc108p_init();
+
+//	// Check the lock status. If the device has been configured, then the configuration
+//	// zone must have been locked.
+//	ret_code = ecc108e_check_lock_status();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// The following command sequence wakes up the device, issues a Nonce, a GenDig, and
+//	// a Mac command and puts the device to sleep.
+//	// In parallel, it calculates in firmware the TempKey and the MAC using helper
+//	// functions and compares the Mac command response with the calculated result.
+
+//	// ----------------------- Nonce --------------------------------------------
+//	// Wake up the device.
+//	memset(wakeup_response, 0, sizeof(wakeup_response));
+//	ret_code = ecc108c_wakeup(wakeup_response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Issue a Nonce command. When the configuration zone of the device is not locked the
+//	// random number returned is a constant 0xFFFF0000FFFF0000...
+//	memset(rx_buffer, 0, sizeof(rx_buffer));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_NO_SEED_UPDATE, 0,
+//				NONCE_NUMIN_SIZE, num_in, 0, NULL, 0, NULL, sizeof(tx_buffer),
+//				tx_buffer, sizeof(rx_buffer), rx_buffer);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Put device into Idle mode since the TempKey calculation in firmware might take longer
+//	// than the device timeout. Putting the device into Idle instead of Sleep mode
+//	// maintains the TempKey.
+//	ecc108p_idle();
+
+//	// Calculate TempKey using helper function.
+//	nonce_param.mode = NONCE_MODE_NO_SEED_UPDATE;
+//	nonce_param.num_in = num_in;
+//	nonce_param.rand_out = &rx_buffer[ECC108_BUFFER_POS_DATA];
+//	nonce_param.temp_key = &tempkey;
+//	ret_code = ecc108h_nonce(&nonce_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	// ----------------------- GenDig --------------------------------------------
+//	// Wake up the device from Idle mode.
+//	memset(wakeup_response, 0, sizeof(wakeup_response));
+//	ret_code = ecc108c_wakeup(wakeup_response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	memset(rx_buffer, 0, sizeof(rx_buffer));
+//	ret_code = ecc108m_execute(ECC108_GENDIG, GENDIG_ZONE_DATA, ECC108_KEY_ID,
+//				0, NULL, 0, NULL, 0, NULL, sizeof(tx_buffer), tx_buffer,
+//				sizeof(rx_buffer), rx_buffer);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+//	// Check response status byte for error.
+//	if (rx_buffer[ECC108_BUFFER_POS_STATUS] != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+//	ecc108p_idle();
+
+//	// Update TempKey using helper function.
+//	gendig_param.zone = GENDIG_ZONE_DATA;
+//	gendig_param.key_id = ECC108_KEY_ID;
+//	gendig_param.stored_value = key_slot_0;
+//	gendig_param.temp_key = &tempkey;
+//	ret_code = ecc108h_gen_dig(&gendig_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	// ----------------------- Mac --------------------------------------------
+//	// Wake up the device from Idle mode.
+//	memset(wakeup_response, 0, sizeof(wakeup_response));
+//	ret_code = ecc108c_wakeup(wakeup_response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Issue a Mac command with mode = 3.
+//	memset(rx_buffer, 0, sizeof(rx_buffer));
+//	ret_code = ecc108m_execute(ECC108_MAC, mac_mode, ECC108_KEY_ID, 0, NULL, 0,
+//				NULL, 0, NULL, sizeof(tx_buffer), tx_buffer, sizeof(rx_buffer),
+//				rx_buffer);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+//	ecc108p_sleep();
+
+//	// Calculate MAC using helper function.
+//	mac_param.mode = mac_mode;
+//	mac_param.key_id = ECC108_KEY_ID;
+//	mac_param.challenge = NULL;
+//	mac_param.key = NULL;
+//	mac_param.otp = NULL;
+//	mac_param.sn = NULL;
+//	mac_param.response = mac;
+//	mac_param.temp_key = &tempkey;
+//	ret_code = ecc108h_mac(&mac_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Compare the Mac response with the calculated MAC.
+//	// Compare all bytes before exiting loop to prevent timing attack.
+//	comparison_result = 0;
+//	for (i = 0; i < sizeof(mac); i++) {
+//		comparison_result |= (rx_buffer[i + ECC108_BUFFER_POS_STATUS] != mac[i]);
+//	}
+//	ret_code = comparison_result ? ECC108_GEN_FAIL : ECC108_SUCCESS;
+
+//	return ret_code;
+//}
+
+
+///** \brief This function serves as an example for verifying a signature by using
+// *         Sign and Verify commands.
+// *
+// *         First, Slot0 is configured to store the P256 private key. The SlotConfig0
+// *         is configured to 0x8F20, while KeyConfig is configured to 0x3300. Then
+// *         the Configuration need to be locked to enable GenKey command to write
+// *         the private key to the slot.
+// *         The next sequence is to generate a Signature using Sign command. The
+// *         message to be signed is passed to the device by using Nonce command in
+// *         passthrough mode.
+// *         The following sequence is to verify the signature using Verify command.
+// *         The message to be verified is passed to the device using Nonce command,
+// *         while the signature and the public key is passed as input of Verify
+// *         command.
+// * \return status of the operation
+// */
+//uint8_t ecc108e_verify_external(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Make the command buffer the size of the Verify command.
+//	static uint8_t command[VERIFY_256_EXTERNAL_COUNT];
+
+//	// Random response buffer
+//	static uint8_t response_random[RANDOM_RSP_SIZE];
+
+//	// Make the response buffer the minimum size.
+//	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
+
+//	// GenKey response buffer
+//	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
+
+//	// Dymmy random response buffer
+//	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
+
+//	// Sign response buffer
+//	static uint8_t response_sign[SIGN_RSP_SIZE];
+
+//	// Initialize the hardware interface.
+//	// Depending on which interface you have linked the
+//	// library to, it initializes SWI UART, SWI GPIO, or TWI.
+//	ecc108p_init();
+
+//#if defined(ECC108_EXAMPLE_ACTIVATE_GPIO_AUTH_MODE) && (defined(ECC108_SWI_UART) || defined(ECC108_SWI_BITBANG))
+//	// Set the GPIO in Authorization Output mode
+//	ret_code = ecc108e_activate_gpio_auth_mode(ECC108_SET_HIGH, ECC108_KEY_ID);
+//	if (ret_code != ECC108_SUCCESS) {
+//		if (ret_code == ECC108_FUNC_FAIL) {
+//			// The configuration zone has been locked.
+//			// Do nothing
+//		} else {
+//			return ret_code;
+//		}
+//	}
+//#endif
+
+//	// Check configuration of Slot0 to store private key for signing process.
+//	ret_code = ecc108e_check_private_key_slot0_config();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Obtain random challenge from host device
+//	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_random), response_random);
+
+//	// Put host device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Wake up client device
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	memset(response_genkey, 0, sizeof(response_genkey));
+//#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
+//	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
+//	// This step is required if slot0 has not been programmed with private key.
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#else
+//	// Generate only public key from the existing private key
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#endif
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Perform dummy random command for updating the random seed
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//	NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//	sizeof(response_dummy_random), response_dummy_random);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Pass the message to be signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Sign the message using Sign command with mode = 0x80.
+//	memset(response_sign, 0, sizeof(response_sign));
+//	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
+//				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_sign), response_sign);
+
+//	// Put client device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Now check the Signature using the Verify command.
+
+//	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Pass the message which has been signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Verify Signature by using Verify command with mode = 0x02.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_VERIFY, VERIFY_MODE_EXTERNAL,
+//				VERIFY_KEY_P256, VERIFY_256_SIGNATURE_SIZE,
+//				&response_sign[ECC108_BUFFER_POS_DATA], VERIFY_256_KEY_SIZE,
+//				&response_genkey[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Put host device to sleep.
+//	ecc108p_sleep();
+
+//	return ret_code;
+//}
+
+
+///** \brief This function serves as an example for verifying a signature by using
+// *         Sign and Verify commands. In this example, a 283-bit key is used.
+// *
+// *         First, Slot0 is configured to store the B283 private key. The SlotConfig0
+// *         is configured to 0x8F20, while KeyConfig is configured to 0x2300. Then
+// *         the Configuration need to be locked to enable GenKey command to write
+// *         the private key to the slot.
+// *         The next sequence is to generate a Signature using Sign command. The
+// *         message to be signed is passed to the device by using Nonce command in
+// *         passthrough mode.
+// *         The following sequence is to verify the signature using Verify command.
+// *         The message to be verified is passed to the device using Nonce command,
+// *         while the signature and the public key is passed as input of Verify
+// *         command.
+// * \return status of the operation
+// */
+//uint8_t ecc108e_verify_external_283(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Make the command buffer the size of the Verify command.
+//	static uint8_t command[VERIFY_283_EXTERNAL_COUNT];
+
+//	// Random response buffer
+//	static uint8_t response_random[RANDOM_RSP_SIZE];
+
+//	// Make the response buffer the minimum size.
+//	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
+
+//	// GenKey response buffer
+//	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
+
+//	// Dymmy random response buffer
+//	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
+
+//	// Sign response buffer
+//	static uint8_t response_sign[SIGN_RSP_SIZE];
+
+//	// Initialize the hardware interface.
+//	// Depending on which interface you have linked the
+//	// library to, it initializes SWI UART, SWI GPIO, or TWI.
+//	ecc108p_init();
+
+//#if defined(ECC108_EXAMPLE_ACTIVATE_GPIO_AUTH_MODE) && (defined(ECC108_SWI_UART) || defined(ECC108_SWI_BITBANG))
+//	// Set the GPIO in Authorization Output mode
+//	ret_code = ecc108e_activate_gpio_auth_mode(ECC108_SET_HIGH, ECC108_KEY_ID);
+//	if (ret_code != ECC108_SUCCESS) {
+//		if (ret_code == ECC108_FUNC_FAIL) {
+//			// The configuration zone has been locked.
+//			// Do nothing
+//		} else {
+//			return ret_code;
+//		}
+//	}
+//#endif
+
+//	// Check configuration of Slot0 to store private key for signing process.
+//	ret_code = ecc108e_check_private_key_slot0_config_283();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Obtain random challenge from host device
+//	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_random), response_random);
+
+//	// Put host device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Wake up client device
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	memset(response_genkey, 0, sizeof(response_genkey));
+//#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
+//	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
+//	// This step is required if slot0 has not been programmed with private key.
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#else
+//	// Generate only public key from the existing private key
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#endif
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Perform dummy random command for updating the random seed
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_dummy_random), response_dummy_random);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Pass the message to be signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Sign the message using Sign command with mode = 0x80.
+//	memset(response_sign, 0, sizeof(response_sign));
+//	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
+//				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_sign), response_sign);
+
+//	// Put client device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Now check the Signature using the Verify command.
+
+//	ret_code = ecc108e_wakeup_device(ECC108_HOST_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Pass the message which has been signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Verify Signature by using Verify command with mode = 0x02.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_VERIFY, VERIFY_MODE_EXTERNAL,
+//				VERIFY_KEY_B283, VERIFY_283_SIGNATURE_SIZE,
+//				&response_sign[ECC108_BUFFER_POS_DATA], VERIFY_283_KEY_SIZE,
+//				&response_genkey[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Put host device to sleep.
+//	ecc108p_sleep();
+
+//	return ret_code;
+//}
+
+
+///** \brief This function serves as an example for verifying a signature by using
+// *         host algorithm.
+// *
+// *         First, Slot0 is configured to store the P256 private key. The SlotConfig0
+// *         is configured to 0x8F20, while KeyConfig is configured to 0x3300. Then
+// *         the Configuration need to be locked to enable GenKey command to write
+// *         the private key to the slot.
+// *         The next sequence is to generate a Signature using Sign command. The
+// *         message to be signed is passed to the device by using Nonce command in
+// *         passthrough mode.
+// *         The following sequence is to verify the signature using host algorithm.
+// *         The message to be verified is passed to the device using Nonce software,
+// *         while the signature and the public key is passed as input of Verify
+// *         software.
+// * \return status of the operation
+// */
+//uint8_t ecc108e_verify_host(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Make the command buffer the size of the Verify command.
+//	static uint8_t command[VERIFY_256_EXTERNAL_COUNT];
+
+//	// Random response buffer
+//	static uint8_t response_random[RANDOM_RSP_SIZE];
+
+//	// Make the response buffer the minimum size.
+//	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
+
+//	// GenKey response buffer
+//	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
+
+//	// Dymmy random response buffer
+//	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
+
+//	// Sign response buffer
+//	static uint8_t response_sign[SIGN_RSP_SIZE];
+
+//	// Parameter for nonce helper function
+//	struct ecc108h_nonce_in_out nonce_param;
+
+//	// Tempkey parameter for nonce and verify helper function
+//	struct ecc108h_temp_key tempkey;
+
+//	// Parameter for verify helper function
+//	struct ecc108h_verify_in_out verify_param;
+
+//	// Initialize the hardware interface.
+//	// Depending on which interface you have linked the
+//	// library to, it initializes SWI UART, SWI GPIO, or TWI.
+//	ecc108p_init();
+
+//	// Check configuration of Slot0 to store private key for signing process.
+//	ret_code = ecc108e_check_private_key_slot0_config();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Generate random challenge
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_random), response_random);
+
+//	memset(response_genkey, 0, sizeof(response_genkey));
+//#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
+//	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
+//	// This step is required if slot0 has not been programmed with private key.
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#else
+//	// Generate only public key from the existing private key
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#endif
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Perform dummy random command for updating the random seed
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//	NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//	sizeof(response_dummy_random), response_dummy_random);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Pass the message to be signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Sign the message using Sign command with mode = 0x80.
+//	memset(response_sign, 0, sizeof(response_sign));
+//	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
+//				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_sign), response_sign);
+
+//	// Put the device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Now check the Signature using the Verify command.
+
+//	// Pass the message which has been signed using Nonce in software
+//	// Execute Nonce using helper function.
+//	nonce_param.mode = NONCE_MODE_PASSTHROUGH;
+//	nonce_param.num_in = &response_random[ECC108_BUFFER_POS_DATA];
+//	nonce_param.temp_key = &tempkey;
+//	ret_code = ecc108h_nonce(&nonce_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	// Verify Signature by using Verify in software
+//	verify_param.curve_type = VERIFY_KEY_P256;
+//	verify_param.signature = &response_sign[ECC108_BUFFER_POS_DATA];
+//	verify_param.public_key = &response_genkey[ECC108_BUFFER_POS_DATA];
+//	verify_param.temp_key = &tempkey;
+//	ret_code = ecc108h_verify(&verify_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	return ret_code;
+//}
+
+
+///** \brief This function serves as an example for verifying a signature by using
+// *         host algorithm. The kry type used is B283
+// *
+// *         First, Slot0 is configured to store the B283 private key. The SlotConfig0
+// *         is configured to 0x8F20, while KeyConfig is configured to 0x2300. Then
+// *         the Configuration need to be locked to enable GenKey command to write
+// *         the private key to the slot.
+// *         The next sequence is to generate a Signature using Sign command. The
+// *         message to be signed is passed to the device by using Nonce command in
+// *         passthrough mode.
+// *         The following sequence is to verify the signature using host algorithm.
+// *         The message to be verified is passed to the device using Nonce software,
+// *         while the signature and the public key is passed as input of Verify
+// *         software.
+// * \return status of the operation
+// */
+//uint8_t ecc108e_verify_host_283(void)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	// Make the command buffer the size of the Verify command.
+//	static uint8_t command[VERIFY_283_EXTERNAL_COUNT];
+
+//	// Random response buffer
+//	static uint8_t response_random[RANDOM_RSP_SIZE];
+
+//	// Make the response buffer the minimum size.
+//	static uint8_t response_status[ECC108_RSP_SIZE_MIN];
+
+//	// GenKey response buffer
+//	static uint8_t response_genkey[GENKEY_RSP_SIZE_LONG];
+
+//	// Dymmy random response buffer
+//	static uint8_t response_dummy_random[RANDOM_RSP_SIZE];
+
+//	// Sign response buffer
+//	static uint8_t response_sign[SIGN_RSP_SIZE];
+
+//	// Parameter for nonce helper function
+//	struct ecc108h_nonce_in_out nonce_param;
+
+//	// Tempkey parameter for nonce and verify helper function
+//	struct ecc108h_temp_key tempkey;
+
+//	// Parameter for verify helper function
+//	struct ecc108h_verify_in_out verify_param;
+
+//	// Initialize the hardware interface.
+//	// Depending on which interface you have linked the
+//	// library to, it initializes SWI UART, SWI GPIO, or TWI.
+//	ecc108p_init();
+
+//	// Check configuration of Slot0 to store private key for signing process.
+//	ret_code = ecc108e_check_private_key_slot0_config_283();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Generate random challenge
+//	ret_code = ecc108e_wakeup_device(ECC108_CLIENT_ADDRESS);
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_random), response_random);
+
+//	memset(response_genkey, 0, sizeof(response_genkey));
+//#ifdef ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
+//	// Generate Private Key on slot0 using GenKey command with mode = 0x04.
+//	// This step is required if slot0 has not been programmed with private key.
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PRIVATE,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#else
+//	// Generate only public key from the existing private key
+//	ret_code = ecc108m_execute(ECC108_GENKEY, GENKEY_MODE_PUBLIC,
+//				ECC108_KEY_ID, 0, NULL, 0, NULL, 0, NULL, sizeof(command),
+//				command, sizeof(response_genkey), response_genkey);
+//#endif
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Perform dummy random command for updating the random seed
+//	ret_code = ecc108m_execute(ECC108_RANDOM, RANDOM_SEED_UPDATE, 0x0000, 0,
+//				NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_dummy_random), response_dummy_random);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Pass the message to be signed using Nonce command with mode = 0x03.
+//	memset(response_status, 0, sizeof(response_status));
+//	ret_code = ecc108m_execute(ECC108_NONCE, NONCE_MODE_PASSTHROUGH,
+//				NONCE_MODE_RANDOM_OUT, NONCE_NUMIN_SIZE_PASSTHROUGH,
+//				(uint8_t *) &response_random[ECC108_BUFFER_POS_DATA], 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response_status),
+//				response_status);
+//	ret_code = ecc108e_check_response_status(ret_code, response_status);
+//	if (ret_code != ECC108_SUCCESS) {
+//		(void) ecc108p_sleep();
+//		return ret_code;
+//	}
+
+//	// Sign the message using Sign command with mode = 0x80.
+//	memset(response_sign, 0, sizeof(response_sign));
+//	ret_code = ecc108m_execute(ECC108_SIGN, SIGN_MODE_EXTERNAL, ECC108_KEY_ID,
+//				0, NULL, 0, NULL, 0, NULL, sizeof(command), command,
+//				sizeof(response_sign), response_sign);
+
+//	// Put the device to sleep.
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS) {
+//		return ret_code;
+//	}
+
+//	// Now check the Signature using the Verify command.
+
+//	// Pass the message which has been signed using Nonce in software
+//	// Execute Nonce using helper function.
+//	nonce_param.mode = NONCE_MODE_PASSTHROUGH;
+//	nonce_param.num_in = &response_random[ECC108_BUFFER_POS_DATA];
+//	nonce_param.temp_key = &tempkey;
+//	ret_code = ecc108h_nonce(&nonce_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	// Verify Signature by using Verify in software
+//	verify_param.curve_type = VERIFY_KEY_B283;
+//	verify_param.signature = &response_sign[ECC108_BUFFER_POS_DATA];
+//	verify_param.public_key = &response_genkey[ECC108_BUFFER_POS_DATA];
+//	verify_param.temp_key = &tempkey;
+//	ret_code = ecc108h_verify(&verify_param);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108e_wakeup_sleep();
+//		return ret_code;
+//	}
+
+//	return ret_code;
+//}
+
+
+///** \brief This function changes the I2C address of a device.
+//           Running it will access the device with I2C address ECC108_HOST_ADDRESS
+//		   and change it to the desired address as long as the configuration zone is
+//		   not locked (byte under address 87 = 0x55). Be aware that bit 3 of the I2C address
+//		   is also used as a TTL enable bit. So make sure you give it a value that
+//		   agrees with your system (see data sheet).
+// * \param[in] i2c_address to be set
+// * \return status of the operation
+// */
+//uint8_t ecc108e_change_i2c_address(uint8_t i2c_address)
+//{
+//	// declared as "volatile" for easier debugging
+//	volatile uint8_t ret_code;
+
+//	uint16_t config_address;
+
+//	// Make the command buffer the minimum size of the Write command.
+//	uint8_t command[WRITE_COUNT_SHORT];
+
+//	uint8_t config_data[ECC108_ZONE_ACCESS_4];
+
+//	// Make the response buffer the size of a Read response.
+//	uint8_t response[READ_4_RSP_SIZE];
+
+//	ecc108p_init();
+
+//	ecc108p_set_device_id(ECC108_HOST_ADDRESS);
+
+//	ret_code = ecc108c_wakeup(response);
+//	if (ret_code != ECC108_SUCCESS)
+//		return ret_code;
+
+//	// Make sure that configuration zone is not locked.
+//	memset(response, 0, sizeof(response));
+//	config_address = 84;
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, config_address >> 2, 0, NULL, 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108p_sleep();
+//		return ret_code;
+//	}
+//	if (response[4] != 0x55) {
+//		// Configuration zone is locked. We cannot change the I2C address.
+//		ecc108p_sleep();
+//		return ECC108_FUNC_FAIL;
+//	}
+
+//	// Read device configuration at address 16 that contains the I2C address.
+//	memset(response, 0, sizeof(response));
+//	config_address = 16;
+//	ret_code = ecc108m_execute(ECC108_READ, ECC108_ZONE_CONFIG, config_address >> 2, 0, NULL, 0, NULL,
+//				0, NULL, sizeof(command), command, sizeof(response), response);
+//	if (ret_code != ECC108_SUCCESS) {
+//		ecc108p_sleep();
+//		return ret_code;
+//	}
+//	config_data[0] = i2c_address;
+//    //Changed by CT, was this a bug? Certainly it gave a compile warning.
+//    memcpy(&config_data[1], &response[ECC108_BUFFER_POS_DATA + 1], sizeof(config_data) - 1);
+
+//	// Write I2C address
+//	ret_code = ecc108m_execute(ECC108_WRITE, ECC108_ZONE_CONFIG, config_address >> 2, sizeof(config_data),
+//				config_data, 0, NULL, 0, NULL, sizeof(command), command, sizeof(response), response);
+
+//	ecc108p_sleep();
+//	if (ret_code != ECC108_SUCCESS)
+//		return ret_code;
+
+//#if defined(ECC108_I2C)
+//	// Check whether we had success.
+//	ecc108p_set_device_id(i2c_address);
+//	ret_code = ecc108c_wakeup(response);
+//	ecc108p_sleep();
+//#endif
+
+//	return ret_code;
+//}
 
 
 /** \brief This function reads all 128 bytes from the configuration zone.

@@ -45,26 +45,6 @@
 
 #include <stdint.h>                   // data type definitions
 
-// The examples demonstrate client / host device scenarios for I2C and SWI bitbang
-// configurations.
-#if defined(ECC108_I2C) || defined(ECC108_I2C_BITBANG)
-// If you have two devices at your disposal you can run this example as a real-world
-// host / client demonstration. You have to change the address of one of the devices
-// by writing it to configuration zone address 16. Be aware that bit 3 of
-// the I2C address is also used to configure the input level reference
-// (see data sheet table 2-1).
-#   define ECC108_CLIENT_ADDRESS   (0xC0)
-// To make the Mac / CheckMac examples work out-of-the-box, only one device is being
-// used as example default. See above.
-#   define ECC108_HOST_ADDRESS     (0xC0)
-#else
-// These settings have an effect only when using bit-banging where the SDA of every
-// device is connected to its own GPIO pin. When using one UART the SDA of both
-// devices is connected to the same GPIO pin. In that case you have to use a Pause
-// flag. (Refer to data sheet.)
-#   define ECC108_CLIENT_ADDRESS   (0x00)
-#   define ECC108_HOST_ADDRESS     (0x00)
-#endif
 
 // Uncomment this line to generate a private key using GenKey mode 0x04.
 //#define ECC108_EXAMPLE_GENERATE_PRIVATE_KEY
@@ -75,7 +55,7 @@
 // Uncomment this line to activate GPIO in Authorization Mode.
 //#define ECC108_EXAMPLE_ACTIVATE_GPIO_AUTH_MODE
 
-#define ECC108_KEY_ID            (0x0000)
+
 
 // Macros for GPIO mode in SWI device
 #define ECC108_GPIO_MODE_DISABLED       (0x00)
