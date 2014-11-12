@@ -143,12 +143,12 @@ B knows now that A also got Ks
 	* GenDig -> Generate Digest based on 1 or more keys
 	* DeriveKey -> Derives a key from another one: e.g. for rolling code scheme, 
 	* CheckMac
-	* [Cryptocape Example implementation](https://learn.sparkfun.com/tutorials/cryptocape-hookup-guide/all)
-	* [Eclet Linux driver](http://cryptotronix.com/2014/05/26/atecc108_eclet_linux_driver/)
-	* [Linux I²C driver](https://github.com/cryptotronix/libcrypti2c/blob/master/crypti2c/i2c.c)
+	* Cryptocape
+		* [Cryptocape Example implementation](https://learn.sparkfun.com/tutorials/cryptocape-hookup-guide/all)
+		* [Eclet Linux driver](http://cryptotronix.com/2014/05/26/atecc108_eclet_linux_driver/)
+		* [Linux I²C driver](https://github.com/cryptotronix/libcrypti2c/blob/master/crypti2c/i2c.c)
 	* [Atmel ATECC108 driver](http://www.atmel.com/tools/cryptoauthentication_atecc108_development_library.aspx)
-		* The driver implementation is far from complete: e.g.
-			* The response of the read info command, what does it mean?
+		* The driver implementation lacks descriptive information
 * ATSHA204A 
 	* older ATSHA204 not recommended for new designs
 	* securely store secrets, 

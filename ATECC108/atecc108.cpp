@@ -16,7 +16,36 @@ atecc108::atecc108():_device_id(ECC108_CLIENT_ADDRESS)
     ecc108p_init();
 }
 
-uint8_t atecc108::checkmac(const uint8_t* challenge, uint8_t *response_mac, const word wKeyId)
+bool atecc108::getSerialNumber(byte* sn){
+    const uint16_t SERIAL_PART1_ADDR = 0x00;
+    const uint16_t SERIAL_PART2_ADDR = 0x02;
+    const uint16_t SERIAL_PART3_ADDR = 0x03;
+
+    byte retCode;
+    uint8_t buf[ECC108_ZONE_ACCESS_4];
+    if(sn==NULL){
+        return false;
+    }
+    memset(sn,0,9);
+    retCode=read4zonebytes(CONFIG_ZONE,SERIAL_PART1_ADDR, buf);
+    if(retCode!=ECC108_SUCCESS){
+        return false;
+    }
+    memcpy(sn,buf,sizeof(buf));
+    retCode=read4zonebytes(CONFIG_ZONE,SERIAL_PART2_ADDR, buf);
+    if(retCode!=ECC108_SUCCESS){
+        return false;
+    }
+    memcpy(sn+4,buf,sizeof(buf));
+    retCode=read4zonebytes(CONFIG_ZONE,SERIAL_PART3_ADDR, buf);
+    if(retCode!=ECC108_SUCCESS){
+        return false;
+    }
+    memcpy(sn+8,buf,1);
+    return true;
+}
+
+uint8_t atecc108::checkmac(const byte* challenge, byte* response_mac, const word wKeyId)
 {
     uint8_t ret_code;
     // First four bytes of Mac command are needed for CheckMac command.
@@ -63,7 +92,7 @@ uint8_t atecc108::checkmac(const uint8_t* challenge, uint8_t *response_mac, cons
 }
 
 
-byte atecc108::generateMac(const uint8_t *challenge, const word wKeyId, uint8_t *response_mac){
+byte atecc108::generateMac(const byte *challenge, const word wKeyId, byte *response_mac){
     uint8_t ret_code;
     uint8_t command[CHECKMAC_COUNT];
 
@@ -103,7 +132,6 @@ uint8_t atecc108::ecc108e_wakeup_device()
     ecc108p_set_device_id(_device_id);
 
     // Wake up the devices.
-
     ret_code = ecc108c_wakeup(wakeup_response);
     if (ret_code != ECC108_SUCCESS) {
         ecc108e_sleep();
@@ -142,5 +170,51 @@ void atecc108::ecc108e_sleep()
 #else
     (void) ecc108p_sleep();
 #endif
+}
+
+byte atecc108::read4zonebytes (ZONE zone, uint16_t addr, uint8_t *buf)
+{
+    uint8_t ret_code;
+    // Make the command buffer the size of the Read command.
+    uint8_t command[READ_COUNT];
+    // Make the response buffer the size of the maximum Read response.
+    uint8_t response[READ_32_RSP_SIZE];
+    byte zoneParam;
+    memset(buf,0,ECC108_ZONE_ACCESS_4);
+
+    switch(zone){
+    case CONFIG_ZONE:
+        zoneParam=ECC108_ZONE_CONFIG;
+        addr&=ECC108_ADDRESS_MASK_CONFIG;
+        break;
+    case OTP_ZONE:
+        zoneParam=ECC108_ZONE_OTP;
+        addr&=ECC108_ADDRESS_MASK_OTP;
+        break;
+    case DATA_ZONE:
+        zoneParam=ECC108_ZONE_DATA;
+        addr&=ECC108_ADDRESS_MASK;
+        break;
+    default:
+        return false;
+    }
+    ret_code = ecc108e_wakeup_device();
+    if (ret_code != ECC108_SUCCESS) {
+        return ret_code;
+    }
+    ret_code = ecc108m_execute(ECC108_READ, zoneParam, addr,
+                               0, NULL,
+                               0, NULL,
+                               0, NULL,
+                               sizeof(command), command,
+                               sizeof(response), response);
+    if (ret_code != ECC108_SUCCESS) {
+        return ret_code;
+    }
+    if (buf) {
+        memcpy(buf, &response[ECC108_BUFFER_POS_DATA], ECC108_ZONE_ACCESS_4);
+    }
+    ecc108e_sleep();
+    return ECC108_SUCCESS;
 }
 

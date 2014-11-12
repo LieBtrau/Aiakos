@@ -33,7 +33,6 @@ const uint8_t challenge[32] = {
     0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
 };
 
-static byte* response_mac;
 
 void setup()
 {
@@ -41,17 +40,24 @@ void setup()
     rfid.begin();
     ecc108p_init();
     Serial.print("Result of MAC-calculation: ");
-    response_mac=(byte*)malloc(crypto.MAC_RSPSIZE);
-    if(crypto.generateMac(challenge, crypto.ECC108_KEY_ID, response_mac)!=0){
-        Serial.println("Can't generate MAC");
-        return;
-    }
 
-    if(crypto.checkmac(challenge, response_mac,crypto.ECC108_KEY_ID)!=0){
-        Serial.println("Verify MAC failed.");
-        return;
+//    byte response_mac[crypto.MAC_RSPSIZE];
+//    if(crypto.generateMac(challenge, crypto.ECC108_KEY_ID, response_mac)!=0){
+//        Serial.println("Can't generate MAC");
+//        return;
+//    }
+
+//    if(crypto.checkmac(challenge, response_mac,crypto.ECC108_KEY_ID)!=0){
+//        Serial.println("Verify MAC failed.");
+//        return;
+//    }
+//    Serial.println("MAC generated & verified successfully.");
+
+    byte sn[9];
+    if(crypto.getSerialNumber(sn))
+    {
+        for(int i=0;i<9;Serial.println(sn[i++], HEX));
     }
-    Serial.println("MAC generated & verified successfully.");
 }
 
 void loop()
