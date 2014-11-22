@@ -74,6 +74,5 @@ Wire2/twi.h
 Wire2/Wire.cpp
 Wire2/Wire.h
 ATECC108/atecc108.h
-ATECC108/atecc108.cpp
 NanoEcc/ecc.c
 NanoEcc/ecc.h
