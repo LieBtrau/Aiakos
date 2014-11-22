@@ -20,24 +20,14 @@
 //  http://awtfy.com/2012/03/29/hardware-debugging-the-arduino-using-eclipse-and-the-avr-dragon/
 
 #include "Aiakos.h"
-#include "ATECC108/atecc108.h"
 
 rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
-/*atecc108 crypto;
 
-// data for challenge in MAC mode 0 command
-const uint8_t challenge[32] = {
-    0x00, 0x12, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
-}*/;
-
-uint8_t private_0[NUM_ECC_DIGITS] = {
+uint8_t private_mr_key[NUM_ECC_DIGITS] = {
     0x9B, 0x26, 0x2A, 0xF2, 0x70, 0x34, 0x46, 0xFF,
     0xB2, 0xCA, 0x7A, 0x3C, 0xC1, 0x39, 0x87, 0x5E,
     0x0E, 0xE0, 0xF7, 0x0F, 0x02, 0x3B, 0x05, 0xE9};
-EccPoint public_0 = {
+EccPoint public_mr_key = {
     {0x15, 0x73, 0xDD, 0x10, 0x9E, 0x4D, 0x57, 0xD1,
      0xFB, 0x17, 0x06, 0xFC, 0xC8, 0xF7, 0xCD, 0xD2,
      0x03, 0xAF, 0x0B, 0x7F, 0x40, 0xB6, 0xA9, 0x93},
@@ -60,38 +50,17 @@ void setup()
     rfid.begin();
     uint8_t r[NUM_ECC_DIGITS], s[NUM_ECC_DIGITS];
     unsigned long ulstartTime=millis();
-    if(!ecdsa_sign(r,s,private_0,randomnr,hash)){
+    if(!ecdsa_sign(r,s,private_mr_key,randomnr,hash)){
         return;
     }
     Serial.println("Signature generated OK");
     Serial.println(millis()-ulstartTime);
     ulstartTime=millis();
-    if(!ecdsa_verify(&public_0,hash,r,s)){
+    if(!ecdsa_verify(&public_mr_key,hash,r,s)){
         return;
     }
     Serial.println("Signature is OK");
     Serial.println(millis()-ulstartTime);
-//    ecc108p_init();
-//    Serial.print("Result of MAC-calculation: ");
-//    byte response_mac[crypto.MAC_RSPSIZE];
-//    if(crypto.generateMac(challenge, crypto.ECC108_KEY_ID, response_mac)!=0){
-//        Serial.println("Can't generate MAC");
-//        return;
-//    }
-
-//    if(crypto.checkmac(challenge, response_mac,crypto.ECC108_KEY_ID)!=0){
-//        Serial.println("Verify MAC failed.");
-//        return;
-//    }
-//    Serial.println("MAC generated & verified successfully.");
-
-//    byte sn[9];
-//    if(crypto.getSerialNumber(sn))
-//    {
-//        for(int i=0;i<9;Serial.println(sn[i++], HEX));
-//    }
-
-//    Serial.println(crypto.signVerify(),HEX);
 }
 
 void loop()
