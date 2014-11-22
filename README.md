@@ -1,5 +1,25 @@
 #Main application
+##Master
+The unique master device is the root of the security system.  If this device has been compromised, then all other devices will be compromised  too.  So it must be kept safely.  It should also have some kind of access control such as a password or fingerprint scanner.
+###Generating public/private keypair
+The master uses a true random number generator to generate a unique public/private keypair for every device.  Using a truly random number generator instead of a normal one will prevent attackers from guessing private keys of the devices.  The master writes this public/private keypair to the (preferably OTP) memory of the device.
+###Generating device signature
+The master will read the unique (preferably read-only) serial number from the device.  This serial number and the public key of the device will be hashed, then signed with the private key of the master.
+The master then writes the signature and its own public key to (preferably OTP) memory of the device.
+###Conclusion
+All the devices contain the following before being released to customers:
+
+* a unique serial number
+* a unique public/private keypair
+* a signature signing the above mentioned data
+* the public key of the master
 ##Remote
+The remote is the device that allows owners to gain access to their property.  The device functions as a battery-operated wireless key.  Every key is unique, but multiple keys can be assigned to a single property.
+The remote has a number of security features to prevent unauthorized access to the property:
+
+* Every transmitted message should be unique.  This prevents replay-attacks.
+* When a transmitted message is known, it should be virtually impossible to predict the next transmitted message.
+* The serial number of the device is unique and write protected.  This prevents attackers from making copies of keys by reprogramming other remote devices.
 ###Functionality
 * Sleep until a key is pressed
 * Start the authentication algorithm to establish the symmetric secret key
@@ -10,15 +30,14 @@
 	* calculate MAC using ATECC108A
 
 ###Needed memory
-* message counter
-* symmetric secret key
-* private keyring: contains private key of the remote
+* symmetric secret key (256bit = 16bytes)
+* private keyring: contains private key of the remote (192bit = 24bytes)
 * public keyring: 
-	* CA's public key, write protected
-	* certificate, signed by CA
-		* unique serial number
-		* public key of the remote
-		* signature (signs all of the forementioned using the private key of CA) 
+	* CA's public key, write protected (=2*24bytes)
+	* 1 certificate per verified remotey, signed by CA = 105bytes
+		* unique serial number (72bit = 9bytes)
+		* public key of the remote (2*24bytes)
+		* signature (signs all of the forementioned using the private key of CA)=2*24bytes
 
 ##Garage Controller
 ###Functionality
@@ -96,6 +115,7 @@ Setting up a session key between Alice & Bob (Computer Networks, §8.7.5):
 * Ks = shared session key
 * cert(x) = certificate of subject x
 
+
 	A -> B : cert(B)?
 
 A wants to get Eb
@@ -127,6 +147,11 @@ B knows now that A also got Ks
 * [IETF Securing smart objects](http://tools.ietf.org/html/draft-aks-crypto-sensors-01#section-9)
 * [AVR Cryptolib](https://trac.cryptolib.org/avr-crypto-lib/browser) Documentation is lacking
 * [NanoEcc](https://github.com/iSECPartners/nano-ecc)
+	* Very simple implementation
+	* Included Arduino example
+	* Generating ECC-keys offline (on computer, not on the target system): code added for that
+	* secp256r1 Curve -> 10s for ECDSA sign or verify on Arduino Uno
+	* secp192r1 Curve -> 4s for sign ECDSA, 4.6s for verify ECDSA on Arduino Uno
 * [TinyECC for TinyOS](http://discovery.csc.ncsu.edu/software/TinyECC/)
 * [µNaCl](http://munacl.cryptojedi.org/atmega.shtml)
 	* High level API (hides all of the crypto math)
@@ -151,7 +176,26 @@ B knows now that A also got Ks
 
 
 ###Algorithm implementation on specialized microcontrollers
+* ATSHA204A 
+	* older ATSHA204 not recommended for new designs
+	* securely store secrets, 
+	* generate true random numbers, 
+	* perform SHA-256 cryptographic hashes
+	* unique non-modifiable serial number
+	* Can be used with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client needs to store this unique 	diversified key.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, 		all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the 		devices.
+	* [Nuskunetworks ATSHA204 library](https://github.com/nuskunetworks/arduino_sha204)
+	   * Arduino library
+	   * also supports I²C-commands
+	* [SparkFun ATSHA204 library](https://github.com/jimblom/sha204-Breakout/tree/master/sha204_library)
+	   * Arduino library
+	   * only single wire interface (SWI)
+	* [Gist ATSHA204 library](https://gist.github.com/ghedo/6751045)
+	   * Arduino library
+	   * only single wire interface (SWI)
+	* [Hashlet](https://github.com/cryptotronix/hashlet)
+	   * Linux driver
 * ATECC108-SSH Atmel secure EEPROM + CoCPU uses ECC (available at Digikey)
+    * This chip implements all of the ATSHA204 commands including ECDSA commands.  This chip will not be used because we also need to create a shared secret key based on the public/private ECC-keys.  The ECDH-protocol will be used for that.  This chip doesn't support that.  It's by design impossible to read the private key from the ATECC108, which is needed for the ECDH.
 	* Backward compatible to the ATSHA204 ([according to Atmel](http://atmelcorporation.wordpress.com/2013/06/27/a-closer-look-at-atmels-atecc108-asymmetric-vs-symmetric/))
 	* Full documentation only available under NDA.  Full documentation is not needed for implementation.
 	* EEPROM for 16keys (private key, public key, signature components)
@@ -175,14 +219,6 @@ B knows now that A also got Ks
 		* How to hash more data than 32 bytes?
 		* What does it mean locking config zone and locking data zone?
 		* What data is stored in the config zone? What data is stored in the data zone?
-* ATSHA204A 
-	* older ATSHA204 not recommended for new designs
-	* securely store secrets, 
-	* generate true random numbers, 
-	* perform SHA-256 cryptographic hashes
-	* unique non-modifiable serial number
-	* Can be used with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client needs to store this unique 	diversified key.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, 		all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the 		devices.
-	* [Hashlet](https://github.com/cryptotronix/hashlet)
 * MAXQ1103 Maxim DeepCover Secure Microcontroller with Rapid Zeroization Technology and Cryptography
 	Full documentation only available under NDA.
 * DS28E35

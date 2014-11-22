@@ -12,6 +12,7 @@ public:
         DATA_ZONE
     }ZONE;
     atecc108();
+    uint8_t signVerify();
     byte generateMac(const byte *challenge, const word wKeyId, byte* response_mac);
     byte checkmac(const byte* challenge, byte* response_mac, const word wKeyId);
     bool getSerialNumber(byte* sn);
@@ -22,6 +23,9 @@ private:
     byte read4zonebytes(ZONE zone, uint16_t addr, uint8_t *buf);
     uint8_t ecc108e_wakeup_device();
     void ecc108e_sleep();
+    uint8_t ecc108e_check_private_key_slot0_config(void);
+    uint8_t ecc108e_check_response_status(uint8_t ret_code, uint8_t *response);
+    uint8_t ecc108e_check_lock_status(void);
     uint8_t _device_id;
 };
 

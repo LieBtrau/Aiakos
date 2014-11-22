@@ -36,6 +36,7 @@
 extern "C" {    //define avr-gcc compiled headers & sources here
 #endif
 
+#include "NanoEcc/ecc.h"
 
 void loop();
 void setup();
