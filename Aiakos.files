@@ -75,3 +75,7 @@ SHA204/SHA204Definitions.h
 SHA204/SHA204I2C.cpp
 SHA204/SHA204I2C.h
 SHA204/SHA204ReturnCodes.h
+Wire2/twi.c
+Wire2/twi.h
+Wire2/Wire.cpp
+Wire2/Wire.h

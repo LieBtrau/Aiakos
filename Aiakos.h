@@ -47,9 +47,7 @@ void setup();
 
 //add your function definitions for the project here
 
-byte wakeupExample();
-byte serialNumberExample();
-
+byte macChallengeExample();
 
 //Do not add code below this line
 #endif /* Aiakos_H_ */
