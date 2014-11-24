@@ -69,3 +69,9 @@ ATECC108/timer_utilities.cpp
 ATECC108/atecc108.h
 NanoEcc/ecc.c
 NanoEcc/ecc.h
+SHA204/SHA204.cpp
+SHA204/SHA204.h
+SHA204/SHA204Definitions.h
+SHA204/SHA204I2C.cpp
+SHA204/SHA204I2C.h
+SHA204/SHA204ReturnCodes.h

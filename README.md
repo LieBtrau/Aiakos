@@ -182,7 +182,7 @@ B knows now that A also got Ks
 	* generate true random numbers, 
 	* perform SHA-256 cryptographic hashes
 	* unique non-modifiable serial number
-	* Can be used with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client needs to store this unique 	diversified key.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, 		all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the 		devices.
+	* Setting up a shared secret can be done with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client only stores the unique 	diversified key, not the rootkey.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the devices.
 	* [Nuskunetworks ATSHA204 library](https://github.com/nuskunetworks/arduino_sha204)
 	   * Arduino library
 	   * also supports I²C-commands

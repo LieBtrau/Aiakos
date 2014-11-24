@@ -28,6 +28,10 @@
 #include "Arduino.h"
 #include <stddef.h>            // data type definitions
 #include "RDM630/rdm630.h"
+#include <SHA204/SHA204.h>
+#include <SHA204/SHA204Definitions.h>
+#include <SHA204/SHA204I2C.h>
+
 
 //end of add your includes here
 #ifdef __cplusplus
@@ -35,7 +39,6 @@ extern "C" {    //define avr-gcc compiled headers & sources here
 #endif
 
 #include "NanoEcc/ecc.h"
-
 void loop();
 void setup();
 #ifdef __cplusplus
@@ -44,7 +47,8 @@ void setup();
 
 //add your function definitions for the project here
 
-
+byte wakeupExample();
+byte serialNumberExample();
 
 
 //Do not add code below this line
