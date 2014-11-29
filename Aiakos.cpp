@@ -18,12 +18,27 @@
 //Howto: Setting up the build environment: Arduino & QtCreator: http://lucidarme.me/?p=3282
 //  http://blag.pseudoberries.com/post/16374999524/avr-debugwire-on-linux
 //  http://awtfy.com/2012/03/29/hardware-debugging-the-arduino-using-eclipse-and-the-avr-dragon/
+/* ATSHA204 Library Simple Example
+   by: Jim Lindblom
+   SparkFun Electronics
+   date: November 8, 2012
+
+   This code shows how to wake up and verify that an SHA204 is
+   connected and operational. And how to obtain an SHA204's unique serial
+   number, and send it a MAC challenge.
+
+   The ATSHA204's SDA pin can be connected to any of the Arduino's digital pins.
+   When constructing your atsha204Class, pass the constructor the pin you want to use.
+   In this example we'll attach SDA to pin 7.
+
+   The ATSHA204 can be powered between 3.3V and 5V.
+*/
 
 #include "Aiakos.h"
 
 rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
 SHA204I2C sha204dev(0xC0);//ATECC108 instead of ATSHA204
-
+byte config_data[88];
 
 uint8_t private_mr_key[NUM_ECC_DIGITS] = {
     0x9B, 0x26, 0x2A, 0xF2, 0x70, 0x34, 0x46, 0xFF,
@@ -41,9 +56,9 @@ uint8_t randomnr[NUM_ECC_DIGITS] = {
     0x66, 0x29, 0xE0, 0xE4, 0xDC, 0x4E, 0x6B, 0x17,
     0xCA, 0xC6, 0x45, 0xF0, 0x01, 0x26, 0x86, 0x25};
 uint8_t hash[NUM_ECC_DIGITS] = {
-     0x3F, 0x65, 0xCB, 0x21, 0x19, 0x66, 0x31, 0x48,
-     0x5B, 0x8B, 0x65, 0x5F, 0xA8, 0x0C, 0x4A, 0xD5,
-     0xC6, 0xA6, 0x43, 0x69, 0x61, 0x7B, 0xD0, 0xC9};
+    0x3F, 0x65, 0xCB, 0x21, 0x19, 0x66, 0x31, 0x48,
+    0x5B, 0x8B, 0x65, 0x5F, 0xA8, 0x0C, 0x4A, 0xD5,
+    0xC6, 0xA6, 0x43, 0x69, 0x61, 0x7B, 0xD0, 0xC9};
 
 
 void setup()
@@ -51,37 +66,58 @@ void setup()
     Serial.begin(9600);  // start serial to PC
     rfid.begin();
     sha204dev.init();
-//    uint8_t r[NUM_ECC_DIGITS], s[NUM_ECC_DIGITS];
-//    unsigned long ulstartTime=millis();
-//    if(!ecdsa_sign(r,s,private_mr_key,randomnr,hash)){
-//        return;
-//    }
-//    Serial.println("Signature generated OK");
-//    Serial.println(millis()-ulstartTime);
-//    ulstartTime=millis();
-//    if(!ecdsa_verify(&public_mr_key,hash,r,s)){
-//        return;
-//    }
-//    Serial.println("Signature is OK");
-//    Serial.println(millis()-ulstartTime);
+    //    uint8_t r[NUM_ECC_DIGITS], s[NUM_ECC_DIGITS];
+    //    unsigned long ulstartTime=millis();
+    //    if(!ecdsa_sign(r,s,private_mr_key,randomnr,hash)){
+    //        return;
+    //    }
+    //    Serial.println("Signature generated OK");
+    //    Serial.println(millis()-ulstartTime);
+    //    ulstartTime=millis();
+    //    if(!ecdsa_verify(&public_mr_key,hash,r,s)){
+    //        return;
+    //    }
+    //    Serial.println("Signature is OK");
+    //    Serial.println(millis()-ulstartTime);
 
-  Serial.println(millis());
-//  for (int i=0; i<12; i++) {
-//    Serial.println("Sleep!");
-//      sha204dev.sleep();
-//    delay(3000);
-//    Serial.println("Wake!");
+    Serial.println(millis());
+    //  for (int i=0; i<12; i++) {
+    //    Serial.println("Sleep!");
+    //      sha204dev.sleep();
+    //    delay(3000);
+    //    Serial.println("Wake!");
 
-    Serial.println(sha204dev.wakeup(), HEX);
+    Serial.println(sha204dev.sha204c_wakeup(), HEX);
     Serial.println("----------");
     Serial.println();
-    Serial.println("Sending a MAC Challenge. Response should be:");
-    Serial.println("23 6 67 0 4F 28 4D 6E 98 62 4 F4 60 A3 E8 75 8A 59 85 A6 79 96 C4 8A 88 46 43 4E B3 DB 58 A4 FB E5 73");
-    Serial.println("Response is:");
-    macChallengeExample();
-//  }
-  Serial.println(millis());
-  Serial.println("Done!");
+
+    sha204dev.sha204e_read_config_zone(config_data);
+    for(int i=0;i<88;i++){
+        if(i%4==0){
+            Serial.print("\r\nAddress: ");
+            Serial.print(i/4);
+            Serial.print(": ");
+        }
+        Serial.print(config_data[i], HEX);
+        Serial.print(" ");
+    }
+
+
+//    uint8_t rnd[32];
+//    if(sha204dev.random(rnd,RANDOM_SEED_UPDATE)){
+//        for(int i=0;i<32;i++){
+//            Serial.print(rnd[i], HEX);
+//            Serial.print(" ");
+//        }
+//    }
+//    Serial.println();
+//    Serial.println("Sending a MAC Challenge. Response should be:");
+//    Serial.println("23 6 67 0 4F 28 4D 6E 98 62 4 F4 60 A3 E8 75 8A 59 85 A6 79 96 C4 8A 88 46 43 4E B3 DB 58 A4 FB E5 73");
+//    Serial.println("Response is:");
+//    macChallengeExample();
+    //  }
+    Serial.println(millis());
+    Serial.println("Done!");
 
 }
 
@@ -101,25 +137,28 @@ void loop()
 }
 
 byte macChallengeExample() {
-  uint8_t command[MAC_COUNT_LONG];
-  uint8_t response[MAC_RSP_SIZE];
+    uint8_t command[MAC_COUNT_LONG];
+    uint8_t response[MAC_RSP_SIZE];
 
-  const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
-    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-    0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-    0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
-  };
+    const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+    };
 
-  uint8_t ret_code = sha204dev.execute(SHA204_MAC, 0, 0, MAC_CHALLENGE_SIZE,
-    (uint8_t *) challenge, 0, NULL, 0, NULL, sizeof(command), &command[0],
-    sizeof(response), &response[0]);
+    uint8_t ret_code = sha204dev.execute(SHA204_MAC, 0, 0,
+                                         MAC_CHALLENGE_SIZE, (uint8_t *) challenge,
+                                         0, NULL,
+                                         0, NULL,
+                                         sizeof(command), &command[0],
+            sizeof(response), &response[0]);
 
-  for (int i=0; i<SHA204_RSP_SIZE_MAX; i++) {
-    Serial.print(response[i], HEX);
-    Serial.print(' ');
-  }
-  Serial.println();
+    for (int i=0; i<SHA204_RSP_SIZE_MAX; i++) {
+        Serial.print(response[i], HEX);
+        Serial.print(' ');
+    }
+    Serial.println();
 
-  return ret_code;
+    return ret_code;
 }

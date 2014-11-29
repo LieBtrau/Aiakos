@@ -90,7 +90,7 @@ uint8_t SHA204I2C::send_command(uint8_t count, uint8_t *command) {
     return send(SHA204_I2C_PACKET_FUNCTION_NORMAL, count, command);
 }
 
-uint8_t SHA204I2C::sleep(void) {
+uint8_t SHA204I2C::sha204p_sleep(void) {
     return send(SHA204_I2C_PACKET_FUNCTION_SLEEP, 0, NULL);
 }
 
@@ -109,8 +109,8 @@ uint8_t SHA204I2C::resync(uint8_t size, uint8_t *response) {
     // We lost communication. Send a Wake pulse and try
     // to receive a response (steps 2 and 3 of the
     // re-synchronization process).
-    sleep();
-    ret_code = wakeup();
+    sha204p_sleep();
+    ret_code = sha204c_wakeup();
 
     // Translate a return value of success into one
     // that indicates that the device had to be woken up

@@ -66,7 +66,7 @@ public:
 	SHA204I2C();
 	SHA204I2C(uint8_t deviceAddress);
 	void init();
-	uint8_t sleep();
+    uint8_t sha204p_sleep();
 	uint8_t resync(uint8_t size, uint8_t *response);
 };
 

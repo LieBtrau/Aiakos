@@ -155,8 +155,9 @@ B knows now that A also got Ks
 * [TinyECC for TinyOS](http://discovery.csc.ncsu.edu/software/TinyECC/)
 * [µNaCl](http://munacl.cryptojedi.org/atmega.shtml)
 	* High level API (hides all of the crypto math)
-	* Lacks a good RNG, maybe the ATSHA204 can be used to generate random numbers?
+	* Lacks a good RNG.
 * Hardware random number generator (needed to generate symmetric secret keys)
+    * The ATSHA204 has a built in hardware random number generator.
 	* [Hardware random number generation on AVR](https://code.google.com/p/avr-hardware-random-number-generation/)
 	* [Arduino RNG](https://gitorious.org/benediktkr/ardrand/source/db826463ec1bc96e5d073d2957fac1bc137d5b02:)
 	* [Quality of RNG on Arduino](http://www.academia.edu/1161820/Ardrand_The_Arduino_as_a_Hardware_Random-Number_Generator)
@@ -183,17 +184,25 @@ B knows now that A also got Ks
 	* perform SHA-256 cryptographic hashes
 	* unique non-modifiable serial number
 	* Setting up a shared secret can be done with a diversified key: diversified key=MAC(rootkey, serialnumber client).  The client only stores the unique 	diversified key, not the rootkey.  Compromise of this key will only affect one unit.  The host needs to store the rootkey.  In the garage system, all hosts need to share the same root key.  Only compromising a host device will lead to problems, that's less than 50% of the devices.
-	* [Nuskunetworks ATSHA204 library](https://github.com/nuskunetworks/arduino_sha204)
-	   * Arduino library
-	   * also supports I²C-commands
-	* [SparkFun ATSHA204 library](https://github.com/jimblom/sha204-Breakout/tree/master/sha204_library)
-	   * Arduino library
-	   * only single wire interface (SWI)
-	* [Gist ATSHA204 library](https://gist.github.com/ghedo/6751045)
-	   * Arduino library
-	   * only single wire interface (SWI)
-	* [Hashlet](https://github.com/cryptotronix/hashlet)
-	   * Linux driver
+	* Setup Procedure:
+	   * Write config
+	   * Lock configzone
+	   * Write data (data zone can be freely written, no limitations apply)
+	   * Lock data zone (Slot configuration settings become active)
+	* Libraries:
+	   * [Nuskunetworks ATSHA204 library](https://github.com/nuskunetworks/arduino_sha204)
+	       * Arduino library
+	       * also supports I²C-commands (ahem, at least some of them.  The creator had not fixed the 32byte message limit of the Arduino Wire library).
+	   * [SparkFun ATSHA204 library](https://github.com/jimblom/sha204-Breakout/tree/master/sha204_library)
+	       * Arduino library
+	       * only single wire interface (SWI)
+	   * [Hashlet](https://github.com/cryptotronix/hashlet)
+	       * Linux driver
+	       * The only library that describes writing configuration
+	   * [Gist ATSHA204 library](https://gist.github.com/ghedo/6751045)
+	       * Arduino library
+	       * only single wire interface (SWI)
+	       * Only low level library functions, no useful examples
 * ATECC108-SSH Atmel secure EEPROM + CoCPU uses ECC (available at Digikey)
     * This chip implements all of the ATSHA204 commands including ECDSA commands.  This chip will not be used because we also need to create a shared secret key based on the public/private ECC-keys.  The ECDH-protocol will be used for that.  This chip doesn't support that.  It's by design impossible to read the private key from the ATECC108, which is needed for the ECDH.
 	* Backward compatible to the ATSHA204 ([according to Atmel](http://atmelcorporation.wordpress.com/2013/06/27/a-closer-look-at-atmels-atecc108-asymmetric-vs-symmetric/))
