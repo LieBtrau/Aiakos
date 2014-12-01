@@ -28,10 +28,7 @@
 #include "Arduino.h"
 #include <stddef.h>            // data type definitions
 #include "RDM630/rdm630.h"
-#include <SHA204/SHA204.h>
-#include <SHA204/SHA204Definitions.h>
-#include <SHA204/SHA204I2C.h>
-
+#include "SHA204/hashlet.h"
 
 //end of add your includes here
 #ifdef __cplusplus

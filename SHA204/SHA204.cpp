@@ -19,6 +19,8 @@ limitations under the License.
 #include "SHA204ReturnCodes.h"
 #include "SHA204Definitions.h"
 
+
+
 bool SHA204::serialNumber(uint8_t* sn) {
     uint8_t readCommand[READ_COUNT];
     uint8_t readResponse[READ_4_RSP_SIZE];
@@ -73,7 +75,7 @@ uint8_t SHA204::sha204c_wakeup() {
     return ret_code;
 }
 
-uint8_t SHA204::send_and_receive(uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer, uint8_t execution_delay, uint8_t execution_timeout) {
+uint8_t SHA204::sha204c_send_and_receive(uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer, uint8_t execution_delay, uint8_t execution_timeout) {
     uint8_t ret_code = SHA204_FUNC_FAIL;
     uint8_t ret_code_resync;
     uint8_t n_retries_send;
@@ -104,7 +106,7 @@ uint8_t SHA204::send_and_receive(uint8_t *tx_buffer, uint8_t rx_size, uint8_t *r
         }
 
         // Wait minimum command execution time and then start polling for a response.
-        delay(execution_delay);
+        delay(execution_delay*10);
 
         // Retry loop for receiving a response.
         n_retries_receive = SHA204_RETRY_COUNT + 1;
@@ -221,7 +223,7 @@ bool SHA204::random(uint8_t* randomnr, uint8_t mode) {
     tx_buffer[RANDOM_MODE_IDX] = mode & RANDOM_SEED_UPDATE;
     tx_buffer[RANDOM_PARAM2_IDX] = tx_buffer[RANDOM_PARAM2_IDX + 1] = 0;
 
-    uint8_t retCode=send_and_receive(&tx_buffer[0], RANDOM_RSP_SIZE, &rx_buffer[0], RANDOM_DELAY,
+    uint8_t retCode=sha204c_send_and_receive(&tx_buffer[0], RANDOM_RSP_SIZE, &rx_buffer[0], RANDOM_DELAY,
             RANDOM_EXEC_MAX - RANDOM_DELAY);
     if(retCode!=SHA204_SUCCESS){
         return false;
@@ -242,7 +244,7 @@ uint8_t SHA204::dev_rev(uint8_t *tx_buffer, uint8_t *rx_buffer) {
             tx_buffer[DEVREV_PARAM2_IDX] =
             tx_buffer[DEVREV_PARAM2_IDX + 1] = 0;
 
-    return send_and_receive(&tx_buffer[0], DEVREV_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], DEVREV_RSP_SIZE, &rx_buffer[0],
             DEVREV_DELAY, DEVREV_EXEC_MAX - DEVREV_DELAY);
 }
 
@@ -278,7 +280,7 @@ uint8_t SHA204::sha204m_read(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zon
 
     rx_size = (zone & SHA204_ZONE_COUNT_FLAG) ? READ_32_RSP_SIZE : READ_4_RSP_SIZE;
 
-    return send_and_receive(&tx_buffer[0], rx_size, &rx_buffer[0], READ_DELAY, READ_EXEC_MAX - READ_DELAY);
+    return sha204c_send_and_receive(&tx_buffer[0], rx_size, &rx_buffer[0], READ_DELAY, READ_EXEC_MAX - READ_DELAY);
 }
 
 uint8_t SHA204::execute(uint8_t op_code, uint8_t param1, uint16_t param2,
@@ -408,7 +410,7 @@ uint8_t SHA204::execute(uint8_t op_code, uint8_t param1, uint16_t param2,
     calculate_crc(len - SHA204_CRC_SIZE, tx_buffer, p_buffer);
 
     // Send command and receive response.
-    return send_and_receive(&tx_buffer[0], response_size,
+    return sha204c_send_and_receive(&tx_buffer[0], response_size,
             &rx_buffer[0],	poll_delay, poll_timeout);
 }
 
@@ -579,7 +581,7 @@ uint8_t SHA204::check_mac(uint8_t *tx_buffer, uint8_t *rx_buffer,
     memcpy(&tx_buffer[CHECKMAC_CLIENT_RESPONSE_IDX], client_response, CHECKMAC_CLIENT_RESPONSE_SIZE);
     memcpy(&tx_buffer[CHECKMAC_DATA_IDX], other_data, CHECKMAC_OTHER_DATA_SIZE);
 
-    return send_and_receive(&tx_buffer[0], CHECKMAC_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], CHECKMAC_RSP_SIZE, &rx_buffer[0],
             CHECKMAC_DELAY, CHECKMAC_EXEC_MAX - CHECKMAC_DELAY);
 }
 
@@ -601,7 +603,7 @@ uint8_t SHA204::derive_key(uint8_t *tx_buffer, uint8_t *rx_buffer,
     else
         tx_buffer[SHA204_COUNT_IDX] = DERIVE_KEY_COUNT_SMALL;
 
-    return send_and_receive(&tx_buffer[0], DERIVE_KEY_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], DERIVE_KEY_RSP_SIZE, &rx_buffer[0],
             DERIVE_KEY_DELAY, DERIVE_KEY_EXEC_MAX - DERIVE_KEY_DELAY);
 }
 
@@ -626,7 +628,7 @@ uint8_t SHA204::gen_dig(uint8_t *tx_buffer, uint8_t *rx_buffer,
     else
         tx_buffer[SHA204_COUNT_IDX] = GENDIG_COUNT;
 
-    return send_and_receive(&tx_buffer[0], GENDIG_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], GENDIG_RSP_SIZE, &rx_buffer[0],
             GENDIG_DELAY, GENDIG_EXEC_MAX - GENDIG_DELAY);
 
 }
@@ -644,7 +646,7 @@ uint8_t SHA204::hmac(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint1
     tx_buffer[HMAC_KEYID_IDX] = key_id & 0xFF;
     tx_buffer[HMAC_KEYID_IDX + 1] = key_id >> 8;
 
-    return send_and_receive(&tx_buffer[0], HMAC_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], HMAC_RSP_SIZE, &rx_buffer[0],
             HMAC_DELAY, HMAC_EXEC_MAX - HMAC_DELAY);
 }
 
@@ -658,7 +660,7 @@ uint8_t SHA204::lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint1
     tx_buffer[LOCK_ZONE_IDX] = zone & LOCK_ZONE_MASK;
     tx_buffer[LOCK_SUMMARY_IDX]= summary & 0xFF;
     tx_buffer[LOCK_SUMMARY_IDX + 1]= summary >> 8;
-    return send_and_receive(&tx_buffer[0], LOCK_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], LOCK_RSP_SIZE, &rx_buffer[0],
             LOCK_DELAY, LOCK_EXEC_MAX - LOCK_DELAY);
 }
 
@@ -679,7 +681,7 @@ uint8_t SHA204::mac(uint8_t *tx_buffer, uint8_t *rx_buffer,
         tx_buffer[SHA204_COUNT_IDX] = MAC_COUNT_LONG;
     }
 
-    return send_and_receive(&tx_buffer[0], MAC_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], MAC_RSP_SIZE, &rx_buffer[0],
             MAC_DELAY, MAC_EXEC_MAX - MAC_DELAY);
 }
 
@@ -710,7 +712,7 @@ uint8_t SHA204::nonce(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint
         rx_size = NONCE_RSP_SIZE_SHORT;
     }
 
-    return send_and_receive(&tx_buffer[0], rx_size, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], rx_size, &rx_buffer[0],
             NONCE_DELAY, NONCE_EXEC_MAX - NONCE_DELAY);
 }
 
@@ -726,7 +728,7 @@ uint8_t SHA204::pause(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t selector) 
     tx_buffer[PAUSE_PARAM2_IDX] =
             tx_buffer[PAUSE_PARAM2_IDX + 1] = 0;
 
-    return send_and_receive(&tx_buffer[0], PAUSE_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], PAUSE_RSP_SIZE, &rx_buffer[0],
             PAUSE_DELAY, PAUSE_EXEC_MAX - PAUSE_DELAY);
 }
 
@@ -740,22 +742,35 @@ uint8_t SHA204::update_extra(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mod
     tx_buffer[UPDATE_VALUE_IDX] = new_value;
     tx_buffer[UPDATE_VALUE_IDX + 1] = 0;
 
-    return send_and_receive(&tx_buffer[0], UPDATE_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], UPDATE_RSP_SIZE, &rx_buffer[0],
             UPDATE_DELAY, UPDATE_EXEC_MAX - UPDATE_DELAY);
 }
 
-uint8_t SHA204::write(uint8_t *tx_buffer, uint8_t *rx_buffer,
-                      uint8_t zone, uint16_t address, uint8_t *new_value, uint8_t *mac) {
+uint8_t SHA204::sha204m_write(uint8_t *tx_buffer, uint8_t *rx_buffer,
+                              uint8_t zone, uint16_t address, uint8_t *new_value, uint8_t *mac) {
     uint8_t *p_command;
     uint8_t count;
 
-    if (!tx_buffer || !rx_buffer || !new_value || ((zone & ~WRITE_ZONE_MASK) != 0))
+    if (!tx_buffer || !rx_buffer || !new_value || (zone & ~WRITE_ZONE_MASK))
+        // no null pointers allowed
+        // zone has to match a valid param1 value.
         return SHA204_BAD_PARAM;
 
     address >>= 2;
     if ((zone & SHA204_ZONE_MASK) == SHA204_ZONE_CONFIG) {
-        if (address > SHA204_ADDRESS_MASK_CONFIG)
+        if (address > SHA204_ADDRESS_MASK_CONFIG){
+            Serial.println("address too big");
+            Serial.println(address, HEX);
             return SHA204_BAD_PARAM;
+        }
+        if(address < 0x4){
+            Serial.println("address too small");
+            return SHA204_BAD_PARAM;
+        }
+        if((address <0x8 || address>0xF) && (zone & SHA204_ZONE_COUNT_FLAG)){
+            Serial.println("no 32bit readings allowed on these addresses");
+            return SHA204_BAD_PARAM;
+        }
     }
     else if ((zone & SHA204_ZONE_MASK) == SHA204_ZONE_OTP) {
         if (address > SHA204_ADDRESS_MASK_OTP)
@@ -785,198 +800,11 @@ uint8_t SHA204::write(uint8_t *tx_buffer, uint8_t *rx_buffer,
     // Supply count.
     tx_buffer[SHA204_COUNT_IDX] = (uint8_t) (p_command - &tx_buffer[0] + SHA204_CRC_SIZE);
 
-    return send_and_receive(&tx_buffer[0], WRITE_RSP_SIZE, &rx_buffer[0],
+    return sha204c_send_and_receive(&tx_buffer[0], WRITE_RSP_SIZE, &rx_buffer[0],
             WRITE_DELAY, WRITE_EXEC_MAX - WRITE_DELAY);
 }
 
 
-/** \file
- *  \brief  ATSHA204 Helper Functions
- *  \author Atmel Crypto Products
- *  \date   January 15, 2013
-
- * \copyright Copyright (c) 2013 Atmel Corporation. All rights reserved.
- *
- * \atsha204_library_license_start
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are met:
- *
- * 1. Redistributions of source code must retain the above copyright notice,
- *    this list of conditions and the following disclaimer.
- *
- * 2. Redistributions in binary form must reproduce the above copyright notice,
- *    this list of conditions and the following disclaimer in the documentation
- *    and/or other materials provided with the distribution.
- *
- * 3. The name of Atmel may not be used to endorse or promote products derived
- *    from this software without specific prior written permission.
- *
- * 4. This software may only be redistributed and used in connection with an
- *    Atmel integrated circuit.
- *
- * THIS SOFTWARE IS PROVIDED BY ATMEL "AS IS" AND ANY EXPRESS OR IMPLIED
- * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
- * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT ARE
- * EXPRESSLY AND SPECIFICALLY DISCLAIMED. IN NO EVENT SHALL ATMEL BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
- * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
- * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- * \atsha204_library_license_stop
- */
-
-#define rotate_right(value, places) ((value >> places) | (value << (32 - places)))
-#define SHA256_BLOCK_SIZE   (64)   // bytes
-
-
-/** \brief This function creates a SHA256 digest on a little-endian system.
- *
- * Limitations: This function was implemented with the ATSHA204 CryptoAuth device
- * in mind. It will therefore only work for length values of len % 64 < 62.
- *
- * \param[in] len byte length of message
- * \param[in] message pointer to message
- * \param[out] digest SHA256 of message
- */
-void sha204h_calculate_sha256(int32_t len, uint8_t *message, uint8_t *digest)
-{
-    int32_t j, swap_counter, len_mod = len % sizeof(int32_t);
-    uint32_t i, w_index;
-    int32_t message_index = 0;
-    int32_t padded_len = len + 8; // 8 bytes for bit length
-    uint32_t bit_len = len * 8;
-    uint32_t s0, s1;
-    uint32_t t1, t2;
-    uint32_t maj, ch;
-    uint32_t word_value;
-    uint32_t rotate_register[8];
-
-    union {
-        uint32_t w_word[SHA256_BLOCK_SIZE];
-        uint8_t w_byte[SHA256_BLOCK_SIZE * sizeof(int32_t)];
-    } w_union;
-
-    uint32_t hash[] = {
-        0x6a09e667, 0xbb67ae85, 0x3c6ef372,	0xa54ff53a,
-        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
-    };
-
-    const uint32_t k[] = {
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
-        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
-        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
-        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
-        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
-        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
-        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
-        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
-    };
-
-    // Process message.
-    while (message_index <= padded_len) {
-
-        // Break message into 64-byte blocks.
-        w_index = 0;
-        do {
-            // Copy message chunk of four bytes (size of integer) into compression array.
-            if (message_index < (len - len_mod)) {
-                for (swap_counter = sizeof(int32_t) - 1; swap_counter >= 0; swap_counter--)
-                    // No padding needed. Swap four message bytes to chunk array.
-                    w_union.w_byte[swap_counter + w_index] = message[message_index++];
-
-                w_index += sizeof(int32_t);
-            }
-            else {
-                // We reached last complete word of message {len - (len mod 4)}.
-                // Swap remaining bytes if any, append '1' bit and pad remaining
-                // bytes of the last word.
-                for (swap_counter = sizeof(int32_t) - 1;
-                        swap_counter >= sizeof(int32_t) - len_mod; swap_counter--)
-                    w_union.w_byte[swap_counter + w_index] = message[message_index++];
-                w_union.w_byte[swap_counter + w_index] = 0x80;
-                for (swap_counter--; swap_counter >= 0; swap_counter--)
-                    w_union.w_byte[swap_counter + w_index] = 0;
-
-                // Switch to word indexing.
-                w_index += sizeof(int32_t);
-                w_index /= sizeof(int32_t);
-
-                // Pad last block with zeros to a block length % 56 = 0
-                // and pad the four high bytes of "len" since we work only
-                // with integers and not with long integers.
-                while (w_index < 15)
-                     w_union.w_word[w_index++] = 0;
-                // Append original message length as 32-bit integer.
-                w_union.w_word[w_index] = bit_len;
-                // Indicate that the last block is being processed.
-                message_index += SHA256_BLOCK_SIZE;
-                // We are done with pre-processing last block.
-                break;
-            }
-        } while (message_index % SHA256_BLOCK_SIZE);
-        // Created one block.
-
-        w_index = 16;
-        while (w_index < SHA256_BLOCK_SIZE) {
-            // right rotate for 32-bit variable in C: (value >> places) | (value << 32 - places)
-            word_value = w_union.w_word[w_index - 15];
-            s0 = rotate_right(word_value, 7) ^ rotate_right(word_value, 18) ^ (word_value >> 3);
-
-            word_value = w_union.w_word[w_index - 2];
-            s1 = rotate_right(word_value, 17) ^ rotate_right(word_value, 19) ^ (word_value >> 10);
-
-            w_union.w_word[w_index] = w_union.w_word[w_index - 16] + s0 + w_union.w_word[w_index - 7] + s1;
-
-            w_index++;
-        }
-
-        // Initialize hash value for this chunk.
-        for (i = 0; i < 8; i++)
-            rotate_register[i] = hash[i];
-
-        // hash calculation loop
-        for (i = 0; i < SHA256_BLOCK_SIZE; i++) {
-            s0 = rotate_right(rotate_register[0], 2)
-                ^ rotate_right(rotate_register[0], 13)
-                ^ rotate_right(rotate_register[0], 22);
-            maj = (rotate_register[0] & rotate_register[1])
-                ^ (rotate_register[0] & rotate_register[2])
-                ^ (rotate_register[1] & rotate_register[2]);
-            t2 = s0 + maj;
-            s1 = rotate_right(rotate_register[4], 6)
-                ^ rotate_right(rotate_register[4], 11)
-                ^ rotate_right(rotate_register[4], 25);
-            ch =  (rotate_register[4] & rotate_register[5])
-                ^ (~rotate_register[4] & rotate_register[6]);
-            t1 = rotate_register[7] + s1 + ch + k[i] + w_union.w_word[i];
-
-            rotate_register[7] = rotate_register[6];
-            rotate_register[6] = rotate_register[5];
-            rotate_register[5] = rotate_register[4];
-            rotate_register[4] = rotate_register[3] + t1;
-            rotate_register[3] = rotate_register[2];
-            rotate_register[2] = rotate_register[1];
-            rotate_register[1] = rotate_register[0];
-            rotate_register[0] = t1 + t2;
-        }
-
-        // Add the hash of this block to current result.
-        for (i = 0; i < 8; i++)
-            hash[i] += rotate_register[i];
-    }
-
-    // All blocks have been processed.
-    // Concatenate the hashes to produce digest, MSB of every hash first.
-    for (i = 0; i < 8; i++) {
-        for (j = sizeof(int32_t) - 1; j >= 0; j--, hash[i] >>= 8)
-            digest[i * sizeof(int32_t) + j] = hash[i] & 0xFF;
-    }
-}
 
 uint8_t SHA204::sha204e_read_config_zone(uint8_t *config_data)
 {
@@ -1059,5 +887,48 @@ uint8_t SHA204::sha204e_read_config_zone(uint8_t *config_data)
     if (ret_code == SHA204_SUCCESS && config_data)
         memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_CONFIG_SIZE - 2 * SHA204_ZONE_ACCESS_32);
 
+    return ret_code;
+}
+
+uint8_t SHA204::sha204e_write_config_zone(uint8_t* config_data){
+    const uint8_t CONFIG_ADDRESS = 0x05<<2;
+    uint8_t command[50];
+    uint8_t response[READ_32_RSP_SIZE];
+    uint8_t data_load[SHA204_ZONE_ACCESS_32];
+    memset(response,0,sizeof(response));
+    byte ret_code = sha204c_wakeup();
+    if (ret_code != SHA204_SUCCESS){
+        return false;
+    }
+    for(byte i=0;i<SHA204_ZONE_ACCESS_32;i+=SHA204_ZONE_ACCESS_4){
+        ret_code = sha204m_write(command, response, SHA204_ZONE_CONFIG,
+                                 CONFIG_ADDRESS + i,
+                                 config_data + i, NULL);
+        if (ret_code != SHA204_SUCCESS){
+            Serial.println("writing failed");
+            Serial.println(ret_code, HEX);
+            //       return false;
+        }
+    }
+
+//    // Read client device configuration for child key.
+//    memset(response, 0, sizeof(response));
+//    ret_code = sha204m_read(command, response, SHA204_ZONE_COUNT_FLAG | SHA204_ZONE_CONFIG, 32);
+//    if (ret_code != SHA204_SUCCESS) {
+//        sha204p_sleep();
+//        return ret_code;
+//    }
+//    // Write client configuration.
+//    memcpy(data_load, &response[SHA204_BUFFER_POS_DATA], sizeof(data_load));
+//    data_load[31]=0x66;
+//    ret_code = sha204m_write(command, response, SHA204_ZONE_COUNT_FLAG | SHA204_ZONE_CONFIG,
+//                            32, data_load, NULL);
+//    if (ret_code != SHA204_SUCCESS) {
+//        sha204p_sleep();
+//        return ret_code;
+//    }
+
+
+    sha204p_sleep();
     return ret_code;
 }

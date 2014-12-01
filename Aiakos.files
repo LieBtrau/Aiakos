@@ -79,3 +79,5 @@ Wire2/twi.c
 Wire2/twi.h
 Wire2/Wire.cpp
 Wire2/Wire.h
+SHA204/hashlet.h
+SHA204/hashlet.cpp
