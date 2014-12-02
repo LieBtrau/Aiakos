@@ -25,6 +25,11 @@ limitations under the License.
 class SHA204 {
 
 public:
+    typedef enum{
+        OTP_MODE_READONLY=0xAA,
+        OTP_MODE_CONSUMPTION=0x55,
+        OTP_MODE_LEGACY=0x00
+    }OTP_MODE;
     virtual uint8_t sha204p_sleep() = 0;
     uint8_t sha204c_wakeup();
     bool serialNumber(uint8_t *sn);
@@ -33,7 +38,7 @@ public:
                     uint8_t datalen1, uint8_t *data1, uint8_t datalen2, uint8_t *data2, uint8_t datalen3, uint8_t *data3,
                     uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer);
     uint8_t sha204e_read_config_zone(uint8_t *config_data);
-    uint8_t sha204e_write_config_zone(uint8_t* config_data);
+    uint8_t sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode);
 private:
     virtual uint16_t SHA204_RESPONSE_TIMEOUT() = 0;
     void calculate_crc(uint8_t length, uint8_t *data, uint8_t *crc);

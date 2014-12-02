@@ -890,45 +890,38 @@ uint8_t SHA204::sha204e_read_config_zone(uint8_t *config_data)
     return ret_code;
 }
 
-uint8_t SHA204::sha204e_write_config_zone(uint8_t* config_data){
-    const uint8_t CONFIG_ADDRESS = 0x05<<2;
+uint8_t SHA204::sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode){
+    const uint8_t DATASLOT0_CFG_ADDR = 0x05<<2;
+    const uint8_t OTP_CFG_ADDR=0x04<<2;
     uint8_t command[50];
     uint8_t response[READ_32_RSP_SIZE];
-    uint8_t data_load[SHA204_ZONE_ACCESS_32];
     memset(response,0,sizeof(response));
     byte ret_code = sha204c_wakeup();
     if (ret_code != SHA204_SUCCESS){
         return false;
     }
+    //Set OTPzone configuration
+    ret_code = sha204m_read(command, response, SHA204_ZONE_CONFIG, OTP_CFG_ADDR);
+    if (ret_code != SHA204_SUCCESS) {
+        sha204p_sleep();
+        return ret_code;
+    }
+    response[SHA204_BUFFER_POS_DATA+2]=otpMode;
+    ret_code = sha204m_write(command, response, SHA204_ZONE_CONFIG, OTP_CFG_ADDR, &response[SHA204_BUFFER_POS_DATA], NULL);
+    if (ret_code != SHA204_SUCCESS){
+        sha204p_sleep();
+        return false;
+    }
+    //Set datazone configurations
     for(byte i=0;i<SHA204_ZONE_ACCESS_32;i+=SHA204_ZONE_ACCESS_4){
         ret_code = sha204m_write(command, response, SHA204_ZONE_CONFIG,
-                                 CONFIG_ADDRESS + i,
+                                 DATASLOT0_CFG_ADDR + i,
                                  config_data + i, NULL);
         if (ret_code != SHA204_SUCCESS){
-            Serial.println("writing failed");
-            Serial.println(ret_code, HEX);
-            //       return false;
+            sha204p_sleep();
+            return false;
         }
     }
-
-//    // Read client device configuration for child key.
-//    memset(response, 0, sizeof(response));
-//    ret_code = sha204m_read(command, response, SHA204_ZONE_COUNT_FLAG | SHA204_ZONE_CONFIG, 32);
-//    if (ret_code != SHA204_SUCCESS) {
-//        sha204p_sleep();
-//        return ret_code;
-//    }
-//    // Write client configuration.
-//    memcpy(data_load, &response[SHA204_BUFFER_POS_DATA], sizeof(data_load));
-//    data_load[31]=0x66;
-//    ret_code = sha204m_write(command, response, SHA204_ZONE_COUNT_FLAG | SHA204_ZONE_CONFIG,
-//                            32, data_load, NULL);
-//    if (ret_code != SHA204_SUCCESS) {
-//        sha204p_sleep();
-//        return ret_code;
-//    }
-
-
     sha204p_sleep();
     return ret_code;
 }

@@ -80,6 +80,7 @@ bool Hashlet::make_slot_config(uint8_t read_key, bool check_only,
     return true;
 }
 
+//see HashLet::config_zone.c
 bool Hashlet::initialize(){
     uint8_t slotConfig[SHA204_ZONE_ACCESS_32];
     bool bResult;
@@ -106,18 +107,20 @@ bool Hashlet::initialize(){
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[18]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[20]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[22]);
-    /* Slots 12 - 13 should be used for user storage */
+    /* Slots 12 - 13 should be used for user storage (freely RW)*/
     bResult|=make_slot_config (0, false, false, false, false, 0, false, ALWAYS, &slotConfig[24]);
     bResult|=make_slot_config (0, false, false, false, false, 0, false, ALWAYS, &slotConfig[26]);
-    /* Slots 14 and 15 are fixed test keys */
+    /* Slots 14 and 15 are fixed test keys (they are not secret) */
     bResult|=make_slot_config (0, false, false, false, false, 0, false, NEVER, &slotConfig[28]);
     bResult|=make_slot_config (0, false, false, false, false, 0, false, NEVER, &slotConfig[30]);
     if(!bResult){
         return false;
     }
+#ifdef VERBOSE_OUTPUT
+    Serial.println("Data slot configurations:");
     for(int i=0;i<32;i++){
         if(i%2==0){
-            Serial.print("\r\nKey slot 0x");
+            Serial.print("\r\n\tKey slot 0x");
             Serial.print(i>>1,HEX);
             Serial.print(": ");
         }
@@ -125,7 +128,8 @@ bool Hashlet::initialize(){
         Serial.print(" ");
     }
     Serial.println();
-    if(_sha204.sha204e_write_config_zone(slotConfig)!=SHA204_SUCCESS){
+#endif
+    if(_sha204.sha204e_write_config_zone(slotConfig, SHA204::OTP_MODE_READONLY)!=SHA204_SUCCESS){
         return false;
     }
     return true;
@@ -320,9 +324,10 @@ bool Hashlet::showConfigZone(){
     if(_sha204.sha204e_read_config_zone(config_data)!=SHA204_SUCCESS){
         return false;
     }
+    Serial.println("Configuration Zone Data: ");
     for(int i=0;i<88;i++){
         if(i%4==0){
-            Serial.print("\r\nAddress: 0x");
+            Serial.print("\r\n\tAddress: 0x");
             Serial.print(i>>2, HEX);
             Serial.print(": ");
         }

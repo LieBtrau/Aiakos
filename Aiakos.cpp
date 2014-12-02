@@ -68,7 +68,9 @@ void setup()
     hashLet.init();
     bool bResult=hashLet.initialize();
     Serial.println(bResult?"ok":"nok");
-    hashLet.showConfigZone();
+    if(!hashLet.showConfigZone()){
+        Serial.println("can't read config zone.");
+    }
     //    uint8_t r[NUM_ECC_DIGITS], s[NUM_ECC_DIGITS];
     //    unsigned long ulstartTime=millis();
     //    if(!ecdsa_sign(r,s,private_mr_key,randomnr,hash)){
