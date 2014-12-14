@@ -9,7 +9,12 @@
 class Hashlet
 {
 public:
-    Hashlet(byte yAddress);
+    typedef enum{
+        UNDEFINED,
+        ATSHA204,
+        ATECC108
+    }DEVICE_TYPE;
+    Hashlet(DEVICE_TYPE dt);
     void init();
     bool showConfigZone();
     bool initialize();
@@ -25,6 +30,7 @@ private:
                           bool derive_key, WRITECONFIG write_config,
                           uint8_t* slotConfig);
     SHA204I2C _sha204;
+    DEVICE_TYPE _dt;
 };
 
 #endif // HASHLET_H

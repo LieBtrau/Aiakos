@@ -20,9 +20,22 @@
  */
 
 #include "hashlet.h"
-
-Hashlet::Hashlet(byte yAddress): _sha204(yAddress)
+#define VERBOSE_OUTPUT
+Hashlet::Hashlet(DEVICE_TYPE dt): _sha204()
 {
+    switch(dt){
+    case ATSHA204:
+        _sha204.setAddress(0xC8);
+        _dt=ATSHA204;
+        break;
+    case ATECC108:
+        _sha204.setAddress(0xC0);
+        _dt=ATECC108;
+        break;
+    default:
+        _dt=UNDEFINED;
+        break;
+    }
 }
 
 void Hashlet::init(){
@@ -84,40 +97,41 @@ bool Hashlet::make_slot_config(uint8_t read_key, bool check_only,
 bool Hashlet::initialize(){
     uint8_t slotConfig[SHA204_ZONE_ACCESS_32];
     bool bResult;
-    /* Slots 0 -7 should be used for keyed hashed applications */
-    bResult=make_slot_config (0,     /* Slot for Encrypted Reads */
-                              false, /* Check Only */
-                              false, /* Single Use */
-                              false, /* Encrypted Read */
-                              true,  /* Is secret */
-                              0,     /* Slot for encrypted writes*/
-                              false, /* Derive Key */
-                              NEVER, /* Write configuration */
+    uint8_t ret_code=0;
+    // Slots 0 -7 should be used for keyed hashed applications
+    bResult=make_slot_config (0,     // Slot for Encrypted Reads
+                              false, // Check Only
+                              false, // Single Use
+                              false, // Encrypted Read
+                              true,  // Is secret
+                              0,     // Slot for encrypted writes
+                              false, // Derive Key
+                              NEVER, //Write configuration
                               &slotConfig[0]);
     bResult|=make_slot_config (0, false, false, false, true, 0, true, NEVER, &slotConfig[2]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[4]);
     bResult|=make_slot_config (0, false, false, false, true, 0, true, NEVER, &slotConfig[6]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[8]);
     bResult|=make_slot_config (0, false, false, false, true, 0, true, NEVER, &slotConfig[10]);
-    /* Slots 6 -7 are key slots, to which the user can write and change the key. */
+    // Slots 6 -7 are key slots, to which the user can write and change the key.
     bResult|=make_slot_config (0, false, false, false, true, 6, false, ENCRYPT, &slotConfig[12]);
     bResult|=make_slot_config (0, false, false, false, true, 7, false, ENCRYPT, &slotConfig[14]);
-    /* Slots 8 - 11 Are reserved for password checking */
+    // Slots 8 - 11 Are reserved for password checking
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[16]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[18]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[20]);
     bResult|=make_slot_config (0, false, false, false, true, 0, false, NEVER, &slotConfig[22]);
-    /* Slots 12 - 13 should be used for user storage (freely RW)*/
+    // Slots 12 - 13 should be used for user storage (freely RW)
     bResult|=make_slot_config (0, false, false, false, false, 0, false, ALWAYS, &slotConfig[24]);
     bResult|=make_slot_config (0, false, false, false, false, 0, false, ALWAYS, &slotConfig[26]);
-    /* Slots 14 and 15 are fixed test keys (they are not secret) */
+    // Slots 14 and 15 are fixed test keys (they are not secret)
     bResult|=make_slot_config (0, false, false, false, false, 0, false, NEVER, &slotConfig[28]);
     bResult|=make_slot_config (0, false, false, false, false, 0, false, NEVER, &slotConfig[30]);
     if(!bResult){
         return false;
     }
 #ifdef VERBOSE_OUTPUT
-    Serial.println("Data slot configurations:");
+    Serial.print("Data slot configurations:");
     for(int i=0;i<32;i++){
         if(i%2==0){
             Serial.print("\r\n\tKey slot 0x");
@@ -130,6 +144,28 @@ bool Hashlet::initialize(){
     Serial.println();
 #endif
     if(_sha204.sha204e_write_config_zone(slotConfig, SHA204::OTP_MODE_READONLY)!=SHA204_SUCCESS){
+#ifdef VERBOSE_OUTPUT
+        Serial.println("Can't write config zone.");
+#endif
+        return false;
+    }
+    switch(_dt){
+    case UNDEFINED:
+        return false;
+    case ATSHA204:
+         ret_code=_sha204.sha204e_lock_config_zone(SHA204_CONFIG_SIZE);
+         break;
+    case ATECC108:
+        ret_code=_sha204.sha204e_lock_config_zone(ECC108_CONFIG_SIZE);
+        break;
+    }
+
+
+    if(ret_code!=SHA204_SUCCESS){
+#ifdef VERBOSE_OUTPUT
+        Serial.print("Can't lock config zone: ");
+        Serial.println(ret_code, HEX);
+#endif
         return false;
     }
     return true;
@@ -320,12 +356,29 @@ void sha204h_calculate_sha256(int32_t len, uint8_t *message, uint8_t *digest)
 }
 
 bool Hashlet::showConfigZone(){
-    byte config_data[88];
-    if(_sha204.sha204e_read_config_zone(config_data)!=SHA204_SUCCESS){
+    byte config_data[ECC108_CONFIG_SIZE];
+    byte ret_code=0;
+    byte config_size=0;
+    switch(_dt){
+    case UNDEFINED:
+        return false;
+    case ATSHA204:
+        config_size=SHA204_CONFIG_SIZE;
+        break;
+    case ATECC108:
+        config_size=ECC108_CONFIG_SIZE;
+        break;
+    }
+    ret_code=_sha204.sha204e_read_config_zone(config_data, config_size);
+
+    if(ret_code!=SHA204_SUCCESS){
+#ifdef VERBOSE_OUTPUT
+        Serial.println("Can't read config zone.");
+#endif
         return false;
     }
     Serial.println("Configuration Zone Data: ");
-    for(int i=0;i<88;i++){
+    for(int i=0;i<config_size;i++){
         if(i%4==0){
             Serial.print("\r\n\tAddress: 0x");
             Serial.print(i>>2, HEX);

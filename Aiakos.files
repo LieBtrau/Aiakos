@@ -81,3 +81,5 @@ Wire2/Wire.cpp
 Wire2/Wire.h
 SHA204/hashlet.h
 SHA204/hashlet.cpp
+IrDA/irphy.h
+IrDA/irphy.cpp

@@ -19,7 +19,7 @@ limitations under the License.
 #include "SHA204ReturnCodes.h"
 #include "SHA204Definitions.h"
 
-
+#define VERBOSE_OUTPUT
 
 bool SHA204::serialNumber(uint8_t* sn) {
     uint8_t readCommand[READ_COUNT];
@@ -88,7 +88,7 @@ uint8_t SHA204::sha204c_send_and_receive(uint8_t *tx_buffer, uint8_t rx_size, ui
     volatile uint16_t timeout_countdown;
 
     // Append CRC.
-    calculate_crc(count_minus_crc, tx_buffer, tx_buffer + count_minus_crc);
+    sha204c_calculate_crc(count_minus_crc, tx_buffer, tx_buffer + count_minus_crc);
 
     // Retry loop for sending a command and receiving a response.
     n_retries_send = SHA204_RETRY_COUNT + 1;
@@ -407,7 +407,7 @@ uint8_t SHA204::execute(uint8_t op_code, uint8_t param1, uint16_t param2,
         p_buffer += datalen3;
     }
 
-    calculate_crc(len - SHA204_CRC_SIZE, tx_buffer, p_buffer);
+    sha204c_calculate_crc(len - SHA204_CRC_SIZE, tx_buffer, p_buffer);
 
     // Send command and receive response.
     return sha204c_send_and_receive(&tx_buffer[0], response_size,
@@ -519,25 +519,19 @@ uint8_t SHA204::check_parameters(uint8_t op_code, uint8_t param1, uint16_t param
 }
 
 /* CRC Calculator and Checker */
-
-void SHA204::calculate_crc(uint8_t length, uint8_t *data, uint8_t *crc)  {
+void SHA204::sha204c_calculate_crc(uint8_t length, uint8_t *data, uint8_t *crc)  {
     uint8_t counter;
     uint16_t crc_register = 0;
     uint16_t polynom = 0x8005;
     uint8_t shift_register;
     uint8_t data_bit, crc_bit;
 
-    for (counter = 0; counter < length; counter++)
-    {
-        for (shift_register = 0x01; shift_register > 0x00; shift_register <<= 1)
-        {
+    for (counter = 0; counter < length; counter++) {
+        for (shift_register = 0x01; shift_register > 0x00; shift_register <<= 1) {
             data_bit = (data[counter] & shift_register) ? 1 : 0;
             crc_bit = crc_register >> 15;
-
-            // Shift CRC to the left by 1.
             crc_register <<= 1;
-
-            if ((data_bit ^ crc_bit) != 0)
+            if (data_bit != crc_bit)
                 crc_register ^= polynom;
         }
     }
@@ -550,7 +544,7 @@ uint8_t SHA204::check_crc(uint8_t *response) {
     uint8_t count = response[SHA204_BUFFER_POS_COUNT];
 
     count -= SHA204_CRC_SIZE;
-    calculate_crc(count, response, crc);
+    sha204c_calculate_crc(count, response, crc);
 
     return (crc[0] == response[count] && crc[1] == response[count + 1])
             ? SHA204_SUCCESS : SHA204_BAD_CRC;
@@ -650,7 +644,7 @@ uint8_t SHA204::hmac(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint1
             HMAC_DELAY, HMAC_EXEC_MAX - HMAC_DELAY);
 }
 
-uint8_t SHA204::lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint16_t summary) {
+uint8_t SHA204::sha204m_lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint16_t summary) {
     if (!tx_buffer || !rx_buffer || ((zone & ~LOCK_ZONE_MASK) != 0)
             || ((zone & LOCK_ZONE_NO_CRC) && (summary != 0)))
         return SHA204_BAD_PARAM;
@@ -660,8 +654,17 @@ uint8_t SHA204::lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint1
     tx_buffer[LOCK_ZONE_IDX] = zone & LOCK_ZONE_MASK;
     tx_buffer[LOCK_SUMMARY_IDX]= summary & 0xFF;
     tx_buffer[LOCK_SUMMARY_IDX + 1]= summary >> 8;
-    return sha204c_send_and_receive(&tx_buffer[0], LOCK_RSP_SIZE, &rx_buffer[0],
+    uint8_t ret_code = sha204c_wakeup();
+    if (ret_code != SHA204_SUCCESS){
+#ifdef VERBOSE_OUTPUT
+        Serial.println("Lock: can't wakeup");
+#endif
+        return ret_code;
+    }
+    ret_code = sha204c_send_and_receive(&tx_buffer[0], LOCK_RSP_SIZE, &rx_buffer[0],
             LOCK_DELAY, LOCK_EXEC_MAX - LOCK_DELAY);
+    sha204p_sleep();
+    return ret_code;
 }
 
 uint8_t SHA204::mac(uint8_t *tx_buffer, uint8_t *rx_buffer,
@@ -806,90 +809,67 @@ uint8_t SHA204::sha204m_write(uint8_t *tx_buffer, uint8_t *rx_buffer,
 
 
 
-uint8_t SHA204::sha204e_read_config_zone(uint8_t *config_data)
+uint8_t SHA204::sha204e_read_config_zone(uint8_t *config_data, uint8_t config_size)
 {
     // declared as "volatile" for easier debugging
     volatile uint8_t ret_code;
 
     uint16_t config_address;
-
     // Make the command buffer the size of the Read command.
     uint8_t command[READ_COUNT];
-
     // Make the response buffer the size of the maximum Read response.
     uint8_t response[READ_32_RSP_SIZE];
-
     // Use this buffer to read the last 24 bytes in 4-byte junks.
     uint8_t response_read_4[READ_4_RSP_SIZE];
-
     uint8_t *p_response;
 
-
-    // Read first 32 bytes. Put a breakpoint after the read and inspect "response" to obtain the data.
-    ret_code = sha204c_wakeup();
-    if (ret_code != SHA204_SUCCESS)
-        return ret_code;
-
-    memset(response, 0, sizeof(response));
     config_address = 0;
-    ret_code = sha204m_read(command, response, SHA204_ZONE_CONFIG | READ_ZONE_MODE_32_BYTES, config_address);
-    sha204p_sleep();
-    if (ret_code != SHA204_SUCCESS)
-        return ret_code;
-
-    if (config_data) {
-        memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_ZONE_ACCESS_32);
-        config_data += SHA204_ZONE_ACCESS_32;
-    }
-    // Read second 32 bytes. Put a breakpoint after the read and inspect "response" to obtain the data.
-    memset(response, 0, sizeof(response));
-    ret_code = sha204c_wakeup();
-    if (ret_code != SHA204_SUCCESS)
-        return ret_code;
-
-    config_address += SHA204_ZONE_ACCESS_32;
-    memset(response, 0, sizeof(response));
-    ret_code = sha204m_read(command, response, SHA204_ZONE_CONFIG | READ_ZONE_MODE_32_BYTES, config_address);
-    sha204p_sleep();
-    if (ret_code != SHA204_SUCCESS)
-        return ret_code;
-
-    if (config_data) {
-        memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_ZONE_ACCESS_32);
-        config_data += SHA204_ZONE_ACCESS_32;
-    }
-
-    // Read last 24 bytes in six four-byte junks.
-    memset(response, 0, sizeof(response));
-    ret_code = sha204c_wakeup();
-    if (ret_code != SHA204_SUCCESS)
-        return ret_code;
-
-    config_address += SHA204_ZONE_ACCESS_32;
-    response[SHA204_BUFFER_POS_COUNT] = 0;
-    p_response = &response[SHA204_BUFFER_POS_DATA];
-    memset(response, 0, sizeof(response));
-    while (config_address < SHA204_CONFIG_SIZE) {
-        memset(response_read_4, 0, sizeof(response_read_4));
-        ret_code = sha204m_read(command, response_read_4, SHA204_ZONE_CONFIG, config_address);
-        if (ret_code != SHA204_SUCCESS) {
-            sha204p_sleep();
+    for(byte i=0;(i<4 && config_size==ECC108_CONFIG_SIZE) || (i<3 && config_size==SHA204_CONFIG_SIZE);i++){
+        ret_code = sha204c_wakeup();
+        if (ret_code != SHA204_SUCCESS){
             return ret_code;
         }
-        memcpy(p_response, &response_read_4[SHA204_BUFFER_POS_DATA], SHA204_ZONE_ACCESS_4);
-        p_response += SHA204_ZONE_ACCESS_4;
-        response[SHA204_BUFFER_POS_COUNT] += SHA204_ZONE_ACCESS_4; // Update count byte in virtual response packet.
-        config_address += SHA204_ZONE_ACCESS_4;
+        memset(response, 0, sizeof(response));
+        ret_code = sha204m_read(command, response, SHA204_ZONE_CONFIG | READ_ZONE_MODE_32_BYTES, config_address);
+        sha204p_sleep();
+        if (ret_code != SHA204_SUCCESS){
+            return ret_code;
+        }
+        if (config_data) {
+            memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_ZONE_ACCESS_32);
+            config_data += SHA204_ZONE_ACCESS_32;
+            config_address+=SHA204_ZONE_ACCESS_32;
+        }
     }
-    // Put a breakpoint here and inspect "response" to obtain the data.
-    sha204p_sleep();
-
-    if (ret_code == SHA204_SUCCESS && config_data)
-        memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_CONFIG_SIZE - 2 * SHA204_ZONE_ACCESS_32);
-
+    if(config_size==SHA204_CONFIG_SIZE){
+        memset(response, 0, sizeof(response));
+        ret_code = sha204c_wakeup();
+        if (ret_code != SHA204_SUCCESS){
+            return ret_code;
+        }
+        config_address += SHA204_ZONE_ACCESS_32;
+        response[SHA204_BUFFER_POS_COUNT] = 0;
+        p_response = &response[SHA204_BUFFER_POS_DATA];
+        memset(response, 0, sizeof(response));
+        while (config_address < SHA204_CONFIG_SIZE) {
+            memset(response_read_4, 0, sizeof(response_read_4));
+            ret_code = sha204m_read(command, response_read_4, SHA204_ZONE_CONFIG, config_address);
+            if (ret_code != SHA204_SUCCESS) {
+                sha204p_sleep();
+                return ret_code;
+            }
+            memcpy(p_response, &response_read_4[SHA204_BUFFER_POS_DATA], SHA204_ZONE_ACCESS_4);
+            p_response += SHA204_ZONE_ACCESS_4;
+            response[SHA204_BUFFER_POS_COUNT] += SHA204_ZONE_ACCESS_4; // Update count byte in virtual response packet.
+            config_address += SHA204_ZONE_ACCESS_4;
+        }
+        sha204p_sleep();
+        if (ret_code == SHA204_SUCCESS && config_data){
+            memcpy(config_data, &response[SHA204_BUFFER_POS_DATA], SHA204_CONFIG_SIZE - 2 * SHA204_ZONE_ACCESS_32);
+        }
+    }
     return ret_code;
 }
-
 uint8_t SHA204::sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode){
     const uint8_t DATASLOT0_CFG_ADDR = 0x05<<2;
     const uint8_t OTP_CFG_ADDR=0x04<<2;
@@ -923,5 +903,49 @@ uint8_t SHA204::sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode
         }
     }
     sha204p_sleep();
+    return ret_code;
+}
+
+/** \brief This function locks the configuration zone.
+
+    It first reads it and calculates the CRC of its content.
+    It then sends a Lock command to the device.
+
+    This function is disabled by default with the
+    \ref SHA204_EXAMPLE_CONFIG_WITH_LOCK switch.
+
+    Once the configuration zone is locked, the Random
+    command returns a number from its high quality random
+    number generator instead of a 0xFFFF0000FFFF0000...
+    sequence.
+
+    \param[in] device_id which device to lock
+    \return status of the operation
+*/
+uint8_t SHA204::sha204e_lock_config_zone(uint8_t config_size)
+{
+    uint8_t ret_code;
+    uint8_t config_data[SHA204_CONFIG_SIZE];
+    uint8_t crc_array[SHA204_CRC_SIZE];
+    uint16_t crc;
+    uint8_t command[LOCK_COUNT];
+    uint8_t response[LOCK_RSP_SIZE];
+
+    sha204p_sleep();
+
+    ret_code = sha204e_read_config_zone(config_data, config_size);
+    if (ret_code != SHA204_SUCCESS)
+        return ret_code;
+
+    // Check whether the configuration zone is locked already.
+    if (config_data[87] == 0)
+        return ret_code;
+
+    sha204c_calculate_crc(sizeof(config_data), config_data, crc_array);
+    crc = (crc_array[1] << 8) + crc_array[0];
+
+    ret_code = sha204c_wakeup();
+    ret_code = sha204m_lock(command, response, SHA204_ZONE_CONFIG, crc);
+
     return ret_code;
 }

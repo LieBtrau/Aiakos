@@ -30,18 +30,20 @@ public:
         OTP_MODE_CONSUMPTION=0x55,
         OTP_MODE_LEGACY=0x00
     }OTP_MODE;
-    virtual uint8_t sha204p_sleep() = 0;
-    uint8_t sha204c_wakeup();
     bool serialNumber(uint8_t *sn);
     bool random(uint8_t *randomnr, uint8_t mode);
+    uint8_t sha204e_read_config_zone(uint8_t *config_data, uint8_t config_size);
+    uint8_t sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode);
+    uint8_t sha204e_lock_config_zone(uint8_t config_size);
+protected:
+    uint8_t sha204c_wakeup();
+private:
+    virtual uint8_t sha204p_sleep() = 0;
+    virtual uint16_t SHA204_RESPONSE_TIMEOUT() = 0;
     uint8_t execute(uint8_t op_code, uint8_t param1, uint16_t param2,
                     uint8_t datalen1, uint8_t *data1, uint8_t datalen2, uint8_t *data2, uint8_t datalen3, uint8_t *data3,
                     uint8_t tx_size, uint8_t *tx_buffer, uint8_t rx_size, uint8_t *rx_buffer);
-    uint8_t sha204e_read_config_zone(uint8_t *config_data);
-    uint8_t sha204e_write_config_zone(uint8_t* config_data, OTP_MODE otpMode);
-private:
-    virtual uint16_t SHA204_RESPONSE_TIMEOUT() = 0;
-    void calculate_crc(uint8_t length, uint8_t *data, uint8_t *crc);
+    void sha204c_calculate_crc(uint8_t length, uint8_t *data, uint8_t *crc);
     uint8_t check_crc(uint8_t *response);
     virtual uint8_t receive_response(uint8_t size, uint8_t *response) = 0;
     virtual uint8_t send_command(uint8_t count, uint8_t * command) = 0;
@@ -57,7 +59,7 @@ private:
     uint8_t dev_rev(uint8_t *tx_buffer, uint8_t *rx_buffer);
     uint8_t gen_dig(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint8_t key_id, uint8_t *other_data);
     uint8_t hmac(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint16_t key_id);
-    uint8_t lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint16_t summary);
+    uint8_t sha204m_lock(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t zone, uint16_t summary);
     uint8_t mac(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint16_t key_id, uint8_t *challenge);
     uint8_t nonce(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t mode, uint8_t *numin);
     uint8_t pause(uint8_t *tx_buffer, uint8_t *rx_buffer, uint8_t selector);

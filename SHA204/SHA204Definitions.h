@@ -254,6 +254,7 @@ limitations under the License.
 /* EEPROM Addresses */
 /* Configuration Zone */
 #define SHA204_CONFIG_SIZE              (88)
+#define ECC108_CONFIG_SIZE              (128)
 #define ADDRESS_SN03		0	// SN[0:3] are bytes 0->3 of configuration zone
 #define ADDRESS_RevNum		4	// bytes 4->7 of config zone are RevNum
 #define ADDRESS_SN47		8	// SN[4:7] are bytes 8->11 of config zone

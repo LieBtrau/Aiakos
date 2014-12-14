@@ -32,7 +32,7 @@ uint16_t SHA204I2C::SHA204_RESPONSE_TIMEOUT() {
     return SHA204_RESPONSE_TIMEOUT_VALUE;
 }
 
-SHA204I2C::SHA204I2C(uint8_t deviceAddress) {
+void SHA204I2C::setAddress(uint8_t deviceAddress) {
     _address = deviceAddress>>1;
 }
 

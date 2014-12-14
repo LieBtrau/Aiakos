@@ -29,6 +29,7 @@
 #include <stddef.h>            // data type definitions
 #include "RDM630/rdm630.h"
 #include "SHA204/hashlet.h"
+#include "IrDA/irphy.h"
 
 //end of add your includes here
 #ifdef __cplusplus
@@ -43,7 +44,6 @@ void setup();
 #endif
 
 //add your function definitions for the project here
-
 byte macChallengeExample();
 
 //Do not add code below this line

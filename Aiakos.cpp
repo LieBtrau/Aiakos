@@ -37,8 +37,8 @@
 #include "Aiakos.h"
 
 rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
-Hashlet hashLet(0xC0);//ATECC108 instead of ATSHA204
-byte config_data[88];
+Hashlet hashLet(Hashlet::ATECC108);
+IrPhy ir;
 
 uint8_t private_mr_key[NUM_ECC_DIGITS] = {
     0x9B, 0x26, 0x2A, 0xF2, 0x70, 0x34, 0x46, 0xFF,
@@ -60,17 +60,29 @@ uint8_t hash[NUM_ECC_DIGITS] = {
     0x5B, 0x8B, 0x65, 0x5F, 0xA8, 0x0C, 0x4A, 0xD5,
     0xC6, 0xA6, 0x43, 0x69, 0x61, 0x7B, 0xD0, 0xC9};
 
+bool CommandA(){
+    //    if(!hashLet.initialize()){
+    //        Serial.println("Can't initialize");
+    //   //     return false;
+    //    }
+    if(!hashLet.showConfigZone()){
+        Serial.println("can't read config zone.");
+        return false;
+    }
+    Serial.println("Done!");
+    return true;
+}
+
+bool CommandB(){
+    bitSet(TIMSK2,OCIE2A);
+    return true;
+}
 
 void setup()
 {
     Serial.begin(9600);  // start serial to PC
-    rfid.begin();
-    hashLet.init();
-    bool bResult=hashLet.initialize();
-    Serial.println(bResult?"ok":"nok");
-    if(!hashLet.showConfigZone()){
-        Serial.println("can't read config zone.");
-    }
+    //    rfid.begin();
+    //    hashLet.init();
     //    uint8_t r[NUM_ECC_DIGITS], s[NUM_ECC_DIGITS];
     //    unsigned long ulstartTime=millis();
     //    if(!ecdsa_sign(r,s,private_mr_key,randomnr,hash)){
@@ -91,62 +103,68 @@ void setup()
     //    delay(3000);
     //    Serial.println("Wake!");
 
-//    uint8_t rnd[32];
-//    if(sha204dev.random(rnd,RANDOM_SEED_UPDATE)){
-//        for(int i=0;i<32;i++){
-//            Serial.print(rnd[i], HEX);
-//            Serial.print(" ");
-//        }
-//    }
-//    Serial.println();
-//    Serial.println("Sending a MAC Challenge. Response should be:");
-//    Serial.println("23 6 67 0 4F 28 4D 6E 98 62 4 F4 60 A3 E8 75 8A 59 85 A6 79 96 C4 8A 88 46 43 4E B3 DB 58 A4 FB E5 73");
-//    Serial.println("Response is:");
-//    macChallengeExample();
+    //    uint8_t rnd[32];
+    //    if(sha204dev.random(rnd,RANDOM_SEED_UPDATE)){
+    //        for(int i=0;i<32;i++){
+    //            Serial.print(rnd[i], HEX);
+    //            Serial.print(" ");
+    //        }
+    //    }
+    //    Serial.println();
+    //    Serial.println("Sending a MAC Challenge. Response should be:");
+    //    Serial.println("23 6 67 0 4F 28 4D 6E 98 62 4 F4 60 A3 E8 75 8A 59 85 A6 79 96 C4 8A 88 46 43 4E B3 DB 58 A4 FB E5 73");
+    //    Serial.println("Response is:");
+    //    macChallengeExample();
     //  }
-    Serial.println("Done!");
-
+    ir.init();
+    ir.sendByte(0x00);
+    Serial.println("Setup done.");
 }
 
 void loop()
 {
-    byte data[6];
-    byte length;
+    //    byte data[6];
+    //    byte length;
 
-    if(rfid.available()){
-        rfid.getData(data,length);
-        Serial.println("Data valid");
-        for(int i=0;i<length;i++){
-            Serial.print(data[i],HEX);
+    //    if(rfid.available()){
+    //        rfid.getData(data,length);
+    //        Serial.println("Data valid");
+    //        for(int i=0;i<length;i++){
+    //            Serial.print(data[i],HEX);
+    //        }
+    //        Serial.println();
+    //    }
+    if(Serial.available()){
+        if(Serial.read()=='a'){
+            CommandA();
         }
-        Serial.println();
     }
 }
 
 byte macChallengeExample() {
-//    uint8_t command[MAC_COUNT_LONG];
-//    uint8_t response[MAC_RSP_SIZE];
+    //    uint8_t command[MAC_COUNT_LONG];
+    //    uint8_t response[MAC_RSP_SIZE];
 
-//    const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
-//        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-//        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
-//        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
-//        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
-//    };
+    //    const uint8_t challenge[MAC_CHALLENGE_SIZE] = {
+    //        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+    //        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF,
+    //        0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,
+    //        0x88, 0x99, 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF
+    //    };
 
-//    uint8_t ret_code = sha204dev.execute(SHA204_MAC, 0, 0,
-//                                         MAC_CHALLENGE_SIZE, (uint8_t *) challenge,
-//                                         0, NULL,
-//                                         0, NULL,
-//                                         sizeof(command), &command[0],
-//            sizeof(response), &response[0]);
+    //    uint8_t ret_code = sha204dev.execute(SHA204_MAC, 0, 0,
+    //                                         MAC_CHALLENGE_SIZE, (uint8_t *) challenge,
+    //                                         0, NULL,
+    //                                         0, NULL,
+    //                                         sizeof(command), &command[0],
+    //            sizeof(response), &response[0]);
 
-//    for (int i=0; i<SHA204_RSP_SIZE_MAX; i++) {
-//        Serial.print(response[i], HEX);
-//        Serial.print(' ');
-//    }
-//    Serial.println();
+    //    for (int i=0; i<SHA204_RSP_SIZE_MAX; i++) {
+    //        Serial.print(response[i], HEX);
+    //        Serial.print(' ');
+    //    }
+    //    Serial.println();
 
-//    return ret_code;
+    //    return ret_code;
     return 0;
 }

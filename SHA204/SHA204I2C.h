@@ -16,7 +16,7 @@ limitations under the License.
 
 #include <Wire.h>
 
-#ifdef TwoWire_h // Esure this code only gets built if you have Wire.h included in the main sketch
+#ifdef TwoWire_h // Ensure this code only gets built if you have Wire.h included in the main sketch
 
 #ifndef SHA204_Library_I2C_h
 #define SHA204_Library_I2C_h
@@ -43,31 +43,27 @@ enum i2c_word_address {
 };
 
 class SHA204I2C : public SHA204 {
+public:
+    void setAddress(uint8_t deviceAddress);
+	void init();
 private:
-	const static uint16_t SHA204_RESPONSE_TIMEOUT_VALUE = ((uint16_t) 37);
-	uint16_t SHA204_RESPONSE_TIMEOUT();
+    const static uint16_t SHA204_RESPONSE_TIMEOUT_VALUE = ((uint16_t) 37);
+    uint16_t SHA204_RESPONSE_TIMEOUT();
 
     uint8_t _address;
     uint8_t deviceAddress();
-
-	int start_operation(uint8_t readWrite);
-
-	uint8_t receive_bytes(uint8_t count, uint8_t *data);
-	uint8_t receive_byte(uint8_t *data);
-	uint8_t send_bytes(uint8_t count, uint8_t *buffer);
-	uint8_t send_byte(uint8_t value);
-	uint8_t chip_wakeup();
-	uint8_t reset_io();
-	uint8_t receive_response(uint8_t size, uint8_t *response);
-	uint8_t send(uint8_t word_address, uint8_t count, uint8_t *buffer);
-	uint8_t send_command(uint8_t count, uint8_t * command);
-
-public:
-	SHA204I2C();
-	SHA204I2C(uint8_t deviceAddress);
-	void init();
     uint8_t sha204p_sleep();
-	uint8_t resync(uint8_t size, uint8_t *response);
+    uint8_t resync(uint8_t size, uint8_t *response);
+    int start_operation(uint8_t readWrite);
+    uint8_t receive_bytes(uint8_t count, uint8_t *data);
+    uint8_t receive_byte(uint8_t *data);
+    uint8_t send_bytes(uint8_t count, uint8_t *buffer);
+    uint8_t send_byte(uint8_t value);
+    uint8_t chip_wakeup();
+    uint8_t reset_io();
+    uint8_t receive_response(uint8_t size, uint8_t *response);
+    uint8_t send(uint8_t word_address, uint8_t count, uint8_t *buffer);
+    uint8_t send_command(uint8_t count, uint8_t * command);
 };
 
 #endif

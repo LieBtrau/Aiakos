@@ -96,6 +96,24 @@ The AVR411 application note uses rolling code to prevent replay attacks, but the
 ##Authentication protocol: ECDSA
 ![Atmel use of ECDSA](http://atmelcorporation.files.wordpress.com/2013/06/atmelencryptionkeyimage.png)
 This algorithm permits to authenticate parties, but it doesn't permit to set up a shared secret key.
+There's also a caveat here.  What if someone buys a legitimate key (signature will be ok), and forces a man in the middle attack?
+A two factor authentication is needed (e.g. see Bluetooth Secure Simple Pairing):
+* Keypad & display -> lot of hardware needed, big size, requires a lot of user interaction.
+* speaker & microphone (using DTMF)? -> maybe hard to decode DTMF reliably.
+* IR communication (using IrDA)? -> should be easy to implement, cheap, standard hardware, I guess.
+    * 4 pin compatible devices found: 
+        * [Vishay TFBS4650](http://www.vishay.com/docs/84672/tfbs4650.pdf)
+        * [Lite-On HSDL-3208](http://media.digikey.com/pdf/Data%20Sheets/Lite-On%20PDFs/HSDL-3208-021.pdf)
+        * [Rohm	rpm841](http://rohmfs.rohm.com/en/products/databook/datasheet/opto/irda_module/rpm841-h16.pdf)
+        * [Panasonic CND0214A & CND0215A (Vio only 1.8V)](http://www.semicon.panasonic.co.jp/ds4/CND0215A_BEK_discon.pdf)
+    * Implementation
+        * [Reading electricity meter with IrDA](http://www.rotwang.co.uk/docs/elec_meter.ino)
+        * [AVR Assembler](http://www.duris.de/psh/irdavr/irdavr.htm)
+        * [TI MSP430 Implementation](http://www.ti.com/lit/an/slaa202a/slaa202a.pdf)
+        * [Microchip IrDA](http://ww1.microchip.com/downloads/en/AppNotes/01071a.pdf)
+    * [IrDA standard](http://web.media.mit.edu/~ayb/irx/irda/IrPHY_1_2.PDF)
+* UART connection with phone jack connection -> requires a cable and two extra connectors (what about the cable when not pairing?  It will get lost, so not possible to add keys later on).
+* NFC, either 13.5MHz or 125kHz. -> 125kHz is already available on one key, but it's not standard to do two way communication.  The coils also take up a lot of space.
 
 ##Key agreement protocol
 * [ECDH](https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman)
@@ -178,6 +196,7 @@ B knows now that A also got Ks
 
 ###Algorithm implementation on specialized microcontrollers
 * ATSHA204A 
+    * 3V3 or 5V power supply
 	* older ATSHA204 not recommended for new designs
 	* securely store secrets, 
 	* generate true random numbers, 
@@ -206,6 +225,7 @@ B knows now that A also got Ks
 * ATECC108-SSH Atmel secure EEPROM + CoCPU uses ECC (available at Digikey)
     * This chip implements all of the ATSHA204 commands including ECDSA commands.  This chip will not be used because we also need to create a shared secret key based on the public/private ECC-keys.  The ECDH-protocol will be used for that.  This chip doesn't support that.  It's by design impossible to read the private key from the ATECC108, which is needed for the ECDH.
 	* Backward compatible to the ATSHA204 ([according to Atmel](http://atmelcorporation.wordpress.com/2013/06/27/a-closer-look-at-atmels-atecc108-asymmetric-vs-symmetric/))
+	   * Not fully compatible: configuration zone size is 128bytes for ATECC108 and 88bytes for ATSHA204.  For locking the configuration zone, a CRC-calculation of that zone is needed.  This CRC-calculation depends on the size of the configuration zone.
 	* Full documentation only available under NDA.  Full documentation is not needed for implementation.
 	* EEPROM for 16keys (private key, public key, signature components)
 	* possibility to lock sections of EEPROM
@@ -297,6 +317,7 @@ Hmm...Maybe 2.4GHz modules are not ideal after all.  Let's try 868MHz modules.  
 
 ##868MHz Modules
 ###MRF89XAM8A-I/RM
+* 3V3 only
 * RS: €6.88, Farnell: €7.63, Mouser: €7.92, Digikey: €7.95
 * 915MHz band version of this module: MRF89XAM9A-I/RM (Farnell: €7.63)
 * Output: +10dBm, input: -107dBm
@@ -307,11 +328,12 @@ while HopeRF modules are more used by hobbyists.
 	* [MRF89XA headers](https://github.com/x893/Microchip/tree/master/Microchip/Include/Transceivers/MRF89XA)
 	* [Simple application, incomplete code](http://www.microchip.com/wwwregister/default.aspx?ReturnURL=http://www.microchip.com/wwwproducts/Devices.aspx?dDocName=en548019&DownloadDocLink=4F47C92917033199A94C14F24CE299BEDE02EDEC72CBE8C75628CEB0B60C1E3D33CAAEF0AA36F5BF667ABD973B73FF3C74BEDEAD7796DAE57B1363E0D7E380A23B83645C2BBBD0A89BA619CCE50FC019DA40DBBADBE3284C49193F5E4A42BA6FDAFB7FBE16B33D31CACDB09654A8DA367F6181875D2A4FB54C8ECBFEFB32658905B86D7BD1D2DFBAF8EDF86E048E6FDA989786C157D1CBFD2D400C9BAF6AE725)
 * Hardware
-	* Convert the Arduino Uno to 3V3.
+	* Convert the Arduino Uno to 3V3.  Warning: The Arduino 16MHz clock doesn't run stable on 3V3.  A possibility is to lower the clock to 8MHz.  Don't forget to update your makefile with this value too.
 	* Reset line of the module must be HiZ, pull up to reset the module.
 	* Range of this module is comparable with the original Hörmann remote
 
-###HOPERF RFM69W-868-S2 
+###HOPERF RFM69W-868-S2
+* 1V8 or 3V3 operation
 * 868MHz, output 13dBm
 * also available in 433MHz & 915MHz version, also 20dBm version available
 * [RS: €7.5](http://benl.rs-online.com/web/p/telemetry-modules/7931998/)
