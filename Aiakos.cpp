@@ -117,7 +117,10 @@ void setup()
     //    macChallengeExample();
     //  }
     ir.init();
-    ir.sendByte(0x00);
+    ir.write(0x55);
+    ir.write(0xAA);
+    ir.write(0x55);
+    ir.doTransmission();
     Serial.println("Setup done.");
 }
 

@@ -1,36 +1,38 @@
 #include "irphy.h"
 
+static const byte TX_BUFFER_SIZE=20;
 static byte dataBitsMask;
+static byte txBuffer[TX_BUFFER_SIZE];
+static byte txIndex=0;
+static byte txCtr=0;
 static byte dataReg;
+typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
+static SENDSTATE sendState;
 
 IrPhy::IrPhy(){
 
 }
 
-void IrPhy::sendByte(byte c){
-    dataReg=c;
+bool IrPhy::doTransmission(){
     TCNT2=0;
-    bitSet(TCCR2A, COM2B1);         //Start bit
+    if(txIndex==0){
+        return false;
+    }
+    txCtr=0;
     bitSet(TIMSK2,OCIE2A);          //Enable interrupt on OCR2B compare match
     dataBitsMask=0x01;
+    return true;
 }
 
-void IrPhy::isr(){
-    if(dataBitsMask==0){
-        //stop bit
-        bitClear(TCCR2A, COM2B1);
-        //stop interrupt routine
-        bitClear(TIMSK2,OCIE2A);
-    }else
-    {
-        if(dataReg & dataBitsMask){
-            bitClear(TCCR2A, COM2B1);
-        }else{
-            bitSet(TCCR2A, COM2B1);
-        }
-        dataBitsMask<<=1;
+bool IrPhy::write(byte c){
+    if(txIndex<TX_BUFFER_SIZE){
+        txBuffer[txIndex++]=c;
+        return true;
+    }else{
+        return false;
     }
 }
+
 
 void IrPhy::init()
 {
@@ -57,5 +59,37 @@ void IrPhy::init()
 }
 
 ISR(TIMER2_COMPA_vect){
-    IrPhy::isr();
+    switch(sendState){
+    case STARTBIT:
+        bitSet(TCCR2A, COM2B1);
+        dataBitsMask=0x01;
+        dataReg=txBuffer[txCtr];
+        sendState=DATABITS;
+        break;
+    case DATABITS:
+        if(dataReg & dataBitsMask){
+            bitClear(TCCR2A, COM2B1);
+        }else{
+            bitSet(TCCR2A, COM2B1);
+        }
+        dataBitsMask<<=1;
+        if(!dataBitsMask)
+        {
+            sendState=STOPBIT;
+        }
+        break;
+    case STOPBIT:
+        bitClear(TCCR2A, COM2B1);
+        if(txCtr<txIndex-1)
+        {
+            txCtr++;
+            sendState=STARTBIT;
+        }else{
+            //stop interrupt routine
+            bitClear(TIMSK2,OCIE2A);
+            //reset sendBuffer
+            txIndex=0;
+        }
+        break;
+    }
 }

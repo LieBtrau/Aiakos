@@ -8,8 +8,8 @@ class IrPhy
 public:
     IrPhy();
     void init();
-    static void isr();
-    void sendByte(byte c);
+    bool write(byte c);
+    bool doTransmission();
 private:
 };
 

@@ -111,7 +111,8 @@ A two factor authentication is needed (e.g. see Bluetooth Secure Simple Pairing)
         * [AVR Assembler](http://www.duris.de/psh/irdavr/irdavr.htm)
         * [TI MSP430 Implementation](http://www.ti.com/lit/an/slaa202a/slaa202a.pdf)
         * [Microchip IrDA](http://ww1.microchip.com/downloads/en/AppNotes/01071a.pdf)
-    * [IrDA standard](http://web.media.mit.edu/~ayb/irx/irda/IrPHY_1_2.PDF)
+    * [IrDA - IrPHY standard](http://berk.tc/intercon/irda/IrPHY_1p4.pdf)
+    * [IrDA transceiver](http://ww1.microchip.com/downloads/en/DeviceDoc/21655C.pdf)
 * UART connection with phone jack connection -> requires a cable and two extra connectors (what about the cable when not pairing?  It will get lost, so not possible to add keys later on).
 * NFC, either 13.5MHz or 125kHz. -> 125kHz is already available on one key, but it's not standard to do two way communication.  The coils also take up a lot of space.
 
