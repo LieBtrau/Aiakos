@@ -83,3 +83,5 @@ SHA204/hashlet.h
 SHA204/hashlet.cpp
 IrDA/irphy.h
 IrDA/irphy.cpp
+IrDA/irlap.h
+IrDA/irlap.cpp

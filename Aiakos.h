@@ -29,7 +29,7 @@
 #include <stddef.h>            // data type definitions
 #include "RDM630/rdm630.h"
 #include "SHA204/hashlet.h"
-#include "IrDA/irphy.h"
+#include "IrDA/irlap.h"
 
 //end of add your includes here
 #ifdef __cplusplus

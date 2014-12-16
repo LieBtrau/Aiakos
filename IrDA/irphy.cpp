@@ -1,38 +1,65 @@
-#include "irphy.h"
+//Implemenation of SIR (for baudrates of 9600baud up to 115200baud)
 
-static const byte TX_BUFFER_SIZE=20;
+#include <util/crc16.h>
+#include "irphy.h"
+#define DEBUG 1
+
 static byte dataBitsMask;
-static byte txBuffer[TX_BUFFER_SIZE];
-static byte txIndex=0;
-static byte txCtr=0;
+static byte sendPacket[IrPhy::ASYNC_WRAPPER_SIZE];
+static byte packetDataCnt=0;
+static byte packetIndex=0;
 static byte dataReg;
 typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
 static SENDSTATE sendState;
+static byte timer0;
 
 IrPhy::IrPhy(){
 
 }
 
-bool IrPhy::doTransmission(){
-    TCNT2=0;
-    if(txIndex==0){
-        return false;
+//Construct ASYNC WRAPPER packet: XBOF | BOF | DATA | FCS | EOF
+bool IrPhy::send(byte* sendBuffer, byte byteCount){
+    word crc=0xFFFF;
+    //XBOF
+    for(packetDataCnt=0;packetDataCnt<10;packetDataCnt++){
+        sendPacket[packetDataCnt]=XBOF;
     }
-    txCtr=0;
-    bitSet(TIMSK2,OCIE2A);          //Enable interrupt on OCR2B compare match
+    //BOF
+    sendPacket[packetDataCnt++]=BOF;
+    //DATA
+    for(byte i=0;i<byteCount;i++){
+        byte c=sendBuffer[i];
+        crc=_crc_ccitt_update(crc,c);
+        if(c==BOF || c==EOF_FLAG || c==CE){
+            sendPacket[packetDataCnt++]=0x7D;
+            c ^= 0x20;
+        }
+        sendPacket[packetDataCnt++]=c;
+    }
+    //FCS
+    sendPacket[packetDataCnt++]= ~lowByte(crc);
+    sendPacket[packetDataCnt++]= ~highByte(crc);
+    //EOF
+    sendPacket[packetDataCnt++]=EOF_FLAG;
+#ifdef DEBUG
+    for(byte i=0;i<packetDataCnt;i++){
+        Serial.print(sendPacket[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+#endif
+    //Start TX
+    //Disable timer0
+    timer0=TCCR0B;
+    bitClear(TCCR0B,CS02);
+    bitClear(TCCR0B,CS01);
+    bitClear(TCCR0B,CS00);
+    packetIndex=0;
     dataBitsMask=0x01;
+    TCNT2=0;
+    bitSet(TIMSK2,OCIE2A);          //Enable interrupt on OCR2B compare match
     return true;
 }
-
-bool IrPhy::write(byte c){
-    if(txIndex<TX_BUFFER_SIZE){
-        txBuffer[txIndex++]=c;
-        return true;
-    }else{
-        return false;
-    }
-}
-
 
 void IrPhy::init()
 {
@@ -63,7 +90,7 @@ ISR(TIMER2_COMPA_vect){
     case STARTBIT:
         bitSet(TCCR2A, COM2B1);
         dataBitsMask=0x01;
-        dataReg=txBuffer[txCtr];
+        dataReg=sendPacket[packetIndex];
         sendState=DATABITS;
         break;
     case DATABITS:
@@ -80,15 +107,16 @@ ISR(TIMER2_COMPA_vect){
         break;
     case STOPBIT:
         bitClear(TCCR2A, COM2B1);
-        if(txCtr<txIndex-1)
+        if(packetIndex < packetDataCnt - 1)
         {
-            txCtr++;
+            packetIndex++;
             sendState=STARTBIT;
         }else{
             //stop interrupt routine
             bitClear(TIMSK2,OCIE2A);
-            //reset sendBuffer
-            txIndex=0;
+            //reset packetBuffer
+            packetDataCnt=0;
+            TCCR0B=timer0;
         }
         break;
     }
