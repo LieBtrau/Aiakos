@@ -11,6 +11,7 @@ public:
     IrLAP();
     void init();
     bool send(byte* sendBuffer, byte byteCount);
+    void show();
 private:
     byte _txBuffer[IRLAP_SIZE];
     IrPhy _irPhy;

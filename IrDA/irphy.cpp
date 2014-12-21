@@ -13,8 +13,23 @@ typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
 static SENDSTATE sendState;
 static byte timer0;
 
+uint16_t debug1=0;
+uint16_t debug2=0;
+const uint8_t BUFFER_SIZE=100;
+uint16_t dataBuffer[BUFFER_SIZE];
+uint8_t dataCtr=0;
+
 IrPhy::IrPhy(){
 
+}
+
+void IrPhy::show(){
+    Serial.print("datactr: ");
+    Serial.println(dataCtr);
+    for(uint16_t i=0;i<dataCtr;i++){
+        Serial.println(dataBuffer[i]);
+    }
+    Serial.println("--------------");
 }
 
 //Construct ASYNC WRAPPER packet: XBOF | BOF | DATA | FCS | EOF
@@ -61,12 +76,15 @@ bool IrPhy::send(byte* sendBuffer, byte byteCount){
     return true;
 }
 
+bool IrPhy::sendingDone(){
+    return bitRead(TIMSK2, OCIE2A);
+}
+
 void IrPhy::init()
 {
     pinMode(3,OUTPUT);
-    //debug
-    pinMode(4,OUTPUT);
 #if defined(__AVR_ATmega328P__)
+    //Setup timer for sending
     bitClear(PRR,PRTIM2);            //Power up Timer2
     bitSet(TCCR2B,WGM22);            //Put timer 2 in fast PWM-mode with top at OCR2A
     bitSet(TCCR2A,WGM21);
@@ -80,11 +98,43 @@ void IrPhy::init()
     OCR2B=25;
     //f = fclk/(N*(1+OCR2A)) => OCR2A = fclk / f - 1 = 16e6 / 115200 - 1 = 138
     OCR2A=138;                        //In fast PWM-mode, timer will be cleared when it reaches OCR2A value.
+
+    //Setup timer for receiving
+    //A 16bit timer is needed.
+    //It must be fast -> no prescaling
+    //It must also be able to detect the XBOF header, which is a train of 11.5kHz pulses.
+    //An 8bit timer at this clockspeed rcan only count down to 62.5kHz (without artificial bit increasing by software).
+    TCCR1A=0;
+    bitSet(TCCR1B, ICNC1);          //Enable noise canceler (uses 4 CLK's)
+    bitSet(TCCR1B, ICES1);          //Trigger on rising edge
+    bitClear(TCCR1B, WGM13);
+    bitClear(TCCR1B, WGM12);        //Timer1 mode 0: Normal, top=0xFFFF
+    bitClear(TCCR1B, CS12);         //Timer1 clock: no prescaling
+    bitClear(TCCR1B, CS11);
+    bitSet(TCCR1B, CS10);
+    ICR1=0;
+    bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
+    bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
 #else
 #error Unsupported MCU
 #endif
 }
 
+//ISR for receiving IrDA signals
+ISR(TIMER1_CAPT_vect){
+    int16_t icr=ICR1;
+    TCNT1=0;
+    dataBuffer[dataCtr++]=icr;
+    if(dataCtr==BUFFER_SIZE){
+        dataCtr=0;
+    }
+}
+
+ISR(TIMER1_OVF_vect){
+    debug2=1;
+}
+
+//ISR for generating IrDA signals
 ISR(TIMER2_COMPA_vect){
     switch(sendState){
     case STARTBIT:

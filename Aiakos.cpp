@@ -73,9 +73,8 @@ bool CommandA(){
     return true;
 }
 
-bool CommandB(){
-    bitSet(TIMSK2,OCIE2A);
-    return true;
+void CommandB(){
+    ir.show();
 }
 
 void setup()
@@ -137,7 +136,7 @@ void loop()
     //    }
     if(Serial.available()){
         if(Serial.read()=='a'){
-            CommandA();
+            CommandB();
         }
     }
 }

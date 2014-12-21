@@ -10,6 +10,8 @@ public:
     IrPhy();
     void init();
     bool send(byte* sendBuffer, byte byteCount);
+    bool sendingDone();
+    void show();
 private:
     static const byte XBOF=0xFF;
     static const byte BOF=0xC0;
