@@ -1,4 +1,4 @@
-//Implemenation of SIR (for baudrates of 9600baud up to 115200baud)
+//Implemenation of SIR (for baudrate of 115200baud)
 
 #include <util/crc16.h>
 #include "irphy.h"
@@ -25,28 +25,34 @@ IrPhy::IrPhy(){
 }
 
 void processShiftRegister(){
-    //full byte including start + stop is read
-    if(bitRead(shiftRegister,5)==0 && bitRead(shiftRegister,14)==1){
+    //full byte including start bit of next byte: bitCtr=11 -> startbit = bit5 of shiftRegister, stopbit = bit14 of shiftregister
+    //full byte, no start bit of next byte: bitCtr=10 -> startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
+    if(bitRead(shiftRegister,16-bitCtr)==0 && bitRead(shiftRegister,25-bitCtr)==1){
         //start bit & stop bit detected
 #ifdef DEBUG
         Serial.print("\r\ndata: ");
-        Serial.print(lowByte(shiftRegister>>6),HEX);
+        //bitCtr=11 -> shift right 6 positions
+        //bitCtr=10 -> shift right 5 positions
+        Serial.print(lowByte(shiftRegister>>(17-bitCtr)),HEX);
+        Serial.println();
 #endif
-//        dataBuffer[dataCtr++]=lowByte(shiftRegister>>7);
-//        if(dataCtr==BUFFER_SIZE){
-//            dataCtr=0;
-//        }
+        //        dataBuffer[dataCtr++]=lowByte(shiftRegister>>6);
+        //        if(dataCtr==BUFFER_SIZE){
+        //            dataCtr=0;
+        //        }
+        bitCtr-=10;
+    }else{
+        //wrong data
+        Serial.println("reset");
+        bitCtr=0;
     }
-    bitCtr=1;
 }
 
 void processBit(word icr){
     if(icr<IrPhy::MINIMUM_GAP){
-        //Sync lost
-        shiftRegister=0;
-        bitCtr=0;
+        //spurious edge, ignore it.
 #ifdef DEBUG
-        Serial.print("sync lost");
+        Serial.print("spurious");
 #endif
     }else if(icr<IrPhy::ZERO_ONES_MAX){
         //0bit
@@ -128,19 +134,30 @@ void processBit(word icr){
         Serial.print("1111111110");
 #endif
     }else{
-        //startbit of new frame detected
-        shiftRegister=0;
-        bitCtr=1;
-#ifdef DEBUG
-        Serial.print("start");
-#endif
+        //very large gap
+        if(bitCtr){
+            //finish the current byte if it was busy
+            while(bitCtr<10){
+                shiftRegister>>=1;
+                shiftRegister|=0x8000;
+                bitCtr++;
+            }
+       }
+        if(icr<IrPhy::MAXIMUM_GAP){
+            //There's a received edge.  It must be starting edge of the next package
+            //shift in start bit
+            shiftRegister>>=1;
+            bitCtr++;
+        }
     }
-    if(bitCtr==11){
-        processShiftRegister();
-    }
+    Serial.print("\tbitCtr: ");
+    Serial.print(bitCtr);
     if(bitCtr>11){
         shiftRegister=0;
         bitCtr=0;
+    }
+    if(bitCtr>9){
+        processShiftRegister();
     }
 #ifdef DEBUG
     Serial.print("\tbitCtr: ");
@@ -160,26 +177,30 @@ ISR(TIMER1_CAPT_vect){
 }
 
 ISR(TIMER1_OVF_vect){
-    /*
-    if(bitCtr==9){
-        //After the last byte has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
-        //will go undetected.
-        //On runout of this timer, an artificial stop bit will be inserted.
-        shiftRegister>>=2;
-        shiftRegister|=0x4000;
-        bitCtr+=2;
-        processShiftRegister();
-    }else{
-        //this is a spurious edge, reset the shiftregister
-        shiftRegister=0;
-        bitCtr=0;
+    //After the last byte has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
+    //will go undetected.  The last byte would never be read completely and the state machine would hang.
+    //On runout of this timer, the data byte currently being read will finish.  The number of
+    //ones needed to finish the current byte will be shifted in.
+    //    if(!bitCtr){
+    //        //no byte read in progress, quit ISR
+    //        return;
+    //    }
+    //    while(bitCtr++<10){
+    //        shiftRegister>>=1;
+    //        shiftRegister|=0x8000;
+    //    }
+    //    processShiftRegister();
+    if(dataCtr>0 && dataBuffer[dataCtr-1]!=0xFFFF){
+        dataBuffer[dataCtr++]=0xFFFF;
     }
-    */
 }
 
 void IrPhy::show(){
-    Serial.print("datactr: ");
+    Serial.print("\r\ndatactr: ");
     Serial.println(dataCtr);
+    Serial.print("\tbitCtr: ");
+    Serial.print(bitCtr);
+    Serial.println();
     for(uint16_t i=0;i<dataCtr;i++){
         Serial.print(dataBuffer[i]);
         Serial.print("\t");

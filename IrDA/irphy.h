@@ -7,17 +7,18 @@ class IrPhy
 {
 public:
     static const byte ASYNC_WRAPPER_SIZE=100;
-    static const int NINE_ONES_MAX=1370;
-    static const int EIGHT_ONES_MAX=1230;
-    static const int SEVEN_ONES_MAX=1090;
-    static const int SIX_ONES_MAX=950;
-    static const int FIVE_ONES_MAX=810;
-    static const int FOUR_ONES_MAX=670;
-    static const int THREE_ONES_MAX=530;
-    static const int TWO_ONES_MAX=390;
-    static const int ONE_ONES_MAX=250;
-    static const int ZERO_ONES_MAX=110;
-    static const int MINIMUM_GAP=90;
+    static const word NINE_ONES_MAX=1370;
+    static const word EIGHT_ONES_MAX=1230;
+    static const word SEVEN_ONES_MAX=1090;
+    static const word SIX_ONES_MAX=950;
+    static const word FIVE_ONES_MAX=810;
+    static const word FOUR_ONES_MAX=670;
+    static const word THREE_ONES_MAX=530;
+    static const word TWO_ONES_MAX=390;
+    static const word ONE_ONES_MAX=250;
+    static const word ZERO_ONES_MAX=110;
+    static const word MINIMUM_GAP=90;
+    static const word MAXIMUM_GAP=0xFFFF;
     IrPhy();
     void init();
     bool send(byte* sendBuffer, byte byteCount);
