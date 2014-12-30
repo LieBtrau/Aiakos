@@ -13,7 +13,7 @@ typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
 static SENDSTATE sendState;
 static byte timer0;
 
-word shiftBuffer[10];
+word shiftBuffer[IrPhy::ASYNC_WRAPPER_SIZE];
 byte shiftCtr=0;
 
 word shiftRegister=0;
@@ -24,16 +24,14 @@ IrPhy::IrPhy(){
 }
 
 void IrPhy::show(){
-//    Serial.print("\r\ndatactr: ");
-//    Serial.println(dataCtr);
-//    Serial.println();
-//    for(byte i=0;i<dataCtr;i++){
-//        Serial.println(dataBuffer[i]);
-//        //processShiftRegister(dataBuffer[i]);
-//    }
+    Serial.print("bitctr: ");
+    Serial.println(bitCtr);
+    Serial.print("shiftRegister: ");
+    Serial.println(shiftRegister,HEX);
     Serial.println("shift");
-    for(byte i=0;i<shiftCtr;i++){
-        Serial.println(shiftBuffer[i], HEX);
+    for(byte i=0;i<shiftCtr;i++)
+    {
+        processShiftRegister(shiftBuffer[i]);
     }
     Serial.println("--------------");
 }
@@ -44,11 +42,8 @@ void IrPhy::processShiftRegister(word sr){
     if(bitRead(sr,6)==0 && bitRead(sr,15)==1){
         //start bit & stop bit detected
 #ifdef DEBUG2
-        Serial.print("\r\ndata: ");
-        //bitCtr=11 -> shift right 6 positions
-        //bitCtr=10 -> shift right 5 positions
-        Serial.print(lowByte(sr>>(7)),HEX);
-        Serial.println();
+        Serial.print("data: ");
+        Serial.println(lowByte(sr>>7),HEX);
 #endif
     }else{
         //wrong data
@@ -58,9 +53,6 @@ void IrPhy::processShiftRegister(word sr){
     }
 }
 
-void IrPhy::processBit(word icr){
-
-}
 
 //ISR for receiving IrDA signals
 ISR(TIMER1_CAPT_vect){
@@ -68,13 +60,7 @@ ISR(TIMER1_CAPT_vect){
     word icr=ICR1;
     TCNT1=0;
 
-//    if(icr<IrPhy::MINIMUM_GAP){
-//        //spurious edge, ignore it.
-//#ifdef DEBUG
-//        Serial.print("spurious");
-//#endif
-//    }else
-        if(icr<IrPhy::ZERO_ONES_MAX){
+    if(icr<IrPhy::ZERO_ONES_MAX){
         //0bit
         shiftRegister>>=1;
         bitCtr++;
@@ -162,9 +148,13 @@ ISR(TIMER1_CAPT_vect){
                 shiftRegister|=0x8000;
                 bitCtr++;
             }
-            shiftBuffer[shiftCtr++]=shiftRegister;
+            if(shiftCtr<IrPhy::ASYNC_WRAPPER_SIZE)
+            {
+                shiftBuffer[shiftCtr++]=shiftRegister;
+            }
         }
         //There's a received edge.  It must be starting edge of the next package
+        shiftRegister>>=1;
         bitCtr=1;
     }
 #ifdef DEBUG
@@ -195,8 +185,6 @@ ISR(TIMER1_CAPT_vect){
     Serial.println(shiftRegister,HEX);
 #endif
 
-//    dataBuffer[dataCtr++]=icr;
-
     bitClear(PORTD,4);
 }
 
@@ -212,13 +200,16 @@ ISR(TIMER1_OVF_vect){
             shiftRegister|=0x8000;
             bitCtr++;
         }
-        shiftBuffer[shiftCtr++]=shiftRegister;
+        if(shiftCtr<IrPhy::ASYNC_WRAPPER_SIZE)
+        {
+            shiftBuffer[shiftCtr++]=shiftRegister;
+        }
         bitCtr=0;
     }
 
-//    if(dataCtr>0 && dataBuffer[dataCtr-1]!=IrPhy::MAXIMUM_GAP){
-//        dataBuffer[dataCtr++]=IrPhy::MAXIMUM_GAP;
-//    }
+    //    if(dataCtr>0 && dataBuffer[dataCtr-1]!=IrPhy::MAXIMUM_GAP){
+    //        dataBuffer[dataCtr++]=IrPhy::MAXIMUM_GAP;
+    //    }
 }
 
 

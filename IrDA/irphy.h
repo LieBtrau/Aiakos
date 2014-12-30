@@ -31,9 +31,8 @@ private:
     static const byte EOF_FLAG=0xC1;
     static const byte CE=0x7D;
     void processShiftRegister(word sr);
-    void processBit(word icr);
     void startTx(byte* buffer, byte size);
-    byte _sendPacket[IrPhy::ASYNC_WRAPPER_SIZE];
+    byte _sendPacket[ASYNC_WRAPPER_SIZE];
 };
 
 
