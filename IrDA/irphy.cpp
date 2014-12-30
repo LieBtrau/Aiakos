@@ -2,7 +2,7 @@
 
 #include <util/crc16.h>
 #include "irphy.h"
-#define DEBUG 1
+#define DEBUG2 1
 
 static byte dataBitsMask;
 static byte* packetData;
@@ -13,9 +13,8 @@ typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
 static SENDSTATE sendState;
 static byte timer0;
 
-const uint8_t BUFFER_SIZE=100;
-word dataBuffer[BUFFER_SIZE];
-uint8_t dataCtr=0;
+word shiftBuffer[10];
+byte shiftCtr=0;
 
 word shiftRegister=0;
 byte bitCtr=0;
@@ -25,13 +24,16 @@ IrPhy::IrPhy(){
 }
 
 void IrPhy::show(){
-    Serial.print("\r\ndatactr: ");
-    Serial.println(dataCtr);
-    Serial.println();
-    for(uint16_t i=0;i<dataCtr;i++){
-        Serial.print(dataBuffer[i]);
-        processBit(dataBuffer[i]);
-        //processShiftRegister(dataBuffer[i]);
+//    Serial.print("\r\ndatactr: ");
+//    Serial.println(dataCtr);
+//    Serial.println();
+//    for(byte i=0;i<dataCtr;i++){
+//        Serial.println(dataBuffer[i]);
+//        //processShiftRegister(dataBuffer[i]);
+//    }
+    Serial.println("shift");
+    for(byte i=0;i<shiftCtr;i++){
+        Serial.println(shiftBuffer[i], HEX);
     }
     Serial.println("--------------");
 }
@@ -57,12 +59,22 @@ void IrPhy::processShiftRegister(word sr){
 }
 
 void IrPhy::processBit(word icr){
-    if(icr<IrPhy::MINIMUM_GAP){
-        //spurious edge, ignore it.
-#ifdef DEBUG
-        Serial.print("spurious");
-#endif
-    }else if(icr<IrPhy::ZERO_ONES_MAX){
+
+}
+
+//ISR for receiving IrDA signals
+ISR(TIMER1_CAPT_vect){
+    bitSet(PORTD,4);
+    word icr=ICR1;
+    TCNT1=0;
+
+//    if(icr<IrPhy::MINIMUM_GAP){
+//        //spurious edge, ignore it.
+//#ifdef DEBUG
+//        Serial.print("spurious");
+//#endif
+//    }else
+        if(icr<IrPhy::ZERO_ONES_MAX){
         //0bit
         shiftRegister>>=1;
         bitCtr++;
@@ -142,7 +154,7 @@ void IrPhy::processBit(word icr){
         Serial.print("\t1111111110");
 #endif
     }else{
-        //very large gap
+        //very large gap, but smaller than timer overflow
         if(bitCtr){
             //finish the current byte if it was busy
             while(bitCtr<10){
@@ -150,27 +162,24 @@ void IrPhy::processBit(word icr){
                 shiftRegister|=0x8000;
                 bitCtr++;
             }
+            shiftBuffer[shiftCtr++]=shiftRegister;
         }
-        if(icr<IrPhy::MAXIMUM_GAP){
-            //There's a received edge.  It must be starting edge of the next package
-            //shift in start bit
-            shiftRegister>>=1;
-            bitCtr++;
-        }
+        //There's a received edge.  It must be starting edge of the next package
+        bitCtr=1;
     }
 #ifdef DEBUG
     Serial.print("\tbitCtr: ");
     Serial.print(bitCtr);
 #endif
     if(bitCtr==10){
-        //dataBuffer[dataCtr++]=shiftRegister;
+        shiftBuffer[shiftCtr++]=shiftRegister;
 #ifdef DEBUG
         Serial.print("\r\nDecoded: ");
         Serial.println(shiftRegister, HEX);
 #endif
         bitCtr=0;
     }else if(bitCtr==11){
-        //dataBuffer[dataCtr++]=shiftRegister<<1;
+        shiftBuffer[shiftCtr++]=shiftRegister<<1;
 #ifdef DEBUG
         Serial.print("\r\nDecoded: ");
         Serial.println(shiftRegister<<1, HEX);
@@ -186,38 +195,30 @@ void IrPhy::processBit(word icr){
     Serial.println(shiftRegister,HEX);
 #endif
 
-}
-
-//ISR for receiving IrDA signals
-ISR(TIMER1_CAPT_vect){
-    bitSet(PORTD,4);
-    word icr=ICR1;
-    TCNT1=0;
-
-    dataBuffer[dataCtr++]=icr;
+//    dataBuffer[dataCtr++]=icr;
 
     bitClear(PORTD,4);
 }
 
 ISR(TIMER1_OVF_vect){
-    //After the last byte has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
-    //will go undetected.  The last byte would never be read completely and the state machine would hang.
-    //On runout of this timer, the data byte currently being read will finish.  The number of
-    //ones needed to finish the current byte will be shifted in.
-    //    if(bitCtr){
-    //        //finish the current byte if it was busy
-    //        while(bitCtr<10){
-    //            shiftRegister>>=1;
-    //            shiftRegister|=0x8000;
-    //            bitCtr++;
-    //        }
-    //        dataBuffer[dataCtr++]=shiftRegister;
-    //        bitCtr=0;
-    //    }
-
-    if(dataCtr>0 && dataBuffer[dataCtr-1]!=IrPhy::MAXIMUM_GAP){
-        dataBuffer[dataCtr++]=IrPhy::MAXIMUM_GAP;
+    //    //After the last byte has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
+    //    //will go undetected.  The last byte would never be read completely and the state machine would hang.
+    //    //On runout of this timer, the data byte currently being read will finish.  The number of
+    //    //ones needed to finish the current byte will be shifted in.
+    if(bitCtr){
+        //finish the current byte if it was busy
+        while(bitCtr<10){
+            shiftRegister>>=1;
+            shiftRegister|=0x8000;
+            bitCtr++;
+        }
+        shiftBuffer[shiftCtr++]=shiftRegister;
+        bitCtr=0;
     }
+
+//    if(dataCtr>0 && dataBuffer[dataCtr-1]!=IrPhy::MAXIMUM_GAP){
+//        dataBuffer[dataCtr++]=IrPhy::MAXIMUM_GAP;
+//    }
 }
 
 
