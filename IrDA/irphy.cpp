@@ -2,6 +2,8 @@
 
 #include <util/crc16.h>
 #include "irphy.h"
+#include "../RingBuffer.h"
+
 #define DEBUG2 1
 
 static byte dataBitsMask;
@@ -13,15 +15,29 @@ typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
 static SENDSTATE sendState;
 static byte timer0;
 
-word shiftBuffer[IrPhy::ASYNC_WRAPPER_SIZE];
-byte shiftCtr=0;
-
 word shiftRegister=0;
 byte bitCtr=0;
+//RingBuffer rb(IrPhy::ASYNC_WRAPPER_SIZE);
+word buffer[IrPhy::ASYNC_WRAPPER_SIZE];
+byte start;
+byte end;
+byte cnt;
 
 IrPhy::IrPhy(){
 
 }
+
+void push(word value)
+{
+    buffer[end] = value;
+    if (++end > IrPhy::ASYNC_WRAPPER_SIZE) end = 0;
+    if (cnt == IrPhy::ASYNC_WRAPPER_SIZE) {
+        if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
+    } else {
+        ++cnt;
+    }
+}
+
 
 void IrPhy::show(){
     Serial.print("bitctr: ");
@@ -29,9 +45,12 @@ void IrPhy::show(){
     Serial.print("shiftRegister: ");
     Serial.println(shiftRegister,HEX);
     Serial.println("shift");
-    for(byte i=0;i<shiftCtr;i++)
-    {
-        processShiftRegister(shiftBuffer[i]);
+    //    while(rb.count())
+    //    {
+    //        processShiftRegister(rb.pop());
+    //    }
+    for(byte i=0;i<cnt;i++){
+        processShiftRegister(buffer[i]);
     }
     Serial.println("--------------");
 }
@@ -116,7 +135,7 @@ ISR(TIMER1_CAPT_vect){
         Serial.print("\t1111110");
 #endif
     }else if(icr<IrPhy::SEVEN_ONES_MAX){
-        //0bit+7x1bit
+        //0bit+7x1bit (reading 0x7F or reading 0xFC)
         shiftRegister>>=8;
         shiftRegister|=0x7F00;
         bitCtr+=8;
@@ -124,17 +143,15 @@ ISR(TIMER1_CAPT_vect){
         Serial.print("\t11111110");
 #endif
     }else if(icr<IrPhy::EIGHT_ONES_MAX){
-        //S+8x1bit
-        shiftRegister>>=9;
-        shiftRegister|=0x7F80;
+        //0bit+8x1bit = reading 0xFE (reading 0x7F is only 7 consecutive ones)
+        shiftRegister=0x7F80;
         bitCtr+=9;
 #ifdef DEBUG
         Serial.print("\t111111110");
 #endif
     }else if(icr<IrPhy::NINE_ONES_MAX){
         //S+9x1bit = reading 0xFF
-        shiftRegister>>=10;
-        shiftRegister|=0x7FC0;
+        shiftRegister=0x7FC0;
         bitCtr+=10;
 #ifdef DEBUG
         Serial.print("\t1111111110");
@@ -148,28 +165,28 @@ ISR(TIMER1_CAPT_vect){
                 shiftRegister|=0x8000;
                 bitCtr++;
             }
-            if(shiftCtr<IrPhy::ASYNC_WRAPPER_SIZE)
-            {
-                shiftBuffer[shiftCtr++]=shiftRegister;
-            }
         }
         //There's a received edge.  It must be starting edge of the next package
         shiftRegister>>=1;
-        bitCtr=1;
+        bitCtr++;
     }
 #ifdef DEBUG
     Serial.print("\tbitCtr: ");
     Serial.print(bitCtr);
 #endif
     if(bitCtr==10){
-        shiftBuffer[shiftCtr++]=shiftRegister;
+        //rb.push(shiftRegister);
+        push(shiftRegister);
+        //dataBuf[dataCtr++]=shiftRegister;
 #ifdef DEBUG
         Serial.print("\r\nDecoded: ");
         Serial.println(shiftRegister, HEX);
 #endif
         bitCtr=0;
     }else if(bitCtr==11){
-        shiftBuffer[shiftCtr++]=shiftRegister<<1;
+        //rb.push(shiftRegister<<1);
+        push(shiftRegister<<1);
+        //dataBuf[dataCtr++]=shiftRegister<<1;
 #ifdef DEBUG
         Serial.print("\r\nDecoded: ");
         Serial.println(shiftRegister<<1, HEX);
@@ -200,10 +217,9 @@ ISR(TIMER1_OVF_vect){
             shiftRegister|=0x8000;
             bitCtr++;
         }
-        if(shiftCtr<IrPhy::ASYNC_WRAPPER_SIZE)
-        {
-            shiftBuffer[shiftCtr++]=shiftRegister;
-        }
+        //rb.push(shiftRegister);
+        push(shiftRegister);
+        //dataBuf[dataCtr++]=shiftRegister;
         bitCtr=0;
     }
 
@@ -275,6 +291,10 @@ bool IrPhy::sendingDone(){
 
 void IrPhy::init()
 {
+    end=0;
+    start=0;
+    cnt=0;
+
     pinMode(3,OUTPUT);
     pinMode(4,OUTPUT);
 #if defined(__AVR_ATmega328P__)

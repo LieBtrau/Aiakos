@@ -117,7 +117,7 @@ void setup()
     //    macChallengeExample();
     //  }
     ir.init();
-    byte data[3]={0xFF,0x00,0x01};
+    byte data[3]={0xFF,0xFE,0x01};
     ir.sendRaw(data,3);
     Serial.println("Setup done.");
 }
