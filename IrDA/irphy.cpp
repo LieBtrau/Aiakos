@@ -2,7 +2,6 @@
 
 #include <util/crc16.h>
 #include "irphy.h"
-#include "../RingBuffer.h"
 
 #define DEBUG2 1
 
@@ -17,7 +16,6 @@ static byte timer0;
 
 word shiftRegister=0;
 byte bitCtr=0;
-//RingBuffer rb(IrPhy::ASYNC_WRAPPER_SIZE);
 word buffer[IrPhy::ASYNC_WRAPPER_SIZE];
 byte start;
 byte end;
@@ -74,88 +72,66 @@ void IrPhy::processShiftRegister(word sr){
 
 
 //ISR for receiving IrDA signals
+//Reading data is achieved by triggering an interrupt on the rising edges of data (i.e. when a 0-bit is being received).
+//By measuring the time interval between two consecutive rising edges, the software calculates the number of 1-bits has
+//been received in the mean time.  That number of 1-bits will be shifted in in a shiftregister.
+//The disadvantage of using this method is that it's quite vulnerable to spurious edges.  It's adviced to leave on the
+//edge filtering of the timer capture unit.
+//The other option would be to poll the level of the RX-pin at fixed intervals.  The high time of a 0-bit however is only
+//1.4us.  To get reliable bit detection, you would have to poll at least every 1.4us/3 = 4us.   On a 16MHz MCU, this leaves
+//no time to do other things in the mean time.
 ISR(TIMER1_CAPT_vect){
     bitSet(PORTD,4);
     word icr=ICR1;
     TCNT1=0;
-
+    //STEP 1: Fill shift register
     if(icr<IrPhy::ZERO_ONES_MAX){
         //0bit
         shiftRegister>>=1;
         bitCtr++;
-#ifdef DEBUG
-        Serial.print("\t0");
-#endif
     }else if(icr<IrPhy::ONE_ONES_MAX){
         //0bit+1x1bit
         shiftRegister>>=2;
         shiftRegister|=0x4000;
         bitCtr+=2;
-#ifdef DEBUG
-        Serial.print("\t10");
-#endif
     }else if(icr<IrPhy::TWO_ONES_MAX){
         //0bit+2x1bit
         shiftRegister>>=3;
         shiftRegister|=0x6000;
         bitCtr+=3;
-#ifdef DEBUG
-        Serial.print("\t110");
-#endif
     }else if(icr<IrPhy::THREE_ONES_MAX){
         //0bit+3x1bit
         shiftRegister>>=4;
         shiftRegister|=0x7000;
         bitCtr+=4;
-#ifdef DEBUG
-        Serial.print("\t1110");
-#endif
     }else if(icr<IrPhy::FOUR_ONES_MAX){
         //0bit+4x1bit
         shiftRegister>>=5;
         shiftRegister|=0x7800;
         bitCtr+=5;
-#ifdef DEBUG
-        Serial.print("\t11110");
-#endif
     }else if(icr<IrPhy::FIVE_ONES_MAX){
         //0bit+5x1bit
         shiftRegister>>=6;
         shiftRegister|=0x7C00;
         bitCtr+=6;
-#ifdef DEBUG
-        Serial.print("\t111110");
-#endif
     }else if(icr<IrPhy::SIX_ONES_MAX){
         //0bit+6x1bit
         shiftRegister>>=7;
         shiftRegister|=0x7E00;
         bitCtr+=7;
-#ifdef DEBUG
-        Serial.print("\t1111110");
-#endif
     }else if(icr<IrPhy::SEVEN_ONES_MAX){
         //0bit+7x1bit (reading 0x7F or reading 0xFC)
         shiftRegister>>=8;
         shiftRegister|=0x7F00;
         bitCtr+=8;
-#ifdef DEBUG
-        Serial.print("\t11111110");
-#endif
     }else if(icr<IrPhy::EIGHT_ONES_MAX){
         //0bit+8x1bit = reading 0xFE (reading 0x7F is only 7 consecutive ones)
         shiftRegister=0x7F80;
         bitCtr+=9;
-#ifdef DEBUG
-        Serial.print("\t111111110");
-#endif
     }else if(icr<IrPhy::NINE_ONES_MAX){
         //S+9x1bit = reading 0xFF
         shiftRegister=0x7FC0;
         bitCtr+=10;
-#ifdef DEBUG
-        Serial.print("\t1111111110");
-#endif
     }else{
         //very large gap, but smaller than timer overflow
         if(bitCtr){
@@ -170,46 +146,24 @@ ISR(TIMER1_CAPT_vect){
         shiftRegister>>=1;
         bitCtr++;
     }
-#ifdef DEBUG
-    Serial.print("\tbitCtr: ");
-    Serial.print(bitCtr);
-#endif
+    //STEP 2: Check if shift register is full
     if(bitCtr==10){
-        //rb.push(shiftRegister);
         push(shiftRegister);
-        //dataBuf[dataCtr++]=shiftRegister;
-#ifdef DEBUG
-        Serial.print("\r\nDecoded: ");
-        Serial.println(shiftRegister, HEX);
-#endif
         bitCtr=0;
     }else if(bitCtr==11){
-        //rb.push(shiftRegister<<1);
         push(shiftRegister<<1);
-        //dataBuf[dataCtr++]=shiftRegister<<1;
-#ifdef DEBUG
-        Serial.print("\r\nDecoded: ");
-        Serial.println(shiftRegister<<1, HEX);
-#endif
         bitCtr=1;
     }else if(bitCtr>11){
         bitCtr=0;
     }
-#ifdef DEBUG
-    Serial.print("\tbitCtr: ");
-    Serial.print(bitCtr);
-    Serial.print("\tshiftRegister: 0x");
-    Serial.println(shiftRegister,HEX);
-#endif
-
     bitClear(PORTD,4);
 }
 
 ISR(TIMER1_OVF_vect){
-    //    //After the last byte has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
-    //    //will go undetected.  The last byte would never be read completely and the state machine would hang.
-    //    //On runout of this timer, the data byte currently being read will finish.  The number of
-    //    //ones needed to finish the current byte will be shifted in.
+    //After the last byte in a packet has been sent, its stop bit will not be followed by a new edge.  Hence the stop bit
+    //will go undetected.  The last byte would never be read completely and the state machine would hang.
+    //On runout of this timer, we assume that the stop bit has been sent.
+    //The data byte currently being read will finish.  The number of ones needed to finish the current byte will be shifted in.
     if(bitCtr){
         //finish the current byte if it was busy
         while(bitCtr<10){
@@ -217,15 +171,9 @@ ISR(TIMER1_OVF_vect){
             shiftRegister|=0x8000;
             bitCtr++;
         }
-        //rb.push(shiftRegister);
         push(shiftRegister);
-        //dataBuf[dataCtr++]=shiftRegister;
         bitCtr=0;
     }
-
-    //    if(dataCtr>0 && dataBuffer[dataCtr-1]!=IrPhy::MAXIMUM_GAP){
-    //        dataBuffer[dataCtr++]=IrPhy::MAXIMUM_GAP;
-    //    }
 }
 
 
@@ -314,10 +262,10 @@ void IrPhy::init()
     OCR2A=138;                        //In fast PWM-mode, timer will be cleared when it reaches OCR2A value.
 
     //Setup timer for receiving
-    //A 16bit timer is needed.
-    //It must be fast -> no prescaling
+    //A timer with at least 16bit resolution is needed.
+    //It must be fast -> no prescaling allowed
     //It must also be able to detect the XBOF header, which is a train of 11.5kHz pulses.
-    //An 8bit timer at this clockspeed rcan only count down to 62.5kHz (without artificial bit increasing by software).
+    //(An 8bit timer at this clockspeed can only count down to 62.5kHz).
     TCCR1A=0;
     bitSet(TCCR1B, ICNC1);          //Enable noise canceler (uses 4 CLK's)
     bitSet(TCCR1B, ICES1);          //Trigger on rising edge
