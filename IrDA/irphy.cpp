@@ -11,95 +11,62 @@ static byte packetDataCnt=0;
 static byte packetIndex=0;
 static byte dataReg;
 typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
-typedef enum{RX_MODE, TX_MODE} TIMER_MODE;
+
 static SENDSTATE sendState;
 static byte timer0;
 
-word shiftRegister=0;
-byte bitCtr=0;
-word buffer[IrPhy::ASYNC_WRAPPER_SIZE];
-byte start;
-byte end;
-byte cnt;
+static word shiftRegister=0;
+static byte bitCtr=0;
+static word buffer[IrPhy::ASYNC_WRAPPER_SIZE];
+static byte start;
+static byte end;
+static byte cnt;
 
 IrPhy::IrPhy(){
 
 }
 
-void push(word value)
+bool IrPhy::pop(word& data)
 {
-    buffer[end] = value;
-    if (++end > IrPhy::ASYNC_WRAPPER_SIZE) end = 0;
-    if (cnt == IrPhy::ASYNC_WRAPPER_SIZE) {
-        if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
-    } else {
-        ++cnt;
+    if(!cnt)
+    {
+        return false;
     }
-}
-
-void setTimerMode(TIMER_MODE tm){
-    switch (tm) {
-    case RX_MODE:
-        //Set Timer1 in mode 0: Normal, top=0xFFFF
-        bitClear(TCCR1A, WGM10);
-        bitClear(TCCR1A, WGM11);
-        bitClear(TCCR1B, WGM13);
-        bitClear(TCCR1B, WGM12);
-        bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
-        bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
-        bitClear(TIMSK1, OCIE1A);       //output compare interrupt disable
-        break;
-    case TX_MODE:
-        //Set Timer1 in mode 15: Fast PWM, top at OCR1A
-        bitSet(TCCR1A, WGM10);
-        bitSet(TCCR1A, WGM11);
-        bitSet(TCCR1B, WGM12);
-        bitSet(TCCR1B, WGM13);
-        bitClear(TIMSK1, ICIE1);
-        bitClear(TIMSK1, TOIE1);
-        TCNT1=0;
-        bitSet(TIMSK1, OCIE1A);
-        break;
-    default:
-        break;
+    data = buffer[start];
+    --cnt;
+    if (++start > IrPhy::ASYNC_WRAPPER_SIZE)
+    {
+        start = 0;
     }
+    return true;
 }
 
 
 void IrPhy::show(){
-    Serial.print("bitctr: ");
-    Serial.println(bitCtr);
-    Serial.print("shiftRegister: ");
-    Serial.println(shiftRegister,HEX);
-    Serial.println("shift");
-    //    while(rb.count())
-    //    {
-    //        processShiftRegister(rb.pop());
-    //    }
-    for(byte i=0;i<cnt;i++){
-        processShiftRegister(buffer[i]);
+    word sr;
+    byte data;
+    if(!pop(sr)){
+        return;
     }
-    Serial.println("--------------");
+    Serial.print(sr, HEX);
+    Serial.print("\t");
+    if(processShiftRegister(sr, data)){
+        Serial.print(data, HEX);
+    }
+    Serial.println();
 }
 
-void IrPhy::processShiftRegister(word sr){
-    //full byte including start bit of next byte: bitCtr=11 -> startbit = bit5 of shiftRegister, stopbit = bit14 of shiftregister
-    //full byte, no start bit of next byte: bitCtr=10 -> startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
-    if(bitRead(sr,6)==0 && bitRead(sr,15)==1){
-        //start bit & stop bit detected
-#ifdef DEBUG2
-        Serial.print("data: ");
-        Serial.println(lowByte(sr>>7),HEX);
-#endif
-    }else{
-        //wrong data
-#ifdef DEBUG2
-        Serial.println("\treset");
-#endif
+bool IrPhy::processShiftRegister(word sr, byte& data){
+    data=0;
+     //startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
+    bool bRetVal= (bitRead(sr,6)==0 && bitRead(sr,15)==1) ? true : false;
+    if(!bRetVal)
+    {
+        return false;
     }
+    data=lowByte(sr>>7);
+    return true;
 }
-
-
 
 
 void IrPhy::startTx(byte* buffer, byte size){
@@ -194,6 +161,45 @@ void IrPhy::init()
 #else
 #error Unsupported MCU
 #endif
+}
+
+void setTimerMode(TIMER_MODE tm){
+    switch (tm) {
+    case RX_MODE:
+        //Set Timer1 in mode 0: Normal, top=0xFFFF
+        bitClear(TCCR1A, WGM10);
+        bitClear(TCCR1A, WGM11);
+        bitClear(TCCR1B, WGM13);
+        bitClear(TCCR1B, WGM12);
+        bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
+        bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
+        bitClear(TIMSK1, OCIE1A);       //output compare interrupt disable
+        break;
+    case TX_MODE:
+        //Set Timer1 in mode 15: Fast PWM, top at OCR1A
+        bitSet(TCCR1A, WGM10);
+        bitSet(TCCR1A, WGM11);
+        bitSet(TCCR1B, WGM12);
+        bitSet(TCCR1B, WGM13);
+        bitClear(TIMSK1, ICIE1);
+        bitClear(TIMSK1, TOIE1);
+        TCNT1=0;
+        bitSet(TIMSK1, OCIE1A);
+        break;
+    default:
+        break;
+    }
+}
+
+void push(word value)
+{
+    buffer[end] = value;
+    if (++end > IrPhy::ASYNC_WRAPPER_SIZE) end = 0;
+    if (cnt == IrPhy::ASYNC_WRAPPER_SIZE) {
+        if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
+    } else {
+        ++cnt;
+    }
 }
 
 //ISR for generating IrDA signals

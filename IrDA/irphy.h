@@ -30,10 +30,14 @@ private:
     static const byte BOF=0xC0;
     static const byte EOF_FLAG=0xC1;
     static const byte CE=0x7D;
-    void processShiftRegister(word sr);
+    bool processShiftRegister(word sr, byte &data);
     void startTx(byte* buffer, byte size);
+    bool pop(word &data);
     byte _sendPacket[ASYNC_WRAPPER_SIZE];
 };
 
+void push(word value);
+typedef enum{RX_MODE, TX_MODE} TIMER_MODE;
+void setTimerMode(TIMER_MODE tm);
 
 #endif // IRPHY_H

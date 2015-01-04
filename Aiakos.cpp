@@ -74,10 +74,6 @@ bool CommandA(){
     return true;
 }
 
-void CommandB(){
-    ir.show();
-}
-
 void setup()
 {
     Serial.begin(9600);  // start serial to PC
@@ -135,11 +131,7 @@ void loop()
     //        }
     //        Serial.println();
     //    }
-    if(Serial.available()){
-        if(Serial.read()=='a'){
-            CommandB();
-        }
-    }
+    ir.show();
 }
 
 byte macChallengeExample() {
