@@ -11,6 +11,7 @@ static byte packetDataCnt=0;
 static byte packetIndex=0;
 static byte dataReg;
 typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
+typedef enum{RX_MODE, TX_MODE} TIMER_MODE;
 static SENDSTATE sendState;
 static byte timer0;
 
@@ -33,6 +34,34 @@ void push(word value)
         if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
     } else {
         ++cnt;
+    }
+}
+
+void setTimerMode(TIMER_MODE tm){
+    switch (tm) {
+    case RX_MODE:
+        //Set Timer1 in mode 0: Normal, top=0xFFFF
+        bitClear(TCCR1A, WGM10);
+        bitClear(TCCR1A, WGM11);
+        bitClear(TCCR1B, WGM13);
+        bitClear(TCCR1B, WGM12);
+        bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
+        bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
+        bitClear(TIMSK1, OCIE1A);       //output compare interrupt disable
+        break;
+    case TX_MODE:
+        //Set Timer1 in mode 15: Fast PWM, top at OCR1A
+        bitSet(TCCR1A, WGM10);
+        bitSet(TCCR1A, WGM11);
+        bitSet(TCCR1B, WGM12);
+        bitSet(TCCR1B, WGM13);
+        bitClear(TIMSK1, ICIE1);
+        bitClear(TIMSK1, TOIE1);
+        TCNT1=0;
+        bitSet(TIMSK1, OCIE1A);
+        break;
+    default:
+        break;
     }
 }
 
@@ -70,6 +99,139 @@ void IrPhy::processShiftRegister(word sr){
     }
 }
 
+
+
+
+void IrPhy::startTx(byte* buffer, byte size){
+#ifdef DEBUG
+    for(byte i=0;i<size;i++){
+        Serial.print(buffer[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+#endif
+    packetDataCnt=size;
+    packetData=buffer;
+    //Disable timer0
+    timer0=TCCR0B;
+    bitClear(TCCR0B,CS02);
+    bitClear(TCCR0B,CS01);
+    bitClear(TCCR0B,CS00);
+    packetIndex=0;
+    dataBitsMask=0x01;
+    setTimerMode(TX_MODE);
+}
+
+bool IrPhy::sendRaw(byte* sendBuffer, byte byteCount){
+    memcpy(_sendPacket,sendBuffer,byteCount);
+    startTx(_sendPacket,byteCount);
+    return true;
+}
+
+//Construct ASYNC WRAPPER packet: XBOF | BOF | DATA | FCS | EOF
+bool IrPhy::send(byte* sendBuffer, byte byteCount){
+    word crc=0xFFFF;
+    byte size=0;
+    //XBOF
+    for(size=0;size<10;size++){
+        _sendPacket[size]=XBOF;
+    }
+    //BOF
+    _sendPacket[size++]=BOF;
+    //DATA
+    for(byte i=0;i<byteCount;i++){
+        byte c=sendBuffer[i];
+        crc=_crc_ccitt_update(crc,c);
+        if(c==BOF || c==EOF_FLAG || c==CE){
+            _sendPacket[size++]=0x7D;
+            c ^= 0x20;
+        }
+        _sendPacket[size++]=c;
+    }
+    //FCS
+    _sendPacket[size++]= ~lowByte(crc);
+    _sendPacket[size++]= ~highByte(crc);
+    //EOF
+    _sendPacket[size++]=EOF_FLAG;
+    startTx(_sendPacket, size);
+    return true;
+}
+
+bool IrPhy::sendingDone(){
+    return bitRead(TIMSK1, OCIE1A);
+}
+
+void IrPhy::init()
+{
+    end=0;
+    start=0;
+    cnt=0;
+
+    pinMode(4,OUTPUT);
+#if defined(__AVR_ATmega328P__)
+    //For receiving data, a timer with at least 16bit resolution is needed.
+    //It must be fast -> no prescaling allowed
+    //It must also be able to detect the XBOF header, which is a train of 11.5kHz pulses.
+    //(An 8bit timer at this clockspeed can only count down to 62.5kHz).
+    //Power Up Timer1
+    bitClear(PRR, PRTIM1);
+    //Disconnect OC1B for the time being
+    bitClear(TCCR1A, COM1B0);
+    bitClear(TCCR1A, COM1B1);
+    //Timer1 clock: no prescaling
+    bitClear(TCCR1B, CS12);
+    bitClear(TCCR1B, CS11);
+    bitSet(TCCR1B, CS10);
+    //t_pulse = N*(1+OCR1B)/fclk => OCR1B = T_pulse * fclk - 1 = 1.63u * 16e6 - 1 = 25
+    OCR1B=25;
+    //f = fclk/(N*(1+OCR1A)) => OCR1A = fclk / f - 1 = 16e6 / 115200 - 1 = 138
+    OCR1A=138;
+    //OC1B-pin is PB2 = Arduino pin 10
+    pinMode(10,OUTPUT);
+    bitSet(TCCR1B, ICNC1);          //Enable noise canceler (uses 4 CLK's)
+    bitSet(TCCR1B, ICES1);          //Trigger on rising edge
+    setTimerMode(RX_MODE);
+#else
+#error Unsupported MCU
+#endif
+}
+
+//ISR for generating IrDA signals
+ISR(TIMER1_COMPA_vect){
+    switch(sendState){
+    case STARTBIT:
+        bitSet(TCCR1A, COM1B1);
+        dataBitsMask=0x01;
+        dataReg=packetData[packetIndex];
+        sendState=DATABITS;
+        break;
+    case DATABITS:
+        if(dataReg & dataBitsMask){
+            bitClear(TCCR1A, COM1B1);
+        }else{
+            bitSet(TCCR1A, COM1B1);
+        }
+        dataBitsMask<<=1;
+        if(!dataBitsMask)
+        {
+            sendState=STOPBIT;
+        }
+        break;
+    case STOPBIT:
+        bitClear(TCCR1A, COM1B1);
+        if(packetIndex < packetDataCnt - 1)
+        {
+            packetIndex++;
+            sendState=STARTBIT;
+        }else{
+            //reset packetBuffer
+            packetDataCnt=0;
+            TCCR0B=timer0;
+            setTimerMode(RX_MODE);
+        }
+        break;
+    }
+}
 
 //ISR for receiving IrDA signals
 //Reading data is achieved by triggering an interrupt on the rising edges of data (i.e. when a 0-bit is being received).
@@ -173,151 +335,5 @@ ISR(TIMER1_OVF_vect){
         }
         push(shiftRegister);
         bitCtr=0;
-    }
-}
-
-
-void IrPhy::startTx(byte* buffer, byte size){
-#ifdef DEBUG
-    for(byte i=0;i<size;i++){
-        Serial.print(buffer[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-#endif
-    packetDataCnt=size;
-    packetData=buffer;
-    //Disable timer0
-    timer0=TCCR0B;
-    bitClear(TCCR0B,CS02);
-    bitClear(TCCR0B,CS01);
-    bitClear(TCCR0B,CS00);
-    packetIndex=0;
-    dataBitsMask=0x01;
-    TCNT2=0;
-    bitSet(TIMSK2,OCIE2A);          //Enable interrupt on OCR2B compare match
-}
-
-bool IrPhy::sendRaw(byte* sendBuffer, byte byteCount){
-    memcpy(_sendPacket,sendBuffer,byteCount);
-    startTx(_sendPacket,byteCount);
-    return true;
-}
-
-//Construct ASYNC WRAPPER packet: XBOF | BOF | DATA | FCS | EOF
-bool IrPhy::send(byte* sendBuffer, byte byteCount){
-    word crc=0xFFFF;
-    byte size=0;
-    //XBOF
-    for(size=0;size<10;size++){
-        _sendPacket[size]=XBOF;
-    }
-    //BOF
-    _sendPacket[size++]=BOF;
-    //DATA
-    for(byte i=0;i<byteCount;i++){
-        byte c=sendBuffer[i];
-        crc=_crc_ccitt_update(crc,c);
-        if(c==BOF || c==EOF_FLAG || c==CE){
-            _sendPacket[size++]=0x7D;
-            c ^= 0x20;
-        }
-        _sendPacket[size++]=c;
-    }
-    //FCS
-    _sendPacket[size++]= ~lowByte(crc);
-    _sendPacket[size++]= ~highByte(crc);
-    //EOF
-    _sendPacket[size++]=EOF_FLAG;
-    startTx(_sendPacket, size);
-    return true;
-}
-
-bool IrPhy::sendingDone(){
-    return bitRead(TIMSK2, OCIE2A);
-}
-
-void IrPhy::init()
-{
-    end=0;
-    start=0;
-    cnt=0;
-
-    pinMode(3,OUTPUT);
-    pinMode(4,OUTPUT);
-#if defined(__AVR_ATmega328P__)
-    //Setup timer for sending
-    bitClear(PRR,PRTIM2);            //Power up Timer2
-    bitSet(TCCR2B,WGM22);            //Put timer 2 in fast PWM-mode with top at OCR2A
-    bitSet(TCCR2A,WGM21);
-    bitSet(TCCR2A,WGM20);
-    bitClear(TCCR2A, COM2B1);          //Clear OC2B-pin upon compare match
-    bitClear(TCCR2A, COM2B0);
-    bitClear(TCCR2B, CS22);          //No prescaler, fTimer = fclk = 16MHz
-    bitClear(TCCR2B, CS21);
-    bitSet(TCCR2B, CS20);
-    //T_pulse = N*(1+OCR2B)/fclk => OCR2B = T_pulse * fclk - 1 = 1.63u * 16e6 - 1 = 25
-    OCR2B=25;
-    //f = fclk/(N*(1+OCR2A)) => OCR2A = fclk / f - 1 = 16e6 / 115200 - 1 = 138
-    OCR2A=138;                        //In fast PWM-mode, timer will be cleared when it reaches OCR2A value.
-
-    //Setup timer for receiving
-    //A timer with at least 16bit resolution is needed.
-    //It must be fast -> no prescaling allowed
-    //It must also be able to detect the XBOF header, which is a train of 11.5kHz pulses.
-    //(An 8bit timer at this clockspeed can only count down to 62.5kHz).
-    TCCR1A=0;
-    bitSet(TCCR1B, ICNC1);          //Enable noise canceler (uses 4 CLK's)
-    bitSet(TCCR1B, ICES1);          //Trigger on rising edge
-    bitClear(TCCR1B, WGM13);
-    bitClear(TCCR1B, WGM12);        //Timer1 mode 0: Normal, top=0xFFFF
-    bitClear(TCCR1B, CS12);         //Timer1 clock: no prescaling
-    bitClear(TCCR1B, CS11);
-    bitSet(TCCR1B, CS10);
-    ICR1=0;
-    bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
-    bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
-#else
-#error Unsupported MCU
-#endif
-}
-
-
-
-//ISR for generating IrDA signals
-ISR(TIMER2_COMPA_vect){
-    switch(sendState){
-    case STARTBIT:
-        bitSet(TCCR2A, COM2B1);
-        dataBitsMask=0x01;
-        dataReg=packetData[packetIndex];
-        sendState=DATABITS;
-        break;
-    case DATABITS:
-        if(dataReg & dataBitsMask){
-            bitClear(TCCR2A, COM2B1);
-        }else{
-            bitSet(TCCR2A, COM2B1);
-        }
-        dataBitsMask<<=1;
-        if(!dataBitsMask)
-        {
-            sendState=STOPBIT;
-        }
-        break;
-    case STOPBIT:
-        bitClear(TCCR2A, COM2B1);
-        if(packetIndex < packetDataCnt - 1)
-        {
-            packetIndex++;
-            sendState=STARTBIT;
-        }else{
-            //stop interrupt routine
-            bitClear(TIMSK2,OCIE2A);
-            //reset packetBuffer
-            packetDataCnt=0;
-            TCCR0B=timer0;
-        }
-        break;
     }
 }
