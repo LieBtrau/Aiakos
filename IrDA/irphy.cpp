@@ -187,9 +187,14 @@ void setTimerMode(TIMER_MODE tm){
         bitSet(TCCR1A, WGM11);
         bitSet(TCCR1B, WGM12);
         bitSet(TCCR1B, WGM13);
+        //Disable interrupts that are used for receiving data
         bitClear(TIMSK1, ICIE1);
         bitClear(TIMSK1, TOIE1);
+        //Reset timer value
         TCNT1=0;
+        //Reset sending state machine
+        sendState=STARTBIT;
+        //Enable interrupt for sending data
         bitSet(TIMSK1, OCIE1A);
         break;
     default:
