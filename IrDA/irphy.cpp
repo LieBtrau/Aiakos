@@ -1,17 +1,22 @@
-//Implemenation of SIR (for baudrate of 115200baud)
+/* Implementation of SIR (for baudrate of 115200baud)
+ * Uses: Timer1
+ * Uses: Arduino pin 10 for sending data
+ * Uses: Arduino pin 8  for receiving data
+ */
 
 #include <util/crc16.h>
 #include "irphy.h"
 
 #define DEBUG2 1
 
+typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
+
+static SENDSTATE sendState;
 static byte dataBitsMask;
 static byte* packetData;
 static byte packetDataCnt=0;
 static byte packetIndex=0;
 static byte dataReg;
-typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
-static SENDSTATE sendState;
 static byte timer0;
 static word shiftRegister=0;
 static byte bitCtr=0;
@@ -138,7 +143,6 @@ void IrPhy::init()
     start=0;
     cnt=0;
 
-    pinMode(3, OUTPUT);
     pinMode(4,OUTPUT);
 #if defined(__AVR_ATmega328P__)
     //For receiving data, a timer with at least 16bit resolution is needed.
@@ -260,7 +264,6 @@ ISR(TIMER1_COMPA_vect){
 //1.4us.  To get reliable bit detection, you would have to poll at least every 1.4us/3 = 4us.   On a 16MHz MCU, this leaves
 //no time to do other things in the mean time.
 ISR(TIMER1_CAPT_vect){
-    bitSet(PORTD,4);
     word icr=ICR1;
     TCNT1=0;
     //STEP 1: Fill shift register
@@ -335,7 +338,6 @@ ISR(TIMER1_CAPT_vect){
     }else if(bitCtr>11){
         bitCtr=0;
     }
-    bitClear(PORTD,4);
 }
 
 ISR(TIMER1_OVF_vect){

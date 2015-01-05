@@ -40,7 +40,6 @@ rdm630 rfid(6, 0);  //TX-pin of RDM630 connected to Arduino pin 6
 Hashlet hashLet(Hashlet::ATECC108);
 //IrLAP ir;
 IrPhy ir;
-long lStartTime;
 byte data[3]={0xFF,0xFE,0x01};
 
 uint8_t private_mr_key[NUM_ECC_DIGITS] = {
@@ -115,9 +114,7 @@ void setup()
     //    macChallengeExample();
     //  }
     ir.init();
-    ir.sendRaw(data,3);
     Serial.println("Setup done.");
-    lStartTime=millis();
 }
 
 void loop()
@@ -134,9 +131,9 @@ void loop()
     //        Serial.println();
     //    }
     ir.show();
-    if(millis()-lStartTime>5000){
-        lStartTime=millis();
-        ir.sendRaw(data,3);
+    if(Serial.available()){
+        data[0]=Serial.read();
+        ir.sendRaw(data,1);
     }
 }
 
