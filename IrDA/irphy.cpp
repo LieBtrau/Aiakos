@@ -11,10 +11,8 @@ static byte packetDataCnt=0;
 static byte packetIndex=0;
 static byte dataReg;
 typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
-
 static SENDSTATE sendState;
 static byte timer0;
-
 static word shiftRegister=0;
 static byte bitCtr=0;
 static word buffer[IrPhy::ASYNC_WRAPPER_SIZE];
@@ -49,6 +47,12 @@ void IrPhy::show(){
         return;
     }
     Serial.print(sr, HEX);
+    Serial.print("\t");
+    Serial.print(cnt);
+    Serial.print("\t");
+    Serial.print(start);
+    Serial.print("\t");
+    Serial.print(end);
     Serial.print("\t");
     if(processShiftRegister(sr, data)){
         Serial.print(data, HEX);
@@ -134,6 +138,7 @@ void IrPhy::init()
     start=0;
     cnt=0;
 
+    pinMode(3, OUTPUT);
     pinMode(4,OUTPUT);
 #if defined(__AVR_ATmega328P__)
     //For receiving data, a timer with at least 16bit resolution is needed.
@@ -171,6 +176,7 @@ void setTimerMode(TIMER_MODE tm){
         bitClear(TCCR1A, WGM11);
         bitClear(TCCR1B, WGM13);
         bitClear(TCCR1B, WGM12);
+        bitSet(TIFR1, ICF1);            //Clear pending interrupt in case was one
         bitSet(TIMSK1, ICIE1);          //input capture interrupt enable (on ICP-pin = Arduino pin 8)
         bitSet(TIMSK1, TOIE1);          //timer overflow interrupt enable
         bitClear(TIMSK1, OCIE1A);       //output compare interrupt disable
