@@ -5,7 +5,6 @@ IrLAP::IrLAP():_irPhy()
 }
 
 void IrLAP::show(){
-    _irPhy.show();
 }
 
 void IrLAP::init(){

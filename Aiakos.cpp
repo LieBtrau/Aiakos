@@ -117,6 +117,17 @@ void setup()
     Serial.println("Setup done.");
 }
 
+void show(){
+    byte buffer[10];
+    byte length;
+    if(ir.recv(buffer, length)){
+        for(byte i=0;i<length;i++){
+            Serial.write(buffer[i]);
+        }
+    }
+}
+
+
 void loop()
 {
     //    byte data[6];
@@ -130,7 +141,7 @@ void loop()
     //        }
     //        Serial.println();
     //    }
-    ir.show();
+    show();
     if(Serial.available()){
         data[0]=Serial.read();
         ir.sendRaw(data,1);

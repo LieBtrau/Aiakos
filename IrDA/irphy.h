@@ -21,10 +21,10 @@ public:
     static const word MAXIMUM_GAP=0xFFFF;
     IrPhy();
     void init();
-    bool send(byte* sendBuffer, byte byteCount);
-    bool sendRaw(byte* sendBuffer, byte byteCount);
+    bool send(const byte* sendBuffer, byte byteCount);
+    bool sendRaw(const byte* sendBuffer, byte byteCount);
+    bool recv(byte* buffer, byte& length);
     bool sendingDone();
-    void show();
 private:
     static const byte XBOF=0xFF;
     static const byte BOF=0xC0;

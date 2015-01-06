@@ -44,37 +44,19 @@ bool IrPhy::pop(word& data)
     return true;
 }
 
-
-void IrPhy::show(){
+bool IrPhy::recv(byte* buffer, byte& length)
+{
     word sr;
-    byte data;
-    if(!pop(sr)){
-        return;
-    }
-    Serial.print(sr, HEX);
-    Serial.print("\t");
-    Serial.print(cnt);
-    Serial.print("\t");
-    Serial.print(start);
-    Serial.print("\t");
-    Serial.print(end);
-    Serial.print("\t");
-    if(processShiftRegister(sr, data)){
-        Serial.print(data, HEX);
-    }
-    Serial.println();
-}
-
-bool IrPhy::processShiftRegister(word sr, byte& data){
-    data=0;
-     //startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
-    bool bRetVal= (bitRead(sr,6)==0 && bitRead(sr,15)==1) ? true : false;
-    if(!bRetVal)
+    length=0;
+    while(pop(sr))
     {
-        return false;
+        //startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
+        if(bitRead(sr,6)==0 && bitRead(sr,15)==1)
+        {
+            buffer[length++]=lowByte(sr>>7);
+        }
     }
-    data=lowByte(sr>>7);
-    return true;
+    return length>0;
 }
 
 
@@ -98,14 +80,14 @@ void IrPhy::startTx(byte* buffer, byte size){
     setTimerMode(TX_MODE);
 }
 
-bool IrPhy::sendRaw(byte* sendBuffer, byte byteCount){
+bool IrPhy::sendRaw(const byte* sendBuffer, byte byteCount){
     memcpy(_sendPacket,sendBuffer,byteCount);
     startTx(_sendPacket,byteCount);
     return true;
 }
 
 //Construct ASYNC WRAPPER packet: XBOF | BOF | DATA | FCS | EOF
-bool IrPhy::send(byte* sendBuffer, byte byteCount){
+bool IrPhy::send(const byte* sendBuffer, byte byteCount){
     word crc=0xFFFF;
     byte size=0;
     //XBOF
