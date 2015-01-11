@@ -114,16 +114,27 @@ void setup()
     //    macChallengeExample();
     //  }
     ir.init();
+    ir.send(data,3);
     Serial.println("Setup done.");
 }
 
 void show(){
-    byte buffer[10];
+    //    byte buffer[10];
+    //    byte length;
+    //    if(ir.recvraw(buffer, length)){
+    //        for(byte i=0;i<length;i++){
+    //            Serial.write(buffer[i]);
+    //        }
+    //    }
+
+    byte buffer[50];
     byte length;
     if(ir.recv(buffer, length)){
         for(byte i=0;i<length;i++){
-            Serial.write(buffer[i]);
+            Serial.print(buffer[i], HEX);
+            Serial.print(" ");
         }
+        Serial.println();
     }
 }
 
@@ -142,10 +153,15 @@ void loop()
     //        Serial.println();
     //    }
     show();
+    //    if(Serial.available()){
+    //        data[0]=Serial.read();
+    //        ir.sendRaw(data,1);
+    //    }
     if(Serial.available()){
         data[0]=Serial.read();
-        ir.sendRaw(data,1);
+        ir.send(data,1);
     }
+
 }
 
 byte macChallengeExample() {

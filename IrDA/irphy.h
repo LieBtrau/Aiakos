@@ -24,16 +24,21 @@ public:
     bool send(const byte* sendBuffer, byte byteCount);
     bool sendRaw(const byte* sendBuffer, byte byteCount);
     bool recv(byte* buffer, byte& length);
+    bool recvraw(byte* buffer, byte& length);
     bool sendingDone();
 private:
     static const byte XBOF=0xFF;
     static const byte BOF=0xC0;
     static const byte EOF_FLAG=0xC1;
     static const byte CE=0x7D;
+    typedef enum{STATE_A, STATE_B, STATE_C, STATE_D} RXSTATE;
     bool processShiftRegister(word sr, byte &data);
     void startTx(byte* buffer, byte size);
     bool pop(word &data);
-    byte _sendPacket[ASYNC_WRAPPER_SIZE];
+    RXSTATE _rxState;
+    byte _txPacket[ASYNC_WRAPPER_SIZE];
+    byte _rxPacket[ASYNC_WRAPPER_SIZE];
+    byte _rxCtr;
 };
 
 void push(word value);

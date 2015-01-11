@@ -7,10 +7,9 @@
 #include <util/crc16.h>
 #include "irphy.h"
 
-#define DEBUG2 1
+#define DEBUG 1
 
 typedef enum{STARTBIT, DATABITS, STOPBIT} SENDSTATE;
-
 static SENDSTATE sendState;
 static byte dataBitsMask;
 static byte* packetData;
@@ -29,22 +28,102 @@ IrPhy::IrPhy(){
 
 }
 
-bool IrPhy::pop(word& data)
-{
-    if(!cnt)
+
+bool IrPhy::recv(byte* buffer, byte& length){
+    length=0;
+    word sr=0;
+    word crc=0xFFFF;
+    while(pop(sr) && bitRead(sr,6)==0 && bitRead(sr,15)==1)
     {
-        return false;
+        //startbit=bit6 of shiftRegister, stopBit = bit15 of shiftregister
+        byte dataByte=lowByte(sr>>7);
+        //State machine as on IRLAP1.1 §10.1.5
+        switch(_rxState){
+        case STATE_A:
+            //No packet detected
+            switch(dataByte)
+            {
+            case BOF:
+            case XBOF:
+                _rxState=STATE_B;
+                break;
+            default:
+                break;
+            }
+            break;
+        case STATE_B:
+            //Receiving packet header
+            switch(dataByte)
+            {
+            case EOF_FLAG:
+                _rxState=STATE_A;
+                break;
+            case BOF:
+            case XBOF:
+                break;
+            case CE:
+                _rxState=STATE_C;
+                break;
+            default:
+                _rxCtr=0;
+                _rxPacket[_rxCtr++]=dataByte;
+                _rxState=STATE_D;
+                break;
+            }
+            break;
+        case STATE_C:
+            //Escape character detected
+            switch(dataByte){
+            case EOF_FLAG:
+                _rxState=STATE_A;
+                break;
+            case BOF:
+            case XBOF:
+                _rxState=STATE_B;
+                break;
+            default:
+                //data byte following CE-byte has bit5 inverted.
+                _rxPacket[_rxCtr++]=dataByte ^ 0x20;
+                _rxState=STATE_D;
+                break;
+            }
+            break;
+        case STATE_D:
+            //Receiving data
+            switch (dataByte) {
+            case EOF_FLAG:
+                _rxState=STATE_A;
+                for(byte i=0;i<_rxCtr-2;i++){
+                    crc=_crc_ccitt_update(crc,_rxPacket[i]);
+                }
+                crc=~crc;
+                if (lowByte(crc)==_rxPacket[_rxCtr-2] && highByte(crc)==_rxPacket[_rxCtr-1]){
+                    length=_rxCtr-2;
+                    memcpy(buffer,_rxPacket,length);
+                    return true;
+                }
+                break;
+            case BOF:
+            case XBOF:
+                _rxState=STATE_B;
+                break;
+            case CE:
+                _rxState=STATE_C;
+                break;
+            default:
+                _rxPacket[_rxCtr++]=dataByte;
+                break;
+            }
+            break;
+        default:
+            _rxState=STATE_A;
+            break;
+        }
     }
-    data = buffer[start];
-    --cnt;
-    if (++start > IrPhy::ASYNC_WRAPPER_SIZE)
-    {
-        start = 0;
-    }
-    return true;
+    return false;
 }
 
-bool IrPhy::recv(byte* buffer, byte& length)
+bool IrPhy::recvraw(byte* buffer, byte& length)
 {
     word sr;
     length=0;
@@ -60,14 +139,9 @@ bool IrPhy::recv(byte* buffer, byte& length)
 }
 
 
+
+
 void IrPhy::startTx(byte* buffer, byte size){
-#ifdef DEBUG
-    for(byte i=0;i<size;i++){
-        Serial.print(buffer[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-#endif
     packetDataCnt=size;
     packetData=buffer;
     //Disable timer0
@@ -81,8 +155,8 @@ void IrPhy::startTx(byte* buffer, byte size){
 }
 
 bool IrPhy::sendRaw(const byte* sendBuffer, byte byteCount){
-    memcpy(_sendPacket,sendBuffer,byteCount);
-    startTx(_sendPacket,byteCount);
+    memcpy(_rxPacket,sendBuffer,byteCount);
+    startTx(_rxPacket,byteCount);
     return true;
 }
 
@@ -90,28 +164,43 @@ bool IrPhy::sendRaw(const byte* sendBuffer, byte byteCount){
 bool IrPhy::send(const byte* sendBuffer, byte byteCount){
     word crc=0xFFFF;
     byte size=0;
+    byte state=0;
+    byte i=0;
     //XBOF
     for(size=0;size<10;size++){
-        _sendPacket[size]=XBOF;
+        _rxPacket[size]=XBOF;
     }
     //BOF
-    _sendPacket[size++]=BOF;
+    _rxPacket[size++]=BOF;
     //DATA
-    for(byte i=0;i<byteCount;i++){
-        byte c=sendBuffer[i];
-        crc=_crc_ccitt_update(crc,c);
-        if(c==BOF || c==EOF_FLAG || c==CE){
-            _sendPacket[size++]=0x7D;
+    while(state!=3){
+        byte c=0;
+        switch(state){
+        case 0:
+            c=sendBuffer[i++];
+            crc=_crc_ccitt_update(crc,c);
+            if(i==byteCount){
+                state=1;
+            }
+            break;
+        case 1:
+            c=~lowByte(crc);
+            state=2;
+            break;
+        case 2:
+            c=~highByte(crc);
+            state=3;
+            break;
+        }
+        if(c==XBOF || c==BOF || c==EOF_FLAG || c==CE){
+            _rxPacket[size++]=CE;
             c ^= 0x20;
         }
-        _sendPacket[size++]=c;
+        _rxPacket[size++]=c;
     }
-    //FCS
-    _sendPacket[size++]= ~lowByte(crc);
-    _sendPacket[size++]= ~highByte(crc);
     //EOF
-    _sendPacket[size++]=EOF_FLAG;
-    startTx(_sendPacket, size);
+    _rxPacket[size++]=EOF_FLAG;
+    startTx(_rxPacket, size);
     return true;
 }
 
@@ -154,6 +243,37 @@ void IrPhy::init()
 #endif
 }
 
+bool IrPhy::pop(word& data)
+{
+    if(!cnt)
+    {
+        return false;
+    }
+    //Popping characters must be an atomic operation to avoid corruption of the fifo-buffer due to pushing (by ISR), while main loop
+    //is popping.
+    cli();
+    data = buffer[start];
+    --cnt;
+    if (++start > IrPhy::ASYNC_WRAPPER_SIZE)
+    {
+        start = 0;
+    }
+    sei();
+    return true;
+}
+
+
+void push(word value)
+{
+    buffer[end] = value;
+    if (++end > IrPhy::ASYNC_WRAPPER_SIZE) end = 0;
+    if (cnt == IrPhy::ASYNC_WRAPPER_SIZE) {
+        if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
+    } else {
+        ++cnt;
+    }
+}
+
 void setTimerMode(TIMER_MODE tm){
     switch (tm) {
     case RX_MODE:
@@ -188,16 +308,7 @@ void setTimerMode(TIMER_MODE tm){
     }
 }
 
-void push(word value)
-{
-    buffer[end] = value;
-    if (++end > IrPhy::ASYNC_WRAPPER_SIZE) end = 0;
-    if (cnt == IrPhy::ASYNC_WRAPPER_SIZE) {
-        if (++start > IrPhy::ASYNC_WRAPPER_SIZE) start = 0;
-    } else {
-        ++cnt;
-    }
-}
+
 
 //ISR for generating IrDA signals
 ISR(TIMER1_COMPA_vect){
