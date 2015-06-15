@@ -1,3 +1,19 @@
+/*  IrDA library
+    Copyright (C) 2015  Christoph Tack
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /* Implementation of SIR (for baudrate of 115200baud)
  * Uses: Timer1
  * Uses: Arduino pin 10 for sending data
@@ -138,9 +154,6 @@ bool IrPhy::recvraw(byte* buffer, byte& length)
     return length>0;
 }
 
-
-
-
 void IrPhy::startTx(byte* buffer, byte size){
     packetDataCnt=size;
     packetData=buffer;
@@ -251,14 +264,14 @@ bool IrPhy::pop(word& data)
     }
     //Popping characters must be an atomic operation to avoid corruption of the fifo-buffer due to pushing (by ISR), while main loop
     //is popping.
-    cli();
+    noInterrupts();
     data = buffer[start];
     --cnt;
     if (++start > IrPhy::ASYNC_WRAPPER_SIZE)
     {
         start = 0;
     }
-    sei();
+    interrupts();
     return true;
 }
 

@@ -323,7 +323,8 @@ Hmm...Maybe 2.4GHz modules are not ideal after all.  Let's try 868MHz modules.  
 * 3V3 only
 * RS: €6.88, Farnell: €7.63, Mouser: €7.92, Digikey: €7.95
 * 915MHz band version of this module: MRF89XAM9A-I/RM (Farnell: €7.63)
-* Output: +10dBm, input: -107dBm
+* Output: +12.5dBm, input: -107dBm (OOK, 2kbps)
+* 1uA current consumption in sleep, 5ms to go from sleep to TX/RX
 * More results on Google than HopeRF, but HopeRF has more links to libraries etc.  Maybe Microchip is more popular for professionals, 
 while HopeRF modules are more used by hobbyists.
 * Below is the only useful code that could be found on the internet.  It has to be rewritten from scratch due to the Microchip copyright notice.
@@ -335,14 +336,27 @@ while HopeRF modules are more used by hobbyists.
 	* Reset line of the module must be HiZ, pull up to reset the module.
 	* Range of this module is comparable with the original Hörmann remote
 
-###HOPERF RFM69W-868-S2
-* 1V8 or 3V3 operation
-* 868MHz, output 13dBm
-* also available in 433MHz & 915MHz version, also 20dBm version available
-* [RS: €7.5](http://benl.rs-online.com/web/p/telemetry-modules/7931998/)
+###HM-TRLR-S
+* LoRa
+* LoRa sensitivity: -139dBm, Max TX output: 20dBm
+* Digikey: €57(!)
+* 434MHz, 868MHz and 915MHz types
+* no on-board antenna
+* 3V3 operation only
+
+###HOPERF RFM96 & RFM92 modules
+* LoRa
+* 
+
+###HOPERF RFM69HW-868-S2
+* 3V3 operation
+* sensitivity: -120dBm, Max TX output: 20dBm
+* also available in 433MHz & 915MHz version
+* [RS: €8.3](http://benl.rs-online.com/web/p/telemetry-modules/7931992/)
 * Probably compatible with SX1231 (currently in Hoermann remote)
 
 ###TRM-868-EUR
+* sensitivity: -102dBm, Max TX output: +13dBm
 * Available at Mouser.be: €28,20 (expensive!)
 * The module with professional 868MHz antenna hung upside down in garage (antenna vertical).
 * The module in the street has a 82mm wire soldered to it.
