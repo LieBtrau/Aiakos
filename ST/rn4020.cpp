@@ -4,7 +4,8 @@
 #include "rn4020.h"
 #include <cstring>
 
-char rx_buffer[64];
+static const char RX_BUFFER_SIZE=64;
+char rx_buffer[RX_BUFFER_SIZE];
 static const char* REBOOT="Reboot";
 static const char* CMD="CMD";
 static const char* ECHO_ON="Echo On";
@@ -53,17 +54,27 @@ bool rn4020::startScanningForDevices()
     return checkResponseOk();
 }
 
-bool rn4020::getFirstFoundToken(char* foundToken, int iTimeOut_ms)
+bool rn4020::getFirstFoundToken(char* foundToken, int &RSSI, int iTimeOut_ms)
 {
     char* pComma;
+    char strRSSI[10];
+
     if(!getResponse(rx_buffer, iTimeOut_ms)){
         return false;
     }
+    //get device address
     pComma=strchr(rx_buffer, ',');
-    if(pComma==0){
+    if(pComma==NULL){
         return false;
     }
     strncpy(foundToken, rx_buffer, pComma-rx_buffer);
+    //get RSSI
+    pComma=strrchr(rx_buffer, ',');
+    if(pComma==NULL){
+        return false;
+    }
+    strncpy(strRSSI, pComma+1,strlen(rx_buffer)-(pComma-rx_buffer));
+    RSSI=atoi(strRSSI);
     return true;
 }
 
@@ -94,17 +105,24 @@ bool rn4020::getResponse(char* resp, int iTimeOut_ms)
     char* pResp = resp;
     Timer t;
     t.start();
+    bool bEndOfLineFound=false;
 
     while(t.read_ms()<iTimeOut_ms){
         if(_uart1.readable())
         {
             _uart1.read(*pResp);
             if(*pResp == '\r')
+            {
+                *pResp='\0';
+                bEndOfLineFound=true;
                 break;
-            if(*pResp != '\n')  //ignore newline characters
+            }
+            if(*pResp != '\n' && pResp-resp < RX_BUFFER_SIZE-1)
+            {  //ignore newline characters
                 pResp++;
+            }
         }
     }
     t.stop();
-    return pResp-resp!=0;
+    return bEndOfLineFound;
 }

@@ -12,6 +12,7 @@ char foundToken[13];
 
 int main()
 {
+    int iRSSI;
     pc.baud(115200);
     if(rn.rebootModule()){
         printf("module rebooted\r\n");
@@ -19,7 +20,7 @@ int main()
     if(rn.startScanningForDevices()){
         printf("scanning started\r\n");
     }
-    if(rn.getFirstFoundToken(foundToken, 3000)){
+    if(rn.getFirstFoundToken(foundToken, iRSSI, 3000)){
         printf("token found: %s\r\n", foundToken);
     }
     if(rn.stopScanningForDevices()){

@@ -10,7 +10,7 @@ public:
     bool rebootModule();
     bool setEchoOn(bool bOn);
     bool startScanningForDevices();
-    bool getFirstFoundToken(char* foundToken, int iTimeOut_ms);
+    bool getFirstFoundToken(char* foundToken, int& RSSI, int iTimeOut_ms);
     bool stopScanningForDevices();
     bool findDevice(uint8_t* address);
 private:

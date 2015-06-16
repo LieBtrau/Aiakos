@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.4.0, 2015-06-15T22:10:38. -->
+<!-- Written by QtCreator 3.4.1, 2015-06-16T20:33:28. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -65,7 +65,7 @@
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">-1</value>
    <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">1</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/ctack/Documents/stNucleo/mbed/HelloWorld</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/ST/</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <valuelist type="QVariantList" key="GenericProjectManager.GenericMakeStep.BuildTargets">
@@ -198,7 +198,7 @@
      <value type="int">13</value>
      <value type="int">14</value>
     </valuelist>
-    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/Documents/stNucleo/mbed/HelloWorld/HelloWorld.elf</value>
+    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/ST/HelloWorld.elf</value>
     <value type="QString" key="BareMetal.RunConfig.WorkingDirectory">/home/ctack/Documents/stNucleo/mbed/HelloWorld</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">ST (via GDB server or hardware debugger)</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
