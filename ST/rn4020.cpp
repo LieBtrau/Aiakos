@@ -11,6 +11,7 @@ static const char* CMD="CMD";
 static const char* ECHO_ON="Echo On";
 static const char* ECHO_OFF="Echo Off";
 static const char* AOK="AOK";
+static const char* OUI_PEBBLEBEE="0E0A14"; //not officially registered with IEEE
 
 rn4020::rn4020(PinName pinTX, PinName pinRX, PinName pinRTS, PinName pinCTS): _uart1(pinTX, pinRX, pinRTS, pinCTS)
 {
@@ -35,6 +36,10 @@ bool rn4020::rebootModule()
     return true;
 }
 
+bool rn4020::isPebbleBee(char* macAddress){
+    return strncmp(macAddress, OUI_PEBBLEBEE, strlen(OUI_PEBBLEBEE))==0;
+}
+
 bool rn4020::setEchoOn(bool bOn)
 {
     for(int i=0;i<3;i++){
@@ -54,30 +59,43 @@ bool rn4020::startScanningForDevices()
     return checkResponseOk();
 }
 
-bool rn4020::getFirstFoundToken(char* foundToken, int &RSSI, int iTimeOut_ms)
+bool rn4020::getFirstFoundToken(tokenInfo* ti, int iTimeOut_ms)
 {
-    char* pComma;
-    char strRSSI[10];
+    char* pCommaPrev=rx_buffer, *pCommaCur=NULL;
+    char dummy[10];
 
     if(!getResponse(rx_buffer, iTimeOut_ms)){
         return false;
     }
-    //get device address
-    pComma=strchr(rx_buffer, ',');
-    if(pComma==NULL){
-        return false;
+    for(int i=0;i<4;i++){
+        pCommaCur=strchr(pCommaPrev, ',');
+        if(pCommaCur==NULL){
+            return false;
+        }
+        switch(i){
+        case 0:
+            //get device address
+            strncpy(ti->address, pCommaPrev, pCommaCur-pCommaPrev);
+            break;
+        case 1:
+            //get Address type: public (=0) or random(=1)
+            strncpy(dummy, pCommaPrev, pCommaCur-pCommaPrev);
+            ti->addressType=atoi(dummy);
+            break;
+        case 2:
+            //get friendlyname
+            strncpy(ti->friendlyName, pCommaPrev, pCommaCur-pCommaPrev);
+        case 3:
+            //skip the UUIDs
+            //get RSSI
+            strncpy(dummy, pCommaCur+1,strlen(rx_buffer)-(pCommaCur-rx_buffer));
+            sscanf(dummy, "%x", &ti->rssi);
+            break;
+        }
+        pCommaPrev=pCommaCur+1;
     }
-    strncpy(foundToken, rx_buffer, pComma-rx_buffer);
-    //get RSSI
-    pComma=strrchr(rx_buffer, ',');
-    if(pComma==NULL){
-        return false;
-    }
-    strncpy(strRSSI, pComma+1,strlen(rx_buffer)-(pComma-rx_buffer));
-    RSSI=atoi(strRSSI);
     return true;
 }
-
 
 bool rn4020::stopScanningForDevices()
 {

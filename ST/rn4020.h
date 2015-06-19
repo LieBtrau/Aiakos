@@ -6,13 +6,20 @@
 class rn4020
 {
 public:
+    typedef struct{
+        char address[12];
+        int addressType;
+        char friendlyName[20];
+        int rssi;
+    }tokenInfo;
     rn4020(PinName pinTX, PinName pinRX, PinName pinRTS, PinName pinCTS);
     bool rebootModule();
     bool setEchoOn(bool bOn);
     bool startScanningForDevices();
-    bool getFirstFoundToken(char* foundToken, int& RSSI, int iTimeOut_ms);
+    bool getFirstFoundToken(tokenInfo *ti, int iTimeOut_ms);
     bool stopScanningForDevices();
     bool findDevice(uint8_t* address);
+    bool isPebbleBee(char* macAddress);
 private:
     MTSSerialFlowControl _uart1;
     void sendCommand(const char* cmd);

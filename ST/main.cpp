@@ -12,7 +12,7 @@ char foundToken[13];
 
 int main()
 {
-    int iRSSI;
+    rn4020::tokenInfo ti;
     pc.baud(115200);
     if(rn.rebootModule()){
         printf("module rebooted\r\n");
@@ -20,30 +20,15 @@ int main()
     if(rn.startScanningForDevices()){
         printf("scanning started\r\n");
     }
-    if(rn.getFirstFoundToken(foundToken, iRSSI, 3000)){
-        printf("token found: %s\r\n", foundToken);
+    if(rn.getFirstFoundToken(&ti, 3000)){
+        printf("token found: %s, RSSI: %d\r\n", ti.address, ti.rssi);
+    }
+    if(rn.isPebbleBee(foundToken)){
+        printf("oh yeah, I caught a PebbleBee!\r\n");
     }
     if(rn.stopScanningForDevices()){
         printf("scanning stopped\r\n");
     }
     while(1){
     }
-    /*    while(1) {
-        if(pc.readable()) {
-            c=pc.getc();
-            //            if(!bStarted) {
-            //                strIn+=c;
-            //                if(strIn.find("start")!= string::npos) {
-            //                    bStarted=true;
-            //                    pc.printf("started now...\n");
-            //                }
-            //            } else {
-            uart1.write(c);
-        }
-        //    }
-        if(uart1.read(c)) {
-            pc.putc(c);
-        }
-    }
-    */
 }
