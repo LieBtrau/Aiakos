@@ -36,8 +36,8 @@ bool rn4020::rebootModule()
     return true;
 }
 
-bool rn4020::isPebbleBee(char* macAddress){
-    return strncmp(macAddress, OUI_PEBBLEBEE, strlen(OUI_PEBBLEBEE))==0;
+bool rn4020::isPebbleBee(tokenInfo* ti){
+    return strncmp(ti->address, OUI_PEBBLEBEE, strlen(OUI_PEBBLEBEE))==0;
 }
 
 bool rn4020::setEchoOn(bool bOn)
@@ -85,10 +85,11 @@ bool rn4020::getFirstFoundToken(tokenInfo* ti, int iTimeOut_ms)
         case 2:
             //get friendlyname
             strncpy(ti->friendlyName, pCommaPrev, pCommaCur-pCommaPrev);
+            break;
         case 3:
             //skip the UUIDs
             //get RSSI
-            strncpy(dummy, pCommaCur+1,strlen(rx_buffer)-(pCommaCur-rx_buffer));
+            strcpy(dummy, pCommaCur+1);
             sscanf(dummy, "%x", &ti->rssi);
             break;
         }
@@ -103,6 +104,18 @@ bool rn4020::stopScanningForDevices()
     return checkResponseOk();
 }
 
+bool rn4020::connect(tokenInfo *ti){
+    char cmd[20];
+    char addressType[2];
+    strcpy(cmd,"E,");
+    strcat(cmd,ti->address);
+    strcat(cmd,",");
+    itoa(ti->addressType, addressType,10);
+    strcat(cmd,addressType);
+    sendCommand(cmd);
+    return true;
+}
+
 bool rn4020::checkResponseOk(){
     if(!getResponse(rx_buffer, 1000)){
         return false;
@@ -112,7 +125,7 @@ bool rn4020::checkResponseOk(){
 
 void rn4020::sendCommand(const char* cmd)
 {
-    _uart1.rxClear();  //clear RX-buffer before sending a new command.
+    _uart1.rxClear();
     _uart1.write(cmd,strlen(cmd));
     _uart1.write('\r');
 }

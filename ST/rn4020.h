@@ -16,10 +16,11 @@ public:
     bool rebootModule();
     bool setEchoOn(bool bOn);
     bool startScanningForDevices();
-    bool getFirstFoundToken(tokenInfo *ti, int iTimeOut_ms);
+    bool getFirstFoundToken(tokenInfo* ti, int iTimeOut_ms);
     bool stopScanningForDevices();
     bool findDevice(uint8_t* address);
-    bool isPebbleBee(char* macAddress);
+    bool isPebbleBee(tokenInfo *ti);
+    bool connect(tokenInfo* ti);
 private:
     MTSSerialFlowControl _uart1;
     void sendCommand(const char* cmd);

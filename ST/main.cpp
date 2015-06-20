@@ -8,27 +8,32 @@
 #include "rn4020.h"
 Serial pc(USBTX, USBRX);
 rn4020 rn(PC_10, PC_11, PA_1, PA_0);
-char foundToken[13];
 
 int main()
 {
     rn4020::tokenInfo ti;
     pc.baud(115200);
+    bool bFound=false;
     if(rn.rebootModule()){
         printf("module rebooted\r\n");
     }
     if(rn.startScanningForDevices()){
         printf("scanning started\r\n");
     }
-    if(rn.getFirstFoundToken(&ti, 3000)){
+    if(rn.getFirstFoundToken(&ti, 5000)){
         printf("token found: %s, RSSI: %d\r\n", ti.address, ti.rssi);
+        printf("ok");
     }
-    if(rn.isPebbleBee(foundToken)){
+    if(rn.isPebbleBee(&ti)){
         printf("oh yeah, I caught a PebbleBee!\r\n");
+        bFound=true;
     }
     if(rn.stopScanningForDevices()){
         printf("scanning stopped\r\n");
     }
+//    if(bFound){
+//        rn.connect(&ti);
+//    }
     while(1){
     }
 }
