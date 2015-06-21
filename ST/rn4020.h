@@ -21,6 +21,7 @@ public:
     bool findDevice(uint8_t* address);
     bool isPebbleBee(tokenInfo *ti);
     bool connect(tokenInfo* ti);
+    bool unboundPeripherals();
 private:
     MTSSerialFlowControl _uart1;
     void sendCommand(const char* cmd);

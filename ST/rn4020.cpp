@@ -12,6 +12,7 @@ static const char* ECHO_ON="Echo On";
 static const char* ECHO_OFF="Echo Off";
 static const char* AOK="AOK";
 static const char* OUI_PEBBLEBEE="0E0A14"; //not officially registered with IEEE
+static const char* CONNPARAM="ConnParam";
 
 rn4020::rn4020(PinName pinTX, PinName pinRX, PinName pinRTS, PinName pinCTS): _uart1(pinTX, pinRX, pinRTS, pinCTS)
 {
@@ -108,13 +109,31 @@ bool rn4020::connect(tokenInfo *ti){
     char cmd[20];
     char addressType[2];
     strcpy(cmd,"E,");
-    strcat(cmd,ti->address);
-    strcat(cmd,",");
     itoa(ti->addressType, addressType,10);
     strcat(cmd,addressType);
+    strcat(cmd,",");
+    strcat(cmd,ti->address);
     sendCommand(cmd);
-    return true;
+    if(!checkResponseOk()){
+        return false;
+    }
+    while(getResponse(rx_buffer, 9000))
+    {
+        if(strncmp(rx_buffer, CONNPARAM, strlen(CONNPARAM))==0){
+            return true;
+        }
+        //        else{
+        //            printf("ignored: %s\r\n", rx_buffer);
+        //        }
+    }
+    return false;
 }
+
+bool rn4020::unboundPeripherals(){
+    sendCommand("U");
+    return checkResponseOk();
+}
+
 
 bool rn4020::checkResponseOk(){
     if(!getResponse(rx_buffer, 1000)){

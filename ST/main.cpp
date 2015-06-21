@@ -14,15 +14,18 @@ int main()
     rn4020::tokenInfo ti;
     pc.baud(115200);
     bool bFound=false;
+    //rn.setEchoOn(false);
     if(rn.rebootModule()){
         printf("module rebooted\r\n");
+    }
+    if(rn.unboundPeripherals()){
+        printf("Peripherals unbound\r\n");
     }
     if(rn.startScanningForDevices()){
         printf("scanning started\r\n");
     }
     if(rn.getFirstFoundToken(&ti, 5000)){
         printf("token found: %s, RSSI: %d\r\n", ti.address, ti.rssi);
-        printf("ok");
     }
     if(rn.isPebbleBee(&ti)){
         printf("oh yeah, I caught a PebbleBee!\r\n");
@@ -31,9 +34,11 @@ int main()
     if(rn.stopScanningForDevices()){
         printf("scanning stopped\r\n");
     }
-//    if(bFound){
-//        rn.connect(&ti);
-//    }
+    if(bFound){
+        if(rn.connect(&ti)){
+            printf("Connected!\r\n");
+        }
+    }
     while(1){
     }
 }
