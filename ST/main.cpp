@@ -9,11 +9,18 @@
 Serial pc(USBTX, USBRX);
 rn4020 rn(PC_10, PC_11, PA_1, PA_0);
 
+bool bindNewPebbleBee(rn4020::tokenInfo *ti);
+
 int main()
 {
     rn4020::tokenInfo ti;
     pc.baud(115200);
-    bool bFound=false;
+    bindNewPebbleBee(&ti);
+    while(1){
+    }
+}
+
+bool bindNewPebbleBee(rn4020::tokenInfo* ti){
     //rn.setEchoOn(false);
     if(rn.rebootModule()){
         printf("module rebooted\r\n");
@@ -24,21 +31,26 @@ int main()
     if(rn.startScanningForDevices()){
         printf("scanning started\r\n");
     }
-    if(rn.getFirstFoundToken(&ti, 5000)){
-        printf("token found: %s, RSSI: %d\r\n", ti.address, ti.rssi);
-    }
-    if(rn.isPebbleBee(&ti)){
-        printf("oh yeah, I caught a PebbleBee!\r\n");
-        bFound=true;
+    if(rn.getFirstFoundToken(ti, 8000)){
+        printf("token found: %s, RSSI: %d\r\n", ti->address, ti->rssi);
     }
     if(rn.stopScanningForDevices()){
         printf("scanning stopped\r\n");
     }
-    if(bFound){
-        if(rn.connect(&ti)){
-            printf("Connected!\r\n");
-        }
+    if(!rn.isPebbleBee(ti)){
+        return false;
     }
-    while(1){
+    printf("oh yeah, I caught a PebbleBee!\r\n");
+    if(rn.connect(ti)){
+        printf("Connected!\r\n");
     }
+    if(!rn.setCharacteristic(0x0B, 0xAA)){
+        return false;
+    }
+    printf("0xB set\r\n");
+    if(!rn.setCharacteristic(0x0E, 0xAA)){
+        return false;
+    }
+    printf("0xE set\r\n");
+    return true;
 }

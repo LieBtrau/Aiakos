@@ -13,6 +13,7 @@ static const char* ECHO_OFF="Echo Off";
 static const char* AOK="AOK";
 static const char* OUI_PEBBLEBEE="0E0A14"; //not officially registered with IEEE
 static const char* CONNPARAM="ConnParam";
+static const char* CONNECTION_END="Connection End";
 
 rn4020::rn4020(PinName pinTX, PinName pinRX, PinName pinRTS, PinName pinCTS): _uart1(pinTX, pinRX, pinRTS, pinCTS)
 {
@@ -107,12 +108,7 @@ bool rn4020::stopScanningForDevices()
 
 bool rn4020::connect(tokenInfo *ti){
     char cmd[20];
-    char addressType[2];
-    strcpy(cmd,"E,");
-    itoa(ti->addressType, addressType,10);
-    strcat(cmd,addressType);
-    strcat(cmd,",");
-    strcat(cmd,ti->address);
+    snprintf(cmd,20, "E,%d,%s", ti->addressType, ti->address);
     sendCommand(cmd);
     if(!checkResponseOk()){
         return false;
@@ -134,6 +130,20 @@ bool rn4020::unboundPeripherals(){
     return checkResponseOk();
 }
 
+bool rn4020::setCharacteristic(int handle, uint8_t value){
+    char cmd[20];
+    snprintf(cmd,20,"CHW,%04X,%02X", handle, value);
+    sendCommand(cmd);
+    return checkResponseOk();
+}
+
+//Will return "Connection End" when an existing connection was closed.
+//If no connection was present, "ERR" will be returned.
+//Rebooting the board will cause it to close the connection.
+bool rn4020::disconnect(){
+    sendCommand("K");
+    return (strncmp(rx_buffer, CONNECTION_END, strlen(CONNECTION_END))!=0);
+}
 
 bool rn4020::checkResponseOk(){
     if(!getResponse(rx_buffer, 1000)){

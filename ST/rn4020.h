@@ -2,6 +2,7 @@
 #define RN4020_H
 
 #include "include_me.h"
+#include <stdint.h>
 
 class rn4020
 {
@@ -22,6 +23,8 @@ public:
     bool isPebbleBee(tokenInfo *ti);
     bool connect(tokenInfo* ti);
     bool unboundPeripherals();
+    bool setCharacteristic(int handle, uint8_t value);
+    bool disconnect();
 private:
     MTSSerialFlowControl _uart1;
     void sendCommand(const char* cmd);
