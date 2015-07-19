@@ -1,11 +1,14 @@
 /* STM32L053 Nucleo connections to RN4020 module:
  *  Nucleo.PC_11 = RN4020.5 = yellow (TX of RN4020)
  *  Nucleo.PC_10 = RN4020.6 = orange (RX of RN4020)
- *  Nucleo.A1 = RN4020.14 = green
- *  Nucleo.A0 = RN4020.18 = brown
+ *  Nucleo.A1 RTS (out) = RN4020.14 CTS (in) = green
+ *  Nucleo.A0 CTS (in)  = RN4020.18 RTS (out) = brown
  */
+
 #include "mbed.h"
 #include "rn4020.h"
+#include <string>
+
 Serial pc(USBTX, USBRX);
 rn4020 rn(PC_10, PC_11, PA_1, PA_0);
 
@@ -13,12 +16,33 @@ bool bindNewPebbleBee(rn4020::tokenInfo *ti);
 
 int main()
 {
-    rn4020::tokenInfo ti;
+    //rn4020::tokenInfo ti;
+    char c;
+    bool bStarted=false;
+    string strIn;
+
     pc.baud(115200);
-    bindNewPebbleBee(&ti);
+    //bindNewPebbleBee(&ti);
+    pc.printf("\r\nready...\r\n");
     while(1){
+        if(pc.readable()) {
+            c=pc.getc();
+            if(!bStarted) {
+                strIn+=c;
+                if(strIn.find("start")!= string::npos) {
+                    bStarted=true;
+                    pc.printf("started now...\r\n");
+                }
+            } else {
+                rn.write(c);
+            }
+        }
+        if(rn.read(c)) {
+            pc.putc(c);
+        }
     }
 }
+
 
 bool bindNewPebbleBee(rn4020::tokenInfo* ti){
     //rn.setEchoOn(false);

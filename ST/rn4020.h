@@ -25,6 +25,8 @@ public:
     bool unboundPeripherals();
     bool setCharacteristic(int handle, uint8_t value);
     bool disconnect();
+    void write(char c);
+    bool read(char& c);
 private:
     MTSSerialFlowControl _uart1;
     void sendCommand(const char* cmd);

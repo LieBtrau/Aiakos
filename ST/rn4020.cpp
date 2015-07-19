@@ -17,7 +17,14 @@ static const char* CONNECTION_END="Connection End";
 
 rn4020::rn4020(PinName pinTX, PinName pinRX, PinName pinRTS, PinName pinCTS): _uart1(pinTX, pinRX, pinRTS, pinCTS)
 {
-    _uart1.baud(9600);
+    _uart1.baud(115200);
+}
+void rn4020::write(char c){
+    _uart1.write(c);
+}
+
+bool rn4020::read(char& c){
+    return _uart1.read(c);
 }
 
 bool rn4020::rebootModule()
