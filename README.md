@@ -16,6 +16,6 @@ While riding and coming near to my house, press a button on my bike so that the 
 The system will consist of three parts: master in the garage, slave on the bike, key fob in my back pack.
 When the button on the bike is pushed, it wakes up the slave.  The slave will in turn try to wake up the key fob.  When the key fob is out of range (i.e. not in my backpack), then no further action will be taken and the slave goes to sleep again.  If the key fob however has been found, then it will start communicating with the master, using the slave as communication bridge and range extender.
 
-* [Garage controller](Master: garage controller)
+* [Garage controller](wiki/Master:-garage-controller)
 
 
