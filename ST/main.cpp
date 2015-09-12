@@ -8,8 +8,13 @@
 #include "mbed.h"
 #include "rn4020.h"
 #include <string>
+#include "../../Atmel/RadioHead/RadioHead.h"
+#include "../../Atmel/RadioHead/RH_Serial.h"
+#include "hardwareserial.h"
 
 Serial pc(USBTX, USBRX);
+HardwareSerial hs(pc);
+RH_Serial driver(hs);
 rn4020 rn(PC_10, PC_11, PA_1, PA_0);
 
 bool bindNewPebbleBee(rn4020::tokenInfo *ti);

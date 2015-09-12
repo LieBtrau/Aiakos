@@ -182,3 +182,5 @@ main.cpp
 Makefile
 rn4020.h
 rn4020.cpp
+hardwareserial.h
+hardwareserial.cpp
