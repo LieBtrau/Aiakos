@@ -20,7 +20,8 @@
 RH_MRF89XA driver(3, 5, 4, 2);
 
 
-//#define CLIENT_MRF89XA_RELIABLE
+#define CLIENT_MRF89XA_RELIABLE
+//#define SERVER_MRF89XA_RELIABLE
 //#define CLIENT_MRF89XA_SIMPLE
 //#define SERVER_MRF89XA_SIMPLE
 
@@ -29,11 +30,11 @@ RH_MRF89XA driver(3, 5, 4, 2);
 
 // Class to manage message delivery and receipt, using the driver declared above
 #if defined(CLIENT_MRF89XA_RELIABLE)
-    #ifdef SERVER_MRF89XA
+    #ifdef SERVER_MRF89XA_RELIABLE
         #error You have to choose: client OR server, not both
     #endif
     RHReliableDatagram manager(driver, CLIENT_ADDRESS);
-#elif defined(SERVER_MRF89XA)
+#elif defined(SERVER_MRF89XA_RELIABLE)
     #ifdef CLIENT_MRF89XA_RELIABLE
         #error You have to choose: client OR server, not both
     #endif
@@ -53,14 +54,14 @@ uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 //SS => D6
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
-PN532_SPI pn532spi(SPI, 6);
-NfcAdapter nfc = NfcAdapter(pn532spi);
+//PN532_SPI pn532spi(SPI, 6);
+//NfcAdapter nfc = NfcAdapter(pn532spi);
 
 void setup() {
     Serial.begin(115200);
     Serial.println("start");
-    nfc.begin();
-#if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA)
+//    nfc.begin();
+#if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
         Serial.println("manager init failed");
         return;
@@ -76,13 +77,13 @@ void setup() {
 }
 
 void loop() {
-    Serial.println("\nScan a NFC tag\n");
-    if (nfc.tagPresent())
-    {
-        NfcTag tag = nfc.read();
-        tag.print(&Serial);
-    }
-    delay(5000);
+//    Serial.println("\nScan a NFC tag\n");
+//    if (nfc.tagPresent())
+//    {
+//        NfcTag tag = nfc.read();
+//        tag.print(&Serial);
+//    }
+//    delay(5000);
 
 #ifdef CLIENT_MRF89XA_RELIABLE
     Serial.println("Sending to mrf89xa_reliable_datagram_server");
@@ -106,7 +107,7 @@ void loop() {
         }
     }
 
-#elif defined(SERVER_MRF89XA)
+#elif defined(SERVER_MRF89XA_RELIABLE)
     if (manager.available())
     {
         // Wait for a message addressed to us from the client
