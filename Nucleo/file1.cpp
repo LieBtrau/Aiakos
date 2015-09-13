@@ -3,13 +3,10 @@
 #include "RadioHead.h"
 #include <RH_MRF89XA.h>
 #include <RHReliableDatagram.h>
-//#include <PN532_I2C.h>
 #include <PN532_SPI.h>
 #include <PN532.h>
 #include <NfcAdapter.h>
-#include <HardWire.h>
 
-//Default SPI-clock Nucleo=1MHz
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
 //  /CSCON  = MRF89XAM8A: pin 3 => Arduino Uno pin 5
@@ -50,6 +47,12 @@ uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 //PN532_I2C pn532_i2c(HWire, 3, 2);
 //NfcAdapter nfc = NfcAdapter(pn532_i2c, &Serial);
 
+//SCK => ICSP.3
+//MISO => ICSP.1
+//MOSI => ICSP.4
+//SS => D6
+//VCC => 3V3 (or 5V)
+//GND => ICSP.6
 PN532_SPI pn532spi(SPI, 6);
 NfcAdapter nfc = NfcAdapter(pn532spi);
 
@@ -57,7 +60,6 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
     nfc.begin();
-    Serial.println(I2C1->regs->TRISE & 0x3F);
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA)
     if (!manager.init()){
         Serial.println("manager init failed");

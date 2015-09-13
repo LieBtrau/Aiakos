@@ -1,7 +1,5 @@
 //declaration of needed libraries must be done in the ino-file of the project.
 
-#define HARDI2C
-
 #include <Wire.h>
 #include <SPI.h>
 #include <PN532_SPI.h>
