@@ -1,4 +1,4 @@
-
+#include <EEPROM.h>
 #include "Arduino.h"
 #include "RadioHead.h"
 #include <RH_MRF89XA.h>
@@ -6,6 +6,7 @@
 #include <PN532_SPI.h>
 #include <PN532.h>
 #include <NfcAdapter.h>
+#include <Xterm.h>
 
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
@@ -18,7 +19,6 @@
 //  IRQ1    = MRF89XAM8A: pin 9 => Arduino Uno pin 2
 //  VIN     = MRF89XAM8A: pin 10 => Arduino Uno pin 3V3
 RH_MRF89XA driver(3, 5, 4, 2);
-
 
 #define CLIENT_MRF89XA_RELIABLE
 //#define SERVER_MRF89XA_RELIABLE
@@ -41,7 +41,7 @@ RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 #endif
 
-uint8_t data[] = "Hello World!";
+uint8_t data[] = "HalloWereld!";
 // Don't put this on the stack:
 uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 //HardWire HWire(1, I2C_REMAP);// | I2C_BUS_RESET); // I2c1
@@ -59,10 +59,45 @@ NfcAdapter nfc = NfcAdapter(pn532spi);
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
 
+void eeprom_write_block(const void *src, void *dst, size_t n)
+{
+    uint16* word=(uint16 *)src;
+    uint32 pdst=(uint32)dst;
+
+    if(EEPROM.init()){
+        return;
+    }
+    for(int i=0;i<=n/2;i++){
+        if(EEPROM.write(pdst+i, word[i])){
+            return;
+        }
+    }
+}
+
+void eeprom_read_block(void *dst, const void *src, size_t n)
+{
+    uint32 psrc=(uint32)src;
+    uint16* pdst=(uint16*)dst;
+
+    if(EEPROM.init()){
+        return;
+    }
+    for(int i=0;i<n/2+1;i++){
+        if(EEPROM.read(psrc+i,pdst+i)){
+            return;
+        }
+    }
+}
+
+
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
     Serial.println("start");
+    eeprom_write_block(data,0,sizeof(data));
+    char data1[14];
+    eeprom_read_block(data1,0,13);
+
     nfc.begin();
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
@@ -81,15 +116,13 @@ void setup() {
 
 
 void loop() {
-    if(millis()>ulStartTime+5000){
-        ulStartTime=millis();
-        Serial.println("\nScan a NFC tag\n");
-        if (nfc.tagPresent())
-        {
-            NfcTag tag = nfc.read();
-            tag.print(&Serial);
-        }
-    }
+    //        Serial.println("\nScan a NFC tag\n");
+    //        if (nfc.tagPresent())
+    //        {
+    //            NfcTag tag = nfc.read();
+    //            tag.print(&Serial);
+    //        }
+    /*
     if(millis()>ulStartTime2+3000){
         ulStartTime2=millis();
 #ifdef CLIENT_MRF89XA_RELIABLE
@@ -185,4 +218,5 @@ void loop() {
         }
 #endif
     }
+    */
 }
