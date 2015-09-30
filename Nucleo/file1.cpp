@@ -82,10 +82,19 @@ void eeprom_read_block(void *dst, const void *src, size_t n)
     if(EEPROM.init()){
         return;
     }
-    for(int i=0;i<n/2+1;i++){
+    for(int i=0;i<n/2;i++){
         if(EEPROM.read(psrc+i,pdst+i)){
             return;
         }
+    }
+    //For uneven sizes, the last read operation will only write one byte to the destination.
+    if(n & 1){
+        uint16 lastword;
+        if(EEPROM.read(psrc+n/2, &lastword)){
+            return;
+        }
+        pdst[n/2] &= 0xFF00;
+        pdst[n/2] |= lowByte(lastword);
     }
 }
 
@@ -93,11 +102,10 @@ void eeprom_read_block(void *dst, const void *src, size_t n)
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
+    byte b=1, c=89;
     Serial.println("start");
-    eeprom_write_block(data,0,sizeof(data));
-    char data1[14];
-    eeprom_read_block(data1,0,13);
-
+    eeprom_write_block(&c,0,1);
+    eeprom_read_block(&b,0,1);
     nfc.begin();
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
