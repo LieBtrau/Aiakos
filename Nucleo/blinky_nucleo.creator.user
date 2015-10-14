@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.4.2, 2015-09-13T13:39:54. -->
+<!-- Written by QtCreator 3.5.0, 2015-10-14T20:24:28. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -65,11 +65,11 @@
    <value type="int" key="ProjectExplorer.Target.ActiveDeployConfiguration">-1</value>
    <value type="int" key="ProjectExplorer.Target.ActiveRunConfiguration">1</value>
    <valuemap type="QVariantMap" key="ProjectExplorer.Target.BuildConfiguration.0">
-    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/ctack/Arduino/blinky_nucleo</value>
+    <value type="QString" key="ProjectExplorer.BuildConfiguration.BuildDirectory">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo</value>
     <valuemap type="QVariantMap" key="ProjectExplorer.BuildConfiguration.BuildStepList.0">
      <valuemap type="QVariantMap" key="ProjectExplorer.BuildStepList.Step.0">
       <value type="bool" key="ProjectExplorer.BuildStep.Enabled">true</value>
-      <value type="QString" key="ProjectExplorer.ProcessStep.Arguments"> --verify --board Arduino_STM32:STM32F1:nucleo_f103rb --pref build.path=./build ~/Arduino/blinky_nucleo/blinky_nucleo.ino  --verbose</value>
+      <value type="QString" key="ProjectExplorer.ProcessStep.Arguments">--verify --board Arduino_STM32:STM32F1:nucleo_f103rb --pref target_package=Arduino_STM32 --pref build.path=./build --pref target_platform=STM32F1 --pref board=nucleo_f103rb /home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo/Nucleo.ino --verbose</value>
       <value type="QString" key="ProjectExplorer.ProcessStep.Command">/home/ctack/Programs/arduino-1.6.5/arduino</value>
       <value type="QString" key="ProjectExplorer.ProcessStep.WorkingDirectory">%{buildDir}</value>
       <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Custom Process Step</value>
@@ -192,9 +192,9 @@
      <value type="int">13</value>
      <value type="int">14</value>
     </valuelist>
-    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/Arduino/blinky_nucleo/build/blinky_nucleo.cpp.elf</value>
-    <value type="QString" key="BareMetal.RunConfig.WorkingDirectory">/home/ctack/Arduino/blinky_nucleo/build</value>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">blinky_nucleo (via GDB server or hardware debugger)</value>
+    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo/build/Nucleo.cpp.elf</value>
+    <value type="QString" key="BareMetal.RunConfig.WorkingDirectory">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Nucleo (via GDB server or hardware debugger)</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">BareMetal.CustomRunConfig</value>
     <value type="QString" key="Qt4ProjectManager.MaemoRunConfiguration.Arguments"></value>

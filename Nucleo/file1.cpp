@@ -1,12 +1,25 @@
-#include <EEPROM.h>
 #include "Arduino.h"
 #include "RadioHead.h"
 #include <RH_MRF89XA.h>
 #include <RHReliableDatagram.h>
 #include <PN532_SPI.h>
-#include <PN532.h>
 #include <NfcAdapter.h>
-#include <Xterm.h>
+#include "microBox.h"
+#include "crypto.h"
+
+char historyBuf[100];
+char hostname[] = "ioBash";
+char privateKey[32+1];//base64 representation of 192bit key
+char publicKey[64+1];//base64 representation of 192bit key (x,y)
+
+PARAM_ENTRY Params[]=
+{
+    {"hostname", hostname, PARTYPE_STRING | PARTYPE_RW, sizeof(hostname), NULL, NULL, 0},
+    {"privateKey", privateKey, PARTYPE_STRING | PARTYPE_RW, sizeof(privateKey), NULL, NULL, 1},
+    {"publicKey", publicKey, PARTYPE_STRING | PARTYPE_RW, sizeof(publicKey), NULL, NULL, 2},
+    {NULL, NULL}
+};
+
 
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
@@ -18,9 +31,9 @@
 //  /CSDATA = MRF89XAM8A: pin 8 => Arduino Uno pin 3
 //  IRQ1    = MRF89XAM8A: pin 9 => Arduino Uno pin 2
 //  VIN     = MRF89XAM8A: pin 10 => Arduino Uno pin 3V3
-RH_MRF89XA driver(3, 5, 4, 2);
+//RH_MRF89XA driver(3, 5, 4, 2);
 
-#define CLIENT_MRF89XA_RELIABLE
+//#define CLIENT_MRF89XA_RELIABLE
 //#define SERVER_MRF89XA_RELIABLE
 //#define CLIENT_MRF89XA_SIMPLE
 //#define SERVER_MRF89XA_SIMPLE
@@ -44,9 +57,6 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 uint8_t data[] = "HalloWereld!";
 // Don't put this on the stack:
 uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
-//HardWire HWire(1, I2C_REMAP);// | I2C_BUS_RESET); // I2c1
-//PN532_I2C pn532_i2c(HWire, 3, 2);
-//NfcAdapter nfc = NfcAdapter(pn532_i2c, &Serial);
 
 //SCK => ICSP.3
 //MISO => ICSP.1
@@ -54,59 +64,23 @@ uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 //SS => D6
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
+
+
 PN532_SPI pn532spi(SPI, 6);
 NfcAdapter nfc = NfcAdapter(pn532spi);
+Crypto cryptop;
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
-
-void eeprom_write_block(const void *src, void *dst, size_t n)
-{
-    uint16* word=(uint16 *)src;
-    uint32 pdst=(uint32)dst;
-
-    if(EEPROM.init()){
-        return;
-    }
-    for(int i=0;i<=n/2;i++){
-        if(EEPROM.write(pdst+i, word[i])){
-            return;
-        }
-    }
-}
-
-void eeprom_read_block(void *dst, const void *src, size_t n)
-{
-    uint32 psrc=(uint32)src;
-    uint16* pdst=(uint16*)dst;
-
-    if(EEPROM.init()){
-        return;
-    }
-    for(int i=0;i<n/2;i++){
-        if(EEPROM.read(psrc+i,pdst+i)){
-            return;
-        }
-    }
-    //For uneven sizes, the last read operation will only write one byte to the destination.
-    if(n & 1){
-        uint16 lastword;
-        if(EEPROM.read(psrc+n/2, &lastword)){
-            return;
-        }
-        pdst[n/2] &= 0xFF00;
-        pdst[n/2] |= lowByte(lastword);
-    }
-}
-
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
-    byte b=1, c=89;
     Serial.println("start");
-    eeprom_write_block(&c,0,1);
-    eeprom_read_block(&b,0,1);
     nfc.begin();
+    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
+    if(!cryptop.setLocalKey(privateKey, publicKey)){
+        Serial.println("Local keys not initialized.");
+    }
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
         Serial.println("manager init failed");
@@ -124,15 +98,18 @@ void setup() {
 
 
 void loop() {
-    //        Serial.println("\nScan a NFC tag\n");
-    //        if (nfc.tagPresent())
-    //        {
-    //            NfcTag tag = nfc.read();
-    //            tag.print(&Serial);
-    //        }
-    /*
+    microbox.cmdParser();
+    //    if (nfc.tagPresent())
+    //    {
+    //        NfcTag tag = nfc.read();
+    //        tag.print();
+    //    }
+
     if(millis()>ulStartTime2+3000){
         ulStartTime2=millis();
+        cryptop.eccTest();
+    }
+    /*
 #ifdef CLIENT_MRF89XA_RELIABLE
         Serial.println("Sending to mrf89xa_reliable_datagram_server");
 

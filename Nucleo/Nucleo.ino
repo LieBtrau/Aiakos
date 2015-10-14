@@ -4,22 +4,32 @@
 #include <SPI.h>
 #include <EEPROM.h>
 
-//git clone git@github.com:LieBtrau/arduino-xterm.git ~/git/arduino-xterm
-//ln -s ~/git/arduino-xterm/Xterm ~/Arduino/libraries
-#include <Xterm.h>
 //git clone git@github.com:LieBtrau/PN532.git ~/git/PN532
 //ln -s ~/git/PN532/PN532 ~/Arduino/libraries/
 //ln -s ~/git/PN532/PN532_SPI/ ~/Arduino/libraries/
-//ln -s ~/git/PN532/NDEF/ ~/Arduino/libraries/
 #include <PN532_SPI.h>
 #include <PN532.h>
+
+//git clone git@github.com:LieBtrau/NDEF.git ~/git/NDEF
+//ln -s ~/git/NDEF/ ~/Arduino/libraries/
 #include <NfcAdapter.h>
+
 //git clone git@github.com:LieBtrau/RadioHead.git ~/git/RadioHead
 //ln -s ~/git/RadioHead/ ~/Arduino/libraries/
 #include "RadioHead.h"
-//git clone git@github.com:wastel7/microBox.git ~/git/microBox
+
+//git clone git@github.com:LieBtrau/microBox.git ~/git/microBox
 //ln -s ~/git/microBox/ ~/Arduino/libraries/
 #include "microBox.h"
+
+//~/git$ git clone git@github.com:LieBtrau/micro-ecc.git ~/git/uECC
+//ln -s ~/git/uECC/ ~/Arduino/libraries/
+#include "uECC.h"
+
+//git clone git@github.com:adamvr/arduino-base64.git ~git/arduino-base64
+//ln -s ~/git/arduino-base64 ~/Arduino/libraries/
+#include "Base64.h"
+
 //git clone git@github.com:LieBtrau/Arduino_STM32.git ~/git/Arduino_STM32
 //ln -s ~/git/Arduino_STM32/ ~/Programs/arduino-1.6.5/hardware/
 
