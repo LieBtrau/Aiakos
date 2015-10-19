@@ -252,3 +252,6 @@
 ../../microBox
 ../../arduino-base64
 ../../NDEF
+../../PN532/PN532
+../../PN532/PN532_SPI
+../../aes-cmac-rfc

@@ -77,7 +77,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
     nfc.begin();
-    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
+    cryptop.cmacTest();
     if(!cryptop.setLocalKey(privateKey, publicKey)){
         Serial.println("Local keys not initialized.");
     }
@@ -94,21 +94,16 @@ void setup() {
     }
     Serial.println("driver init OK");
 #endif
+    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
 }
 
 
 void loop() {
     microbox.cmdParser();
-    //    if (nfc.tagPresent())
-    //    {
-    //        NfcTag tag = nfc.read();
-    //        tag.print();
-    //    }
-
-    if(millis()>ulStartTime2+3000){
-        ulStartTime2=millis();
-        cryptop.eccTest();
-    }
+//    if(millis()>ulStartTime2+3000){
+//        ulStartTime2=millis();
+//        cryptop.eccTest();
+//    }
     /*
 #ifdef CLIENT_MRF89XA_RELIABLE
         Serial.println("Sending to mrf89xa_reliable_datagram_server");

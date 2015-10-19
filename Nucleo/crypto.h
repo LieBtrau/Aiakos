@@ -9,7 +9,9 @@ public:
     Crypto();
     bool setLocalKey(char *pLocalPrivateKey, char *pLocalPublicKey);
     void eccTest();
+    void cmacTest();
 private:
+    void printBuffer(const byte* buf, byte len);
     byte _pLocalPrivateKey[uECC_BYTES+1];
     byte _pLocalPublicKey[uECC_BYTES*2+1];
 };
