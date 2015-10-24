@@ -77,10 +77,13 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
     nfc.begin();
-    cryptop.cmacTest();
-    if(!cryptop.setLocalKey(privateKey, publicKey)){
-        Serial.println("Local keys not initialized.");
+    if(cryptop.testMasterKeySse()){
+        Serial.println("Test master key calculation OK");
     }
+//    cryptop.cmacTest();
+//    if(!cryptop.setLocalKey(privateKey, publicKey)){
+//        Serial.println("Local keys not initialized.");
+//    }
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
         Serial.println("manager init failed");

@@ -7,23 +7,28 @@
 //git clone git@github.com:LieBtrau/PN532.git ~/git/PN532
 //ln -s ~/git/PN532/PN532 ~/Arduino/libraries/
 //ln -s ~/git/PN532/PN532_SPI/ ~/Arduino/libraries/
+//Needed flash size: 1.3K
 #include <PN532_SPI.h>
 #include <PN532.h>
 
 //git clone git@github.com:LieBtrau/NDEF.git ~/git/NDEF
 //ln -s ~/git/NDEF/ ~/Arduino/libraries/
+//Needed flash size: 0.8K
 #include <NfcAdapter.h>
 
 //git clone git@github.com:LieBtrau/RadioHead.git ~/git/RadioHead
 //ln -s ~/git/RadioHead/ ~/Arduino/libraries/
+//Needed flash size: 2.8K
 #include "RadioHead.h"
 
 //git clone git@github.com:LieBtrau/microBox.git ~/git/microBox
 //ln -s ~/git/microBox/ ~/Arduino/libraries/
+//Needed flash size: 10.4K
 #include "microBox.h"
 
 //~/git$ git clone git@github.com:LieBtrau/micro-ecc.git ~/git/uECC
 //ln -s ~/git/uECC/ ~/Arduino/libraries/
+//Needed flash size: 3.2K
 #include "uECC.h"
 
 //git clone git@github.com:adamvr/arduino-base64.git ~git/arduino-base64
