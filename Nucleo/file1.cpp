@@ -77,9 +77,9 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
     nfc.begin();
-    if(cryptop.testMasterKeySse()){
-        Serial.println("Test master key calculation OK");
-    }
+    bool bResult=cryptop.testMasterKeySse();
+    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
+    Serial.println(bResult?"OK":"Fail");
 //    cryptop.cmacTest();
 //    if(!cryptop.setLocalKey(privateKey, publicKey)){
 //        Serial.println("Local keys not initialized.");
