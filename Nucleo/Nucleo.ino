@@ -1,5 +1,5 @@
 //declaration of needed libraries must be done in the ino-file of the project.
-
+#define HARDI2C
 #include <Wire.h>
 #include <SPI.h>
 #include <EEPROM.h>
@@ -38,6 +38,10 @@
 //git clone git@github.com:LieBtrau/AES-CMAC-RFC.git ~/git/aes-cmac-rfc
 //ln -s ~/git/aes-cmac-rfc/ ~/Arduino/libraries/
 #include "cmac.h"
+
+//git clone git@github.com:LieBtrau/arduino-ntag.git ~/git/arduino-ntag
+//ln -s ~/git/arduino-ntag ~/Arduino/libraries/
+#include "ntag.h"
 
 //git clone git@github.com:LieBtrau/Arduino_STM32.git ~/git/Arduino_STM32
 //ln -s ~/git/Arduino_STM32/ ~/Programs/arduino-1.6.5/hardware/

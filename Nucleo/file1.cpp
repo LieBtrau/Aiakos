@@ -6,6 +6,7 @@
 #include <NfcAdapter.h>
 #include "microBox.h"
 #include "crypto.h"
+#include "ntag.h"
 
 char historyBuf[100];
 char hostname[] = "ioBash";
@@ -54,9 +55,6 @@ RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 #endif
 
-uint8_t data[] = "HalloWereld!";
-// Don't put this on the stack:
-uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
 //SCK => ICSP.3
 //MISO => ICSP.1
@@ -65,25 +63,29 @@ uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
 
-
+uint8_t data[] = "HalloWereld!";
+// Don't put this on the stack:
+uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 PN532_SPI pn532spi(SPI, 6);
 NfcAdapter nfc = NfcAdapter(pn532spi);
 Crypto cryptop;
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
+Ntag ntag(Ntag::NTAG_I2C_1K);
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
     Serial.println("start");
-    nfc.begin();
-    bool bResult=cryptop.testMasterKeySse();
-    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
-    Serial.println(bResult?"OK":"Fail");
-//    cryptop.cmacTest();
-//    if(!cryptop.setLocalKey(privateKey, publicKey)){
-//        Serial.println("Local keys not initialized.");
-//    }
+    ntag.test();
+    //nfc.begin();
+    //    bool bResult=cryptop.testMasterKeySse();
+    //    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
+    //    Serial.println(bResult?"OK":"Fail");
+    //    cryptop.cmacTest();
+    //    if(!cryptop.setLocalKey(privateKey, publicKey)){
+    //        Serial.println("Local keys not initialized.");
+    //    }
 #if defined(CLIENT_MRF89XA_RELIABLE) || defined(SERVER_MRF89XA_RELIABLE)
     if (!manager.init()){
         Serial.println("manager init failed");
@@ -102,11 +104,15 @@ void setup() {
 
 
 void loop() {
-    microbox.cmdParser();
-//    if(millis()>ulStartTime2+3000){
-//        ulStartTime2=millis();
-//        cryptop.eccTest();
-//    }
+    //    microbox.cmdParser();
+    //    if(nfc.tagPresent()){
+    //        NfcTag tag = nfc.read();
+    //        tag.print();
+    //    }
+    //    if(millis()>ulStartTime2+3000){
+    //        ulStartTime2=millis();
+    //        cryptop.eccTest();
+    //    }
     /*
 #ifdef CLIENT_MRF89XA_RELIABLE
         Serial.println("Sending to mrf89xa_reliable_datagram_server");
@@ -203,3 +209,4 @@ void loop() {
     }
     */
 }
+

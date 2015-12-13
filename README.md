@@ -1,31 +1,37 @@
-#Problem
-When arriving at home, the garage door is still locked.  I have to stop in front of the closed door, take of my backpack, find the keyfob and press the key on it.  Waiting then a few seconds before the door is fully open and I can enter.
+#This project will solve the following problem
+When arriving at home  with my bike, I find the garage door still locked.  I have to stop in front of the closed door, take of my backpack, find the keyfob and activate it.  It takes a few seconds then before the door is fully open and I can enter.  When it's raining heavily, every second outside is a second too much.
 
 #Wish
-While riding and coming near to my house, press a button on my bike so that the door opens.  By the time I arrive at the door, it's fully open and I can ride in the garage without stopping.
-
-#Issues
-* What transmitter has enough range so that its signal is received by the receiver inside the garage?
-* When there's a button mounted on my bike, everyone can push it when my bike is parked outside.  How do I prevent these non-authenticated requests?
-* How to prevent that someone can open the garage door when he steals the bike and reverse engineers its circuitry?
-* How to prevent that someone can bond a foreign transmitter to the receiver in the garage and make the receiver think that it's a legitimate device?
-* How to prevent that someone captures the RF-signal and launches a replay-attack?
-* How to prevent that someone captures the RF-signal and predicts the next valid message?
+While riding and coming near to my house, press a button on my bike so that the door opens.  By the time I arrive at the door, it's fully open and I can ride in the garage without having to stop on the drive way.
 
 #Solution
 The system will consist of three parts:  
 
 * door controller in the garage  
-* key fob in my back pack 
-* LF wake up initializer on my bike  
-* optional NFC card  
+* LF wake up initializer with RFID reader on my bike  
+* NFC-enabled key fob in my back pack  
 
-The LF wake up initializer on the bike can be considered as a remote button on the key fob.   If the button on the LF wake up initializer is pushed, it's as if the button on the key fob is pushed.  Technically speaking: the key fob will be in sleep mode for most of the time.  Pushing the button on the LF wake up initializer will generate a low frequency field which will be used to send a wake up code to the key fob.  The key fob has a specialized circuit that waits for LF-events.  Once that circuit detects the wake up code, it will bring the key fob in active mode.  When the key fob is awake, it will wirelessly issue a command to the door controller and go to sleep again.  The key fob should have a physical button too so that it can be used when the bike is not around.
-During system setup, the key fob will have to be securely bound to the garage controller.  For ease of use, compliance with future addon, prevention of man-in-the-middle (MITM) attacks, industry standard NFC will be used.  The user will use a button to put the door controller in learn mode, swipe the key fob along the controller and that's it.  
-The key fob will also have a button, so that it can be used without the LF wake up initializer.  There are cases known where people leave their keyfob in their car.  Car thieves force the car door open, use the key fob to enter the house and steal the car keys there.  To prevent that situation, the Aiakos key fob will only work in close proximity with an NFC-card (which you keep in your wallet).  If you use that button a lot when you're in the car, then it's probably better to install an LF wake up receiver in your car and always take the key fob with you, instead of using the keyfob button.
+##Door controller in the garage
+The door controller in the garage is connected to the motor that can open and close the gate.  It will only do this when an authenticated request from a paired keyfob has been received by its wireless UHF-receiver.
+During system setup, the key fob will have to be securely bound to the garage controller.  For ease of use, compliance with future addon, and prevention of man-in-the-middle (MITM) attacks, industry standard NFC will be used.  The user will use a button to put the door controller in learn mode.  To pair the keyfob, the user swipes it keyfob along the controller and that's it.  
+
+#LF wake up initializer with RFID reader
+The LF wake up initializer can generate a modulated low frequency field to wake up the keyfob when someone presses the button on the bike.
+Some conditions have to be met.  The bike has to be unlocked.  The key of the bike lock is attached to a key chain that also holds an RFID tag.  Checking if the bike is unlocked is done by reading the serial number of the RFID tag on the key chain.  The LF-transmitter sends this serial number to wake up the keyfob.
+
+#NFC enabled key fob
+After the key fob has been paired with the controller in the garage it will return to a low power sleep mode.  Reception of the correct code on the LF-receiver will wake up the key fob.  The UHF-transmitter in the key fob will then automatically send a request to the garage controller to open the gate.
+
+#Used technologies
+* NFC with NDEF messaging
+* 868MHz/915MHz wireless communication
+* 125kHz RFID reader
+* 125kHz 3D LF wake up receiver with data transmission
+* ECMA authentication with ECDH
+* ...
 
 #Future addon
-The garage controller can be equipped with a bluetooth low energy peripheral IC.  The user could then operate the door using an application on a smartphone.  To securely authenticate the smartphone to the garage controller using simple secure pairing (SSP), some out of band information (OOB) would be needed: NFC, (IrDa).  Also numeric comparison (NC) or pass key (PK) could be used to authenticate the garage controller, but it would require that the garage controller has a 6 digit display and/or a key pad.
+The garage controller can be equipped with a bluetooth low energy peripheral IC.  The user could then operate the door using an application on a smartphone.  
 
 * [Garage controller](../../wiki/Master:-garage-controller)
 

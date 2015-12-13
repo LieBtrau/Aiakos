@@ -255,3 +255,11 @@
 ../../PN532/PN532
 ../../PN532/PN532_SPI
 ../../aes-cmac-rfc
+../../RadioHead/examples/mrf89xa/mrf89xa_reliable_datagram_client
+../../RadioHead/tools
+../../RadioHead
+../../RadioHead/RHutil
+../../RadioHead/examples/nrf24/nrf24_reliable_datagram_client
+../../RadioHead/STM32ArduinoCompat
+../../RadioHead/examples/mrf89xa/mrf89xa_reliable_datagram_client/build-cli
+../../arduino-ntag
