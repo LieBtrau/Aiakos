@@ -63,22 +63,45 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
 
-uint8_t data[] = "HalloWereld!";
+byte data[] = "HalloWereld!";
 // Don't put this on the stack:
 uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
-PN532_SPI pn532spi(SPI, 6);
+PN532_SPI pn532spi(SPI, 10);
 NfcAdapter nfc = NfcAdapter(pn532spi);
 Crypto cryptop;
+Ntag ntag(Ntag::NTAG_I2C_1K);
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
-Ntag ntag(Ntag::NTAG_I2C_1K);
+byte ndefdata[30];
+
+void debugFnc(){
+
+    NdefMessage message = NdefMessage();
+    message.addUriRecord("http://arduino.cc");
+    uint8_t encoded[message.getEncodedSize()];
+    message.encode(encoded);
+
+    uint8_t buffer[3 + sizeof(encoded)];
+    memset(buffer, 0, sizeof(buffer));
+
+    if (sizeof(encoded) < 0xFF)
+    {
+        buffer[0] = 0x3;
+        buffer[1] = sizeof(encoded);
+        memcpy(&buffer[2], encoded, sizeof(encoded));
+        buffer[2+sizeof(encoded)] = 0xFE; // terminator
+    }
+    ntag.writeSram(0,buffer,3 + sizeof(encoded));
+}
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
     Serial.println("start");
-    ntag.test();
-    //nfc.begin();
+    nfc.begin();
+    ntag.begin();
+    ntag.setSramMirrorRf(true);
+    debugFnc();
     //    bool bResult=cryptop.testMasterKeySse();
     //    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
     //    Serial.println(bResult?"OK":"Fail");
@@ -105,10 +128,15 @@ void setup() {
 
 void loop() {
     //    microbox.cmdParser();
-    //    if(nfc.tagPresent()){
-    //        NfcTag tag = nfc.read();
-    //        tag.print();
-    //    }
+        if(nfc.tagPresent()){
+            NfcTag tag = nfc.read();
+            tag.print();
+            delay(5000);
+        }
+        ntag.debug();
+        if(ntag.waitUntilNdefRead(5000)){
+            Serial.println("Tag has been read");
+        }
     //    if(millis()>ulStartTime2+3000){
     //        ulStartTime2=millis();
     //        cryptop.eccTest();

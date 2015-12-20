@@ -1681,3 +1681,4 @@ crypto.cpp
 ntag.h
 ../../arduino-ntag/ntag.cpp
 ../../arduino-ntag/ntag.h
+../../arduino-ntag/examples/ntagTest/ntagTest.ino

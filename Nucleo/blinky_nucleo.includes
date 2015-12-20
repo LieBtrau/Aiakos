@@ -263,3 +263,4 @@
 ../../RadioHead/STM32ArduinoCompat
 ../../RadioHead/examples/mrf89xa/mrf89xa_reliable_datagram_client/build-cli
 ../../arduino-ntag
+../../arduino-ntag/examples/ntagTest
