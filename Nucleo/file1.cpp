@@ -7,6 +7,7 @@
 #include "microBox.h"
 #include "crypto.h"
 #include "ntag.h"
+#include "ntagsramadapter.h"
 
 char historyBuf[100];
 char hostname[] = "ioBash";
@@ -20,7 +21,6 @@ PARAM_ENTRY Params[]=
     {"publicKey", publicKey, PARTYPE_STRING | PARTYPE_RW, sizeof(publicKey), NULL, NULL, 2},
     {NULL, NULL}
 };
-
 
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
@@ -70,38 +70,18 @@ PN532_SPI pn532spi(SPI, 10);
 NfcAdapter nfc = NfcAdapter(pn532spi);
 Crypto cryptop;
 Ntag ntag(Ntag::NTAG_I2C_1K);
+NtagSramAdapter ntagAdapter(&ntag);
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
 byte ndefdata[30];
 
-void debugFnc(){
-
-    NdefMessage message = NdefMessage();
-    message.addUriRecord("http://arduino.cc");
-    uint8_t encoded[message.getEncodedSize()];
-    message.encode(encoded);
-
-    uint8_t buffer[3 + sizeof(encoded)];
-    memset(buffer, 0, sizeof(buffer));
-
-    if (sizeof(encoded) < 0xFF)
-    {
-        buffer[0] = 0x3;
-        buffer[1] = sizeof(encoded);
-        memcpy(&buffer[2], encoded, sizeof(encoded));
-        buffer[2+sizeof(encoded)] = 0xFE; // terminator
-    }
-    ntag.writeSram(0,buffer,3 + sizeof(encoded));
-}
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
     Serial.println("start");
     nfc.begin();
-    ntag.begin();
-    ntag.setSramMirrorRf(true);
-    debugFnc();
+    ntagAdapter.begin();
     //    bool bResult=cryptop.testMasterKeySse();
     //    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
     //    Serial.println(bResult?"OK":"Fail");
