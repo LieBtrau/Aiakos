@@ -75,13 +75,32 @@ uint32_t ulStartTime;
 uint32_t ulStartTime2;
 byte ndefdata[30];
 
+void i2cRelease();
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
     Serial.begin(115200);
     Serial.println("start");
+    i2cRelease();
     nfc.begin();
     ntagAdapter.begin();
+    NdefMessage message = NdefMessage();
+    message.addUriRecord("http://www.google.be");
+    if(ntagAdapter.write(message)){
+        Serial.println("Message written to tag.");
+    }
+    NfcTag nf=ntagAdapter.read();
+    if(nf.hasNdefMessage()){
+        NdefMessage nfm=nf.getNdefMessage();
+        nfm.print();
+        NdefRecord ndf=nfm.getRecord(0);
+        byte dat[ndf.getPayloadLength()];
+        ndf.getPayload(dat);
+        for(byte i=0;i<ndf.getPayloadLength();i++){
+            Serial.print(dat[i], HEX);Serial.print(" ");
+        }
+        Serial.println();
+    }
     //    bool bResult=cryptop.testMasterKeySse();
     //    Serial.print("Test master key Agreement + Derivation + Confirmation: ");
     //    Serial.println(bResult?"OK":"Fail");
@@ -108,15 +127,15 @@ void setup() {
 
 void loop() {
     //    microbox.cmdParser();
-        if(nfc.tagPresent()){
-            NfcTag tag = nfc.read();
-            tag.print();
-            delay(5000);
-        }
-        ntag.debug();
-        if(ntag.waitUntilNdefRead(5000)){
-            Serial.println("Tag has been read");
-        }
+    if(nfc.tagPresent()){
+        NfcTag tag = nfc.read();
+        tag.print();
+        delay(5000);
+    }
+    ntag.debug();
+    if(ntag.waitUntilNdefRead(5000)){
+        Serial.println("Tag has been read");
+    }
     //    if(millis()>ulStartTime2+3000){
     //        ulStartTime2=millis();
     //        cryptop.eccTest();
@@ -216,5 +235,17 @@ void loop() {
 #endif
     }
     */
+}
+
+void i2cRelease()
+{
+    pinMode(PB8, OUTPUT);
+    for(byte i=0;i<20;i++)
+    {
+        digitalWrite(PB8, LOW);
+        delay_us(10);
+        digitalWrite(PB8, HIGH);
+        delay_us(10);
+    }
 }
 

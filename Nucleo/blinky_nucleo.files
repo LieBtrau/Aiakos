@@ -1682,3 +1682,5 @@ ntag.h
 ../../arduino-ntag/ntag.cpp
 ../../arduino-ntag/ntag.h
 ../../arduino-ntag/examples/ntagTest/ntagTest.ino
+../../arduino-ntag/ntagsramadapter.cpp
+../../arduino-ntag/ntagsramadapter.h
