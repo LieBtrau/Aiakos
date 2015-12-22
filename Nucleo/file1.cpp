@@ -85,7 +85,7 @@ void setup() {
     nfc.begin();
     ntagAdapter.begin();
     NdefMessage message = NdefMessage();
-    message.addUriRecord("http://www.google.be");
+    message.addUnknownRecord(data,sizeof(data));
     if(ntagAdapter.write(message)){
         Serial.println("Message written to tag.");
     }
