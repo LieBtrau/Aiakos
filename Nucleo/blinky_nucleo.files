@@ -1599,8 +1599,6 @@ file1.cpp
 ../../NDEF/NfcDriver.h
 ../../NDEF/NfcTag.cpp
 ../../NDEF/NfcTag.h
-crypto.h
-crypto.cpp
 ../../arduino-base64/Base64.cpp
 ../../arduino-base64/Base64.h
 ../../PN532/PN532/emulatetag.cpp
