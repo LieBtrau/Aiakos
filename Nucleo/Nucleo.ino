@@ -151,6 +151,7 @@ void setup() {
     pinMode(18, OUTPUT);
     nfc.begin();
 #else
+    pinMode(3, OUTPUT);
     ntagAdapter.begin();
     tagLoop(true);
 #endif
@@ -298,7 +299,8 @@ void readerLoop()
 {
     static unsigned long waitStart=millis();
 
-    if(millis()<waitStart+1000)
+    //Full cycle (tag read by RF, tag written by RF, tag read by I²C, tag written by I²C) takes less than 330ms.
+    if(millis()<waitStart+330)
     {
         return;
     }
@@ -307,8 +309,9 @@ void readerLoop()
         return;
     }
     digitalWrite(18, HIGH);
-    NfcTag tag = nfc.read();
+    NfcTag tag = nfc.read();//takes 101ms on Arduino Due
     if(!tag.hasNdefMessage()){
+        digitalWrite(18, LOW);
         return;
     }
     NdefMessage nfm=tag.getNdefMessage();
@@ -325,8 +328,8 @@ void readerLoop()
         }else{
             Serial.println("Failed to write to tag");
         }
-        digitalWrite(18, LOW);
     }
+    digitalWrite(18, LOW);
 }
 #else
 void tagLoop(bool bInitialize){
@@ -341,13 +344,10 @@ void tagLoop(bool bInitialize){
         NdefRecord ndf=nfm.getRecord(0);
         byte dat[ndf.getPayloadLength()];
         ndf.getPayload(dat);
-        //        for(byte i=0;i<ndf.getPayloadLength();i++){
-        //            Serial.print(dat[i], HEX);Serial.print(" ");
-        //        }
-        //        Serial.println();
         id=dat[0];
     }
     if(bitRead(id,0)==0 || bInitialize){
+        digitalWrite(3, HIGH);
         data[0]=id+1;
         NdefMessage message = NdefMessage();
         message.addUnknownRecord(data,sizeof(data));
@@ -356,7 +356,7 @@ void tagLoop(bool bInitialize){
         }
         ntag.releaseI2c();
     }
-    //    delay(1000);
+    digitalWrite(3, LOW);
 }
 #endif
 

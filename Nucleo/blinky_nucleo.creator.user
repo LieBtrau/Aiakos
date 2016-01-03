@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 3.5.1, 2016-01-03T15:43:48. -->
+<!-- Written by QtCreator 3.5.1, 2016-01-03T16:00:35. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -192,7 +192,7 @@
      <value type="int">13</value>
      <value type="int">14</value>
     </valuelist>
-    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo/build/Nucleo.cpp.elf</value>
+    <value type="QString" key="BareMetal.CustomRunConfig.Executable">/home/ctack/build/Nucleo.cpp.elf</value>
     <value type="QString" key="BareMetal.RunConfig.WorkingDirectory">/home/ctack/Documents/PersonalProjects/Aiakos/Software/Aiakos/Nucleo</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DefaultDisplayName">Nucleo (via GDB server or hardware debugger)</value>
     <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName"></value>
