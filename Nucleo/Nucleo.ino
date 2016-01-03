@@ -1,6 +1,6 @@
 //declaration of needed libraries must be done in the ino-file of the project.
 #include "Arduino.h"
-
+#include "nucleo.h"
 #define HARDI2C
 #include <Wire.h>
 #include <SPI.h>
@@ -58,6 +58,8 @@
 //ln -s ~/git/bounce2 ~/Arduino/libraries/
 #include "Bounce2.h"
 
+#include "nfcauthentication.h"
+
 //git clone git@github.com:LieBtrau/Arduino_STM32.git ~/git/Arduino_STM32
 //Remark that Arduino_STM32 doesn't seem to work with Arduino 1.6.7
 //ln -s ~/git/Arduino_STM32/ ~/Programs/arduino-1.6.5/hardware/
@@ -67,11 +69,22 @@
 //because Arduino 1.6.7 will compile these also, which will result in linking errors.
 //~/Programs/arduino-1.6.5/arduino --verify --board Arduino_STM32:STM32F1:nucleo_f103rb --pref target_package=Arduino_STM32 --pref build.path=/home/ctack/build --pref target_platform=STM32F1 --pref board=nucleo_f103rb ~/Arduino/blinky_nucleo/blinky_nucleo.ino
 
+
 char historyBuf[100];
 char hostname[] = "ioBash";
 char privateKey[32+1];//base64 string representation of 192bit key
 char publicKey[64+1];//base64 string representation of 192bit key (x,y)
+byte data[] = "HalloWereld!";
+// Don't put this on the stack:
+uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
+uint32_t ulStartTime;
+uint32_t ulStartTime2;
+#ifdef ARDUINO_SAM_DUE
+nfcAuthentication nfca(false,10,2);
+#else
+nfcAuthentication nfca(true,10,2);
+#endif
 PARAM_ENTRY Params[]=
 {
     {"hostname", hostname, PARTYPE_STRING | PARTYPE_RW, sizeof(hostname), NULL, NULL, 0},
@@ -121,24 +134,7 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
 
-byte data[] = "HalloWereld!";
-// Don't put this on the stack:
-uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
-#ifdef ARDUINO_SAM_DUE
-PN532_SPI pn532spi(SPI, 10);
-NfcAdapter nfc = NfcAdapter(pn532spi);
-void readerLoop();
-#else
-Ntag ntag(Ntag::NTAG_I2C_1K,2);
-NtagSramAdapter ntagAdapter(&ntag);
-void tagLoop(bool bInitialize=false);
-#endif
-
-//NfcSec01 cryptop(true);
-
-uint32_t ulStartTime;
-uint32_t ulStartTime2;
 
 void i2cRelease();
 
@@ -147,14 +143,7 @@ void setup() {
     Serial.begin(115200);
     Serial.println("start");
     i2cRelease();
-#ifdef ARDUINO_SAM_DUE
-    pinMode(18, OUTPUT);
-    nfc.begin();
-#else
-    pinMode(3, OUTPUT);
-    ntagAdapter.begin();
-    tagLoop(true);
-#endif
+    nfca.begin();
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)
     //    {
     //        return false;
@@ -189,12 +178,7 @@ void setup() {
 
 void loop() {
     //    microbox.cmdParser();
-
-#ifdef ARDUINO_SAM_DUE
-    readerLoop();
-#else
-    tagLoop();
-#endif
+    nfca.loop();
     //    if(millis()>ulStartTime2+3000){
     //        ulStartTime2=millis();
     //        cryptop.eccTest();
@@ -292,74 +276,6 @@ void loop() {
     }
 #endif
 }
-
-
-#ifdef ARDUINO_SAM_DUE
-void readerLoop()
-{
-    static unsigned long waitStart=millis();
-
-    //Full cycle (tag read by RF, tag written by RF, tag read by I²C, tag written by I²C) takes less than 330ms.
-    if(millis()<waitStart+330)
-    {
-        return;
-    }
-    waitStart=millis();
-    if(!nfc.tagPresent()){
-        return;
-    }
-    digitalWrite(18, HIGH);
-    NfcTag tag = nfc.read();//takes 101ms on Arduino Due
-    if(!tag.hasNdefMessage()){
-        digitalWrite(18, LOW);
-        return;
-    }
-    NdefMessage nfm=tag.getNdefMessage();
-    nfm.print();
-    NdefRecord ndf=nfm.getRecord(0);
-    byte dat[ndf.getPayloadLength()];
-    ndf.getPayload(dat);
-    if(bitRead(dat[0],0)){
-        NdefMessage message = NdefMessage();
-        data[0]=dat[0]+1;
-        message.addUnknownRecord(data,sizeof(data));
-        if(nfc.write(message)){
-            Serial.println("Reader has written message to tag.");
-        }else{
-            Serial.println("Failed to write to tag");
-        }
-    }
-    digitalWrite(18, LOW);
-}
-#else
-void tagLoop(bool bInitialize){
-    byte id=0;
-    if(!bInitialize){
-        NfcTag nf=ntagAdapter.read();
-        if(!nf.hasNdefMessage()){
-            return;
-        }
-        NdefMessage nfm=nf.getNdefMessage();
-        nfm.print();
-        NdefRecord ndf=nfm.getRecord(0);
-        byte dat[ndf.getPayloadLength()];
-        ndf.getPayload(dat);
-        id=dat[0];
-    }
-    if(bitRead(id,0)==0 || bInitialize){
-        digitalWrite(3, HIGH);
-        data[0]=id+1;
-        NdefMessage message = NdefMessage();
-        message.addUnknownRecord(data,sizeof(data));
-        if(ntagAdapter.write(message)){
-            Serial.println("I²C has written message to tag.");
-        }
-        ntag.releaseI2c();
-    }
-    digitalWrite(3, LOW);
-}
-#endif
-
 
 
 void i2cRelease()

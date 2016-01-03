@@ -1683,3 +1683,6 @@ ntag.h
 ../../arduino-nfc-sec-01/crypto.h
 ../../bounce2/Bounce2.cpp
 ../../bounce2/Bounce2.h
+nucleo.h
+nfcauthentication.h
+nfcauthentication.cpp
