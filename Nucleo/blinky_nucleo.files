@@ -58,7 +58,6 @@ Nucleo.ino
 ../libraries/RadioHead/RHSPIDriver.cpp
 ../libraries/RadioHead/RHSPIDriver.h
 ../libraries/RadioHead/RHTcpProtocol.h
-file1.cpp
 ../libraries/PN532/emulatetag.cpp
 ../libraries/PN532/emulatetag.h
 ../libraries/PN532/llcp.cpp
@@ -558,8 +557,6 @@ file1.cpp
 ../../Programs/arduino-1.6.5/hardware/Arduino_STM32/STM32F1/variants/nucleo_f103rb/variant.h
 ../libraries/PN532_SPI/PN532_SPI.cpp
 ../libraries/PN532_SPI/PN532_SPI.h
-../libraries/Xterm/Xterm.cpp
-../libraries/Xterm/Xterm.h
 ../../../../../../Arduino/libraries/microBox/microBox.cpp
 ../../../../../../Arduino/libraries/microBox/microBox.h
 ../../../../../../Programs/arduino-1.6.5/hardware/Arduino_STM32/STM32F1/cores/maple/avr/dtostrf.c
@@ -1682,3 +1679,7 @@ ntag.h
 ../../arduino-ntag/examples/ntagTest/ntagTest.ino
 ../../arduino-ntag/ntagsramadapter.cpp
 ../../arduino-ntag/ntagsramadapter.h
+../../arduino-nfc-sec-01/crypto.cpp
+../../arduino-nfc-sec-01/crypto.h
+../../bounce2/Bounce2.cpp
+../../bounce2/Bounce2.h

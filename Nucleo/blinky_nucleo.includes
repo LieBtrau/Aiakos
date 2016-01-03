@@ -19,7 +19,6 @@
 ~/Arduino/libraries/PN532
 ~/Arduino/libraries/PN532_SPI
 ~/Arduino/libraries/NDEF
-~/Arduino/libraries/Xterm
 ../../Programs/arduino-1.6.5/hardware/Arduino_STM32/STM32F1/variants/generic_stm32f103z/board
 ../../Programs/arduino-1.6.5/hardware/Arduino_STM32/STM32F1/cores/maple/libmaple
 ../../Programs/arduino-1.6.5/hardware/Arduino_STM32/STM32F1/variants/microduino/wirish
@@ -255,6 +254,7 @@
 ../../PN532/PN532
 ../../PN532/PN532_SPI
 ../../aes-cmac-rfc
+../../bounce2
 ../../RadioHead/examples/mrf89xa/mrf89xa_reliable_datagram_client
 ../../RadioHead/tools
 ../../RadioHead
@@ -264,3 +264,4 @@
 ../../RadioHead/examples/mrf89xa/mrf89xa_reliable_datagram_client/build-cli
 ../../arduino-ntag
 ../../arduino-ntag/examples/ntagTest
+../../arduino-nfc-sec-01
