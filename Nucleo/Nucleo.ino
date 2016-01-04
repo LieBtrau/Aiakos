@@ -178,7 +178,7 @@ void setup() {
 
 void loop() {
     //    microbox.cmdParser();
-    nfca.loop();
+    nfca.readerLoop();
     //    if(millis()>ulStartTime2+3000){
     //        ulStartTime2=millis();
     //        cryptop.eccTest();

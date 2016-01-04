@@ -9,27 +9,27 @@
 #include <PN532_SPI.h>
 #include <PN532.h>
 
-typedef enum{
-    WAITING_FOR_TAG,
-    READING_PUBLIC_KEY,
-    SENDING_PUBLIC_KEY
-} ss;
-
 
 class nfcAuthentication
 {
 public:
-    nfcAuthentication(bool bInitializer, byte ss_pin, byte fd_pin);
+    nfcAuthentication(bool bIsDongle, byte ss_pin, byte fd_pin);
     void begin();
-    void loop();
+    void readerLoop();
 private:
+    typedef enum{
+        WAITING_FOR_TAG,
+        READER_READING_PUBLIC_KEY,
+        READER_SENDING_PUBLIC_KEY,
+        READER_WAITING_FOR_MAC_TAG_A
+    } ss;
     bool parseTagData(ss state, NfcTag tag);
+    NfcSec01 cryptop;
     PN532_SPI pn532spi;
     NfcAdapter nfc;
-    NfcSec01 cryptop;
     Ntag ntag;
     NtagSramAdapter ntagAdapter;
-    bool _bIsInitiator;
+    bool _bIsDongle;
 };
 
 #endif // NFCAUTHENTICATION_H
