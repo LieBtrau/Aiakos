@@ -80,10 +80,15 @@ uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
+
 #ifdef ARDUINO_SAM_DUE
-nfcAuthentication nfca(false,10,2);
+pn532spi(SPI, 10);
+nfc(pn532spi);
+nfcAuthentication nfca(&nfc);
 #else
-nfcAuthentication nfca(true,10,2);
+Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
+NtagSramAdapter ntagAdapter(&ntag);
+nfcAuthentication nfca(&ntagAdapter);
 #endif
 PARAM_ENTRY Params[]=
 {
@@ -144,6 +149,14 @@ void setup() {
     Serial.println("start");
     i2cRelease();
     nfca.begin();
+    byte data[10];
+    NdefMessage message = NdefMessage();
+    message.addUnknownRecord(data,sizeof(data));
+    if(ntagAdapter.write(message)){
+        Serial.println("I²C has written message to tag.");
+    }
+    ntag.releaseI2c();
+
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)
     //    {
     //        return false;
@@ -178,11 +191,22 @@ void setup() {
 
 void loop() {
     //    microbox.cmdParser();
-    nfca.readerLoop();
-    //    if(millis()>ulStartTime2+3000){
-    //        ulStartTime2=millis();
-    //        cryptop.eccTest();
-    //    }
+    if(nfca.loop())
+    {
+        Serial.println("Pairing successful");
+    }
+//        if(millis()>ulStartTime2+3000){
+//            ulStartTime2=millis();
+//            NfcTag nf=ntagAdapter.read();
+//            if(!nf.hasNdefMessage()){
+//                return;
+//            }
+//            NdefMessage nfm=nf.getNdefMessage();
+//            nfm.print();
+//            NdefRecord ndf=nfm.getRecord(0);
+//            byte dat[ndf.getPayloadLength()];
+//            ndf.getPayload(dat);
+//        }
 #ifdef CLIENT_MRF89XA_RELIABLE
     Serial.println("Sending to mrf89xa_reliable_datagram_server");
 

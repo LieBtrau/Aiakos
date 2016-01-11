@@ -13,22 +13,26 @@
 class nfcAuthentication
 {
 public:
-    nfcAuthentication(bool bIsDongle, byte ss_pin, byte fd_pin);
+    nfcAuthentication(NfcAdapter* nfca);
+    nfcAuthentication(NtagSramAdapter* nfca);
     void begin();
-    void readerLoop();
-private:
+    bool loop();
     typedef enum{
         WAITING_FOR_TAG,
-        READER_READING_PUBLIC_KEY,
-        READER_SENDING_PUBLIC_KEY,
-        READER_WAITING_FOR_MAC_TAG_A
+        WAITING_FOR_READER,
+        READING_PUBLIC_KEY,
+        READING_NONCE,
+        WAITING_FOR_MAC_TAG,
+        CHECK_MAC_TAG_A,
     } ss;
-    bool parseTagData(ss state, NfcTag tag);
+private:
+    bool readerLoop();
+    bool tagLoop();
+    bool tagHasData(NfcTag tag);
+    bool getTagData(ss state);
     NfcSec01 cryptop;
-    PN532_SPI pn532spi;
-    NfcAdapter nfc;
-    Ntag ntag;
-    NtagSramAdapter ntagAdapter;
+    NfcAdapter* _nfcAdapter;
+    NtagSramAdapter* _ntagAdapter;
     bool _bIsDongle;
 };
 
