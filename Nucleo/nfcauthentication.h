@@ -17,23 +17,26 @@ public:
     nfcAuthentication(NtagSramAdapter* nfca);
     void begin();
     bool loop();
-    typedef enum{
-        WAITING_FOR_TAG,
-        WAITING_FOR_READER,
+    enum ss{
+        WAITING_FOR_PEER,
         READING_PUBLIC_KEY,
         READING_NONCE,
         WAITING_FOR_MAC_TAG,
         CHECK_MAC_TAG_A,
-    } ss;
+    };
 private:
+    static const word PAIRING_TIMEOUT=6000;
     bool readerLoop();
     bool tagLoop();
     bool tagHasData(NfcTag tag);
-    bool getTagData(ss state);
+    bool getTagData();
     NfcSec01 cryptop;
     NfcAdapter* _nfcAdapter;
     NtagSramAdapter* _ntagAdapter;
     bool _bIsDongle;
+    ss _state;
+    unsigned long pairingStartTime;
+
 };
 
 #endif // NFCAUTHENTICATION_H

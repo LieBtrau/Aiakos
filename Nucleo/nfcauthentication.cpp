@@ -24,7 +24,6 @@ nfcAuthentication::nfcAuthentication(NfcAdapter* nfca):
 {
     _bIsDongle=false;
     cryptop.setInitiator(_bIsDongle);
-    _nfcAdapter->begin();
     writePin =  18;
     readPin =  19;
 }
@@ -45,12 +44,28 @@ void nfcAuthentication::begin()
         byte nfcid[7];
         RNG(nfcid,7);
         cryptop.setNFCIDi(nfcid,7);
+
     }
     cryptop.generateAsymmetricKey(&RNG);
 }
 
 bool nfcAuthentication::loop()
 {
+    static unsigned long ulTime=millis();
+    if(millis()>ulTime+1000)
+    {
+        Serial.println(_state, DEC);
+        ulTime=millis();
+    }
+    if(_state==WAITING_FOR_PEER)
+    {
+        pairingStartTime=millis();
+    }
+    if(millis()>pairingStartTime+ PAIRING_TIMEOUT)
+    {
+        _state=WAITING_FOR_PEER;
+        pairingStartTime=millis();
+    }
     if(_bIsDongle)
     {
         return tagLoop();
@@ -62,23 +77,22 @@ bool nfcAuthentication::loop()
 
 bool nfcAuthentication::readerLoop()
 {
-    static ss state=WAITING_FOR_TAG;
     NdefMessage message;
     byte payload[64];
 
     if(!_nfcAdapter->tagPresent()){
-        state=WAITING_FOR_TAG;
+        _state=WAITING_FOR_PEER;
         return false;
     }
-    switch(state)
+    switch(_state)
     {
-    case WAITING_FOR_TAG:
+    case WAITING_FOR_PEER:
         if(_nfcAdapter->tagPresent()){
-            state=READING_PUBLIC_KEY;
+            _state=READING_PUBLIC_KEY;
         }
         break;
     case READING_PUBLIC_KEY:
-        if(getTagData(state))
+        if(getTagData())
         {
             message = NdefMessage();
             payload[0]=NfcSec01::QB;
@@ -87,12 +101,13 @@ bool nfcAuthentication::readerLoop()
             digitalWrite(writePin, HIGH);
             if(_nfcAdapter->write(message))
             {
-                state=READING_NONCE;
+                Serial.println("QB written");
+                _state=READING_NONCE;
             }
         }
         break;
     case READING_NONCE:
-        if(getTagData(state))
+        if(getTagData())
         {
             message = NdefMessage();
             payload[0]=NfcSec01::NB;
@@ -101,12 +116,13 @@ bool nfcAuthentication::readerLoop()
             digitalWrite(writePin, HIGH);
             if(_nfcAdapter->write(message))
             {
-                state=WAITING_FOR_MAC_TAG;
+                Serial.println("NB written");
+                _state=WAITING_FOR_MAC_TAG;
             }
         }
         break;
     case WAITING_FOR_MAC_TAG:
-        if(getTagData(state))
+        if(getTagData())
         {
             message = NdefMessage();
             payload[0]=NfcSec01::MAC_TAG_B;
@@ -115,14 +131,15 @@ bool nfcAuthentication::readerLoop()
             digitalWrite(writePin, HIGH);
             if(_nfcAdapter->write(message))
             {
-                state=WAITING_FOR_TAG;
+                Serial.println("MacTagB written");
+                _state=WAITING_FOR_PEER;
                 digitalWrite(writePin, LOW);
                 return true;
             }
         }
         break;
     default:
-        state=WAITING_FOR_TAG;
+        _state=WAITING_FOR_PEER;
         break;
     }
     digitalWrite(writePin, LOW);
@@ -130,17 +147,16 @@ bool nfcAuthentication::readerLoop()
 }
 
 bool nfcAuthentication::tagLoop(){
-    static ss state=WAITING_FOR_READER;
     NdefMessage message;
     byte payload[64];
 
     if((!_ntagAdapter->readerPresent()))// || (!ntagAdapter.rfReadingDone()))
     {
-        state=WAITING_FOR_READER;
+        _state=WAITING_FOR_PEER;
     }
-    switch(state)
+    switch(_state)
     {
-    case WAITING_FOR_READER:
+    case WAITING_FOR_PEER:
         if(_ntagAdapter->readerPresent())// && ntagAdapter.rfReadingDone())
         {
             message = NdefMessage();
@@ -150,12 +166,13 @@ bool nfcAuthentication::tagLoop(){
             digitalWrite(writePin, HIGH);
             if(_ntagAdapter->write(message))
             {
-                state=READING_PUBLIC_KEY;
+                Serial.println("QA written");
+                _state=READING_PUBLIC_KEY;
             }
         }
         break;
     case READING_PUBLIC_KEY:
-        if(getTagData(state))
+        if(getTagData())
         {
             message = NdefMessage();
             payload[0]=NfcSec01::NA;
@@ -164,12 +181,13 @@ bool nfcAuthentication::tagLoop(){
             digitalWrite(writePin, HIGH);
             if(_ntagAdapter->write(message))
             {
-                state=READING_NONCE;
+                Serial.println("NA written");
+                _state=READING_NONCE;
             }
         }
         break;
     case READING_NONCE:
-        if(getTagData(state))
+        if(getTagData())
         {
             message = NdefMessage();
             payload[0]=NfcSec01::MAC_TAG_A;
@@ -178,18 +196,20 @@ bool nfcAuthentication::tagLoop(){
             digitalWrite(writePin, HIGH);
             if(_ntagAdapter->write(message))
             {
-                state=WAITING_FOR_MAC_TAG;
-                digitalWrite(writePin, LOW);
-                return true;
+                Serial.println("MacTagA written");
+                _state=WAITING_FOR_MAC_TAG;
             }
         }
         break;
     case WAITING_FOR_MAC_TAG:
-        if(getTagData(state))
+        if(getTagData())
         {
-            state=WAITING_FOR_TAG;
+            _state=WAITING_FOR_PEER;
             return true;
         }
+        break;
+    default:
+        _state=WAITING_FOR_PEER;
         break;
     }
     digitalWrite(writePin, LOW);
@@ -197,7 +217,7 @@ bool nfcAuthentication::tagLoop(){
 }
 //#endif
 
-bool nfcAuthentication::getTagData(ss state)
+bool nfcAuthentication::getTagData()
 {
     //Check if tag has data
     static unsigned long waitStart=millis();
@@ -209,50 +229,85 @@ bool nfcAuthentication::getTagData(ss state)
     waitStart=millis();
     digitalWrite(readPin, HIGH);
     NfcTag nf = _bIsDongle ? _ntagAdapter->read() : _nfcAdapter->read();//takes 101ms on Arduino Due
+    byte remoteUid[nf.getUidLength()];
     digitalWrite(readPin, LOW);
     if(!nf.hasNdefMessage()){
-        return true;
+        return false;
     }
     NdefMessage nfm=nf.getNdefMessage();
-    nfm.print();
+    //nfm.print();
     NdefRecord ndf=nfm.getRecord(0);
     byte dat[ndf.getPayloadLength()];
     ndf.getPayload(dat);
-
-    return false;
-        switch(state){
-        case nfcAuthentication::READING_PUBLIC_KEY:
-            if( (dat[0]!=NfcSec01::QA && !_bIsDongle) || (dat[0]!=NfcSec01::QB && _bIsDongle) )
-            {
-                return false;
-            }
-            //Package contents:
-            //  MSG_ID | QA or MSG_ID | QB
-            cryptop.setRemotePublicKey(dat+1);
-            return true;
-        case nfcAuthentication::READING_NONCE:
-            if( (dat[0]!=NfcSec01::NA && !_bIsDongle) || (dat[0]!=NfcSec01::NB && _bIsDongle) )
-            {
-                return false;
-            }
-            //Package contents:
-            //  MSG_ID | NA or MSG_ID | NB
-            cryptop.generateRandomNonce(&RNG);
-            byte remoteUid[nf.getUidLength()];
-            nf.getUid(remoteUid,nf.getUidLength());
-            return cryptop.calcMasterKeySSE(dat+1, remoteUid,nf.getUidLength());
-            //return true;
-        case nfcAuthentication::WAITING_FOR_MAC_TAG:
-            if( (dat[0]!=NfcSec01::MAC_TAG_A && !_bIsDongle) || (dat[0]!=NfcSec01::MAC_TAG_B && _bIsDongle) )
-            {
-                return false;
-            }
-            //Package contents:
-            // MSG_ID | MAC_TAG_A or MSG_ID | MAC_TAG_B
-            return cryptop.checkKeyConfirmation(dat+1);
-        default:
+    switch(_state){
+    case READING_PUBLIC_KEY:
+        if( (dat[0]!=NfcSec01::QA && !_bIsDongle) || (dat[0]!=NfcSec01::QB && _bIsDongle) )
+        {
             return false;
         }
+        //Package contents:
+        //  MSG_ID | QA or MSG_ID | QB
+        cryptop.setRemotePublicKey(dat+1);
+        return true;
+    case READING_NONCE:
+        if(!_bIsDongle)
+        {
+            if(dat[0]==NfcSec01::QA)
+            {
+                _state=READING_PUBLIC_KEY;
+            }
+            if(dat[0]!=NfcSec01::NA)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if(dat[0]==NfcSec01::QB)
+            {
+                _state=READING_PUBLIC_KEY;
+            }
+            if(dat[0]!=NfcSec01::NB)
+            {
+                return false;
+            }
+        }
+        //Package contents:
+        //  MSG_ID | NA or MSG_ID | NB
+        cryptop.generateRandomNonce(&RNG);
+        nf.getUid(remoteUid,nf.getUidLength());
+        return cryptop.calcMasterKeySSE(dat+1, remoteUid,nf.getUidLength());
+    break;
+    case WAITING_FOR_MAC_TAG:
+        if(!_bIsDongle)
+        {
+            if(dat[0]==NfcSec01::NA)
+            {
+                _state=READING_NONCE;
+            }
+            if(dat[0]!=NfcSec01::MAC_TAG_A)
+            {
+                return false;
+            }
+        }
+        else
+        {
+            if(dat[0]==NfcSec01::NB)
+            {
+                _state=READING_NONCE;
+            }
+            if(dat[0]!=NfcSec01::MAC_TAG_B)
+            {
+                return false;
+            }
+        }
+        //Package contents:
+        // MSG_ID | MAC_TAG_A or MSG_ID | MAC_TAG_B
+        return cryptop.checkKeyConfirmation(dat+1);
+    default:
+        return false;
+    }
+    return false;
 }
 
 

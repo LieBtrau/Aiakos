@@ -82,8 +82,8 @@ uint32_t ulStartTime;
 uint32_t ulStartTime2;
 
 #ifdef ARDUINO_SAM_DUE
-pn532spi(SPI, 10);
-nfc(pn532spi);
+PN532_SPI pn532spi(SPI, 10);
+NfcAdapter nfc(pn532spi);
 nfcAuthentication nfca(&nfc);
 #else
 Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
@@ -149,14 +149,12 @@ void setup() {
     Serial.println("start");
     i2cRelease();
     nfca.begin();
-    byte data[10];
-    NdefMessage message = NdefMessage();
-    message.addUnknownRecord(data,sizeof(data));
-    if(ntagAdapter.write(message)){
-        Serial.println("I²C has written message to tag.");
-    }
-    ntag.releaseI2c();
-
+//    byte data[10];
+//    NdefMessage message = NdefMessage();
+//    message.addUnknownRecord(data,sizeof(data));
+//    if(ntagAdapter.write(message)){
+//        Serial.println("I²C has written message to tag.");
+//    }
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)
     //    {
     //        return false;
