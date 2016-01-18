@@ -22,14 +22,15 @@ public:
         READING_PUBLIC_KEY,
         READING_NONCE,
         WAITING_FOR_MAC_TAG,
-        CHECK_MAC_TAG_A,
     };
 private:
-    static const word PAIRING_TIMEOUT=6000;
+    static const word PAIRING_TIMEOUT=3000;
     bool readerLoop();
     bool tagLoop();
     bool tagHasData(NfcTag tag);
     bool getTagData();
+    bool write(byte* data, byte length);
+    NfcTag read();
     NfcSec01 cryptop;
     NfcAdapter* _nfcAdapter;
     NtagSramAdapter* _ntagAdapter;

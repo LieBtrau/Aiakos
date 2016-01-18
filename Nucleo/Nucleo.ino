@@ -131,15 +131,12 @@ RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 #endif
 
-
 //SCK => ICSP.3
 //MISO => ICSP.1
 //MOSI => ICSP.4
 //SS => D6
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
-
-
 
 void i2cRelease();
 
