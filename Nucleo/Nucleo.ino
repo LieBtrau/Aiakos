@@ -83,7 +83,7 @@ uint32_t ulStartTime2;
 
 #ifdef ARDUINO_SAM_DUE
 PN532_SPI pn532spi(SPI, 10);
-NfcAdapter nfc(pn532spi);
+NfcAdapter nfc= NfcAdapter(pn532spi);
 nfcAuthentication nfca(&nfc);
 #else
 Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
@@ -185,6 +185,7 @@ void setup() {
 }
 
 void loop() {
+
     //    microbox.cmdParser();
     if(nfca.loop())
     {
