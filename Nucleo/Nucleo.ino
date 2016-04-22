@@ -60,6 +60,8 @@
 
 #include "nfcauthentication.h"
 
+#include "kryptoknight.h"
+
 //git clone git@github.com:LieBtrau/Arduino_STM32.git ~/git/Arduino_STM32
 //Remark that Arduino_STM32 doesn't seem to work with Arduino 1.6.7
 //ln -s ~/git/Arduino_STM32/ ~/Programs/arduino-1.6.5/hardware/

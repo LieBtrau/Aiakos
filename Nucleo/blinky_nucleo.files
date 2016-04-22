@@ -1686,3 +1686,5 @@ ntag.h
 nucleo.h
 nfcauthentication.h
 nfcauthentication.cpp
+../../arduino-kryptoknight/kryptoknight.h
+../../arduino-kryptoknight/kryptoknight.cpp
