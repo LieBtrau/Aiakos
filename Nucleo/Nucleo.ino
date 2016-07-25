@@ -1,5 +1,7 @@
 //declaration of needed libraries must be done in the ino-file of the project.
 #include "Arduino.h"
+#include <SoftwareSerial.h>
+
 #include "nucleo.h"
 #define HARDI2C
 #include <Wire.h>
@@ -27,10 +29,10 @@
 #include <RH_MRF89XA.h>
 #include <RHReliableDatagram.h>
 
-//git clone git@github.com:LieBtrau/microBox.git ~/git/microBox
-//ln -s ~/git/microBox/ ~/Arduino/libraries/
-//Needed flash size: 10.4K
-#include "microBox.h"
+////git clone git@github.com:LieBtrau/microBox.git ~/git/microBox
+////ln -s ~/git/microBox/ ~/Arduino/libraries/
+////Needed flash size: 10.4K
+//#include "microBox.h"
 
 //~/git$ git clone git@github.com:LieBtrau/micro-ecc.git ~/git/uECC
 //ln -s ~/git/uECC/ ~/Arduino/libraries/
@@ -58,6 +60,15 @@
 //ln -s ~/git/bounce2 ~/Arduino/libraries/
 #include "Bounce2.h"
 
+//git clone git@github.com:LieBtrau/arduino-as3933.git ~/git/arduino-as3933
+//ln -s  ~/git/arduino-as3933 ~/Arduino/libraries/
+#include "as3933.h"
+#include "as3933gen.h"
+
+//git clone git@github.com:LieBtrau/Click_BLE2_RN4020.git ~/git/Click_BLE2_RN4020
+//ln -s ~/git/Click_BLE2_RN4020/library/Arduino ~/Arduino/libraries/Click_BLE2_RN4020
+#include "ble2_hw.h"
+
 #include "nfcauthentication.h"
 
 #include "kryptoknight.h"
@@ -66,7 +77,10 @@
 //Remark that Arduino_STM32 doesn't seem to work with Arduino 1.6.7
 //ln -s ~/git/Arduino_STM32/ ~/Programs/arduino-1.6.5/hardware/
 
+#include "blecontrol.h"
+
 //Build instruction:
+
 //Adjust build.path to suit your needs.  Don't make it a subfolder of the directory where your *.ino 's are located,
 //because Arduino 1.6.7 will compile these also, which will result in linking errors.
 //~/Programs/arduino-1.6.5/arduino --verify --board Arduino_STM32:STM32F1:nucleo_f103rb --pref target_package=Arduino_STM32 --pref build.path=/home/ctack/build --pref target_platform=STM32F1 --pref board=nucleo_f103rb ~/Arduino/blinky_nucleo/blinky_nucleo.ino
@@ -92,14 +106,17 @@ Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
 NtagSramAdapter ntagAdapter(&ntag);
 nfcAuthentication nfca(&ntagAdapter);
 #endif
-PARAM_ENTRY Params[]=
-{
-    {"hostname", hostname, PARTYPE_STRING | PARTYPE_RW, sizeof(hostname), NULL, NULL, 0},
-    {"privateKey", privateKey, PARTYPE_STRING | PARTYPE_RW, sizeof(privateKey), NULL, NULL, 1},
-    {"publicKey", publicKey, PARTYPE_STRING | PARTYPE_RW, sizeof(publicKey), NULL, NULL, 2},
-    {NULL, NULL}
-};
-
+//PARAM_ENTRY Params[]=
+//{
+//    {"hostname", hostname, PARTYPE_STRING | PARTYPE_RW, sizeof(hostname), NULL, NULL, 0},
+//    {"privateKey", privateKey, PARTYPE_STRING | PARTYPE_RW, sizeof(privateKey), NULL, NULL, 1},
+//    {"publicKey", publicKey, PARTYPE_STRING | PARTYPE_RW, sizeof(publicKey), NULL, NULL, 2},
+//    {NULL, NULL}
+//};
+//As3933 as(SPI,10,11);
+//byte pattern[]={0x12, 0x34};
+//As3933Gen asgen(pattern);
+bleControl ble;
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
 //  /CSCON  = MRF89XAM8A: pin 3 => Arduino Uno pin 5
@@ -141,13 +158,20 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 //GND => ICSP.6
 
 void i2cRelease();
+SoftwareSerial sw(3,4);//RX, TX
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
-    Serial.begin(115200);
-    Serial.println("start");
+//    while (!Serial) ;
+    sw.begin(9600);
+    sw.println("I'm ready, folk!");
+
     i2cRelease();
-    nfca.begin();
+//    as.begin();
+//    as.setCorrelator(false);
+//    as.calAntenna(125000);
+    if(!ble.begin(false))while(1);
+//    nfca.begin();
 //    byte data[10];
 //    NdefMessage message = NdefMessage();
 //    message.addUnknownRecord(data,sizeof(data));
@@ -183,16 +207,23 @@ void setup() {
     }
     Serial.println("driver init OK");
 #endif
-    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
+//    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
+//    RingBuffer rb(3);
+//    rb.push(1);
+//    rb.push(2);
+//    rb.push(3);
+//    rb.push(4);
+//    byte a;
+//    rb.pop(a);rb.pop(a);rb.pop(a);rb.pop(a);
 }
 
 void loop() {
-
+//as.reset();
     //    microbox.cmdParser();
-    if(nfca.loop())
-    {
-        Serial.println("Pairing successful");
-    }
+//    if(nfca.loop())
+//    {
+//        Serial.println("Pairing successful");
+//    }
 //        if(millis()>ulStartTime2+3000){
 //            ulStartTime2=millis();
 //            NfcTag nf=ntagAdapter.read();
@@ -306,6 +337,8 @@ void i2cRelease()
     const byte SCL_PIN=PB8;
 #elif defined ARDUINO_SAM_DUE
     const byte SCL_PIN=21;
+#elif defined ARDUINO_AVR_PROTRINKET3FTDI
+    const byte SCL_PIN=A5;
 #endif
     pinMode(SCL_PIN, OUTPUT);
     for(byte i=0;i<100;i++)
