@@ -266,3 +266,9 @@
 ../../arduino-ntag/examples/ntagTest
 ../../arduino-nfc-sec-01
 ../../arduino-kryptoknight
+../../arduino-kryptoknight/examples/kryptoknight-test
+../../arduino-as3933
+../../Click_BLE2_RN4020/library/Arduino
+../../Click_BLE2_RN4020/library/include
+../../Click_BLE2_RN4020/library/src
+~/Programs/arduino-1.6.7/hardware/arduino/avr/libraries/SoftwareSerial

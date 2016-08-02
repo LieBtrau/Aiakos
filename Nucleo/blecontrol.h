@@ -8,6 +8,7 @@ class bleControl
 public:
     bleControl();
     bool begin(bool bCentral);
+    bool loop(void);
 };
 
 #endif // BLECONTROL_H

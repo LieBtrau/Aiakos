@@ -60,11 +60,6 @@
 //ln -s ~/git/bounce2 ~/Arduino/libraries/
 #include "Bounce2.h"
 
-//git clone git@github.com:LieBtrau/arduino-as3933.git ~/git/arduino-as3933
-//ln -s  ~/git/arduino-as3933 ~/Arduino/libraries/
-#include "as3933.h"
-#include "as3933gen.h"
-
 //git clone git@github.com:LieBtrau/Click_BLE2_RN4020.git ~/git/Click_BLE2_RN4020
 //ln -s ~/git/Click_BLE2_RN4020/library/Arduino ~/Arduino/libraries/Click_BLE2_RN4020
 #include "ble2_hw.h"
@@ -113,9 +108,6 @@ nfcAuthentication nfca(&ntagAdapter);
 //    {"publicKey", publicKey, PARTYPE_STRING | PARTYPE_RW, sizeof(publicKey), NULL, NULL, 2},
 //    {NULL, NULL}
 //};
-//As3933 as(SPI,10,11);
-//byte pattern[]={0x12, 0x34};
-//As3933Gen asgen(pattern);
 bleControl ble;
 //  GND     = MRF89XAM8A: pin 1 => Arduino Uno pin GND
 //  RST     = MRF89XAM8A: pin 2 => NC
@@ -167,10 +159,11 @@ void setup() {
     sw.println("I'm ready, folk!");
 
     i2cRelease();
-//    as.begin();
-//    as.setCorrelator(false);
-//    as.calAntenna(125000);
-    if(!ble.begin(false))while(1);
+    if(!ble.begin(false))
+    {
+        sw.println("RN4020 not set up");
+        return;
+    }
 //    nfca.begin();
 //    byte data[10];
 //    NdefMessage message = NdefMessage();
@@ -207,7 +200,6 @@ void setup() {
     }
     Serial.println("driver init OK");
 #endif
-//    microbox.begin(Params, hostname, true, historyBuf, sizeof(historyBuf));
 //    RingBuffer rb(3);
 //    rb.push(1);
 //    rb.push(2);
@@ -218,8 +210,7 @@ void setup() {
 }
 
 void loop() {
-//as.reset();
-    //    microbox.cmdParser();
+    ble.loop();
 //    if(nfca.loop())
 //    {
 //        Serial.println("Pairing successful");
