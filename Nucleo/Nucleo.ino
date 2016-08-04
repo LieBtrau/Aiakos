@@ -10,17 +10,17 @@
 #include <EEPROM.h>
 #endif
 
-//git clone git@github.com:LieBtrau/PN532.git ~/git/PN532
-//ln -s ~/git/PN532/PN532 ~/Arduino/libraries/
-//ln -s ~/git/PN532/PN532_SPI/ ~/Arduino/libraries/
-//Needed flash size: 1.3K
-#include <PN532_SPI.h>
-#include <PN532.h>
+////git clone git@github.com:LieBtrau/PN532.git ~/git/PN532
+////ln -s ~/git/PN532/PN532 ~/Arduino/libraries/
+////ln -s ~/git/PN532/PN532_SPI/ ~/Arduino/libraries/
+////Needed flash size: 1.3K
+//#include <PN532_SPI.h>
+//#include <PN532.h>
 
-//git clone git@github.com:LieBtrau/NDEF.git ~/git/NDEF
-//ln -s ~/git/NDEF/ ~/Arduino/libraries/
-//Needed flash size: 0.8K
-#include <NfcAdapter.h>
+////git clone git@github.com:LieBtrau/NDEF.git ~/git/NDEF
+////ln -s ~/git/NDEF/ ~/Arduino/libraries/
+////Needed flash size: 0.8K
+//#include <NfcAdapter.h>
 
 //git clone git@github.com:LieBtrau/RadioHead.git ~/git/RadioHead
 //ln -s ~/git/RadioHead/ ~/Arduino/libraries/
@@ -34,39 +34,38 @@
 ////Needed flash size: 10.4K
 //#include "microBox.h"
 
-//~/git$ git clone git@github.com:LieBtrau/micro-ecc.git ~/git/uECC
-//ln -s ~/git/uECC/ ~/Arduino/libraries/
-//Needed flash size: 3.2K
-#include "uECC.h"
+////~/git$ git clone git@github.com:LieBtrau/micro-ecc.git ~/git/uECC
+////ln -s ~/git/uECC/ ~/Arduino/libraries/
+////Needed flash size: 3.2K
+//#include "uECC.h"
 
-//git clone git@github.com:adamvr/arduino-base64.git ~git/arduino-base64
-//ln -s ~/git/arduino-base64 ~/Arduino/libraries/
-#include "Base64.h"
+////git clone git@github.com:adamvr/arduino-base64.git ~git/arduino-base64
+////ln -s ~/git/arduino-base64 ~/Arduino/libraries/
+//#include "Base64.h"
 
-//git clone git@github.com:LieBtrau/AES-CMAC-RFC.git ~/git/aes-cmac-rfc
-//ln -s ~/git/aes-cmac-rfc/ ~/Arduino/libraries/
-#include "cmac.h"
+////git clone git@github.com:LieBtrau/AES-CMAC-RFC.git ~/git/aes-cmac-rfc
+////ln -s ~/git/aes-cmac-rfc/ ~/Arduino/libraries/
+//#include "cmac.h"
 
-//git clone git@github.com:LieBtrau/arduino-ntag.git ~/git/arduino-ntag
-//ln -s ~/git/arduino-ntag ~/Arduino/libraries/
-#include "ntag.h"
-#include "ntagsramadapter.h"
+////git clone git@github.com:LieBtrau/arduino-ntag.git ~/git/arduino-ntag
+////ln -s ~/git/arduino-ntag ~/Arduino/libraries/
+//#include "ntag.h"
+//#include "ntagsramadapter.h"
 
-//git clone git@github.com:LieBtrau/arduino-nfc-sec-01.git ~/git/arduino-nfc-sec-01
-//ln -s ~/git/arduino-nfc-sec-01 ~/Arduino/libraries/
-#include "crypto.h"
+////git clone git@github.com:LieBtrau/arduino-nfc-sec-01.git ~/git/arduino-nfc-sec-01
+////ln -s ~/git/arduino-nfc-sec-01 ~/Arduino/libraries/
+//#include "crypto.h"
 
-//git clone git@github.com:thomasfredericks/Bounce2.git ~/git/bounce2
-//ln -s ~/git/bounce2 ~/Arduino/libraries/
-#include "Bounce2.h"
+////git clone git@github.com:thomasfredericks/Bounce2.git ~/git/bounce2
+////ln -s ~/git/bounce2 ~/Arduino/libraries/
+//#include "Bounce2.h"
 
 //git clone git@github.com:LieBtrau/Click_BLE2_RN4020.git ~/git/Click_BLE2_RN4020
 //ln -s ~/git/Click_BLE2_RN4020/library/Arduino ~/Arduino/libraries/Click_BLE2_RN4020
-#include "ble2_hw.h"
 
-#include "nfcauthentication.h"
+//#include "nfcauthentication.h"
 
-#include "kryptoknight.h"
+//#include "kryptoknight.h"
 
 //git clone git@github.com:LieBtrau/Arduino_STM32.git ~/git/Arduino_STM32
 //Remark that Arduino_STM32 doesn't seem to work with Arduino 1.6.7
@@ -81,26 +80,26 @@
 //~/Programs/arduino-1.6.5/arduino --verify --board Arduino_STM32:STM32F1:nucleo_f103rb --pref target_package=Arduino_STM32 --pref build.path=/home/ctack/build --pref target_platform=STM32F1 --pref board=nucleo_f103rb ~/Arduino/blinky_nucleo/blinky_nucleo.ino
 
 
-char historyBuf[100];
-char hostname[] = "ioBash";
-char privateKey[32+1];//base64 string representation of 192bit key
-char publicKey[64+1];//base64 string representation of 192bit key (x,y)
-byte data[] = "HalloWereld!";
+//char historyBuf[100];
+//char hostname[] = "ioBash";
+//char privateKey[32+1];//base64 string representation of 192bit key
+//char publicKey[64+1];//base64 string representation of 192bit key (x,y)
+//byte data[] = "HalloWereld!";
 // Don't put this on the stack:
 uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
 
-#ifdef ARDUINO_SAM_DUE
-PN532_SPI pn532spi(SPI, 10);
-NfcAdapter nfc= NfcAdapter(pn532spi);
-nfcAuthentication nfca(&nfc);
-#else
-Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
-NtagSramAdapter ntagAdapter(&ntag);
-nfcAuthentication nfca(&ntagAdapter);
-#endif
+//#ifdef ARDUINO_SAM_DUE
+//PN532_SPI pn532spi(SPI, 10);
+//NfcAdapter nfc= NfcAdapter(pn532spi);
+//nfcAuthentication nfca(&nfc);
+//#else
+//Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
+//NtagSramAdapter ntagAdapter(&ntag);
+//nfcAuthentication nfca(&ntagAdapter);
+//#endif
 //PARAM_ENTRY Params[]=
 //{
 //    {"hostname", hostname, PARTYPE_STRING | PARTYPE_RW, sizeof(hostname), NULL, NULL, 0},
