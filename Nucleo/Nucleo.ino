@@ -1,6 +1,13 @@
 //declaration of needed libraries must be done in the ino-file of the project.
 #include "Arduino.h"
+#ifdef ARDUINO_AVR_PROTRINKET3FTDI
 #include <SoftwareSerial.h>
+SoftwareSerial swPort(3,4);//RX, TX
+SoftwareSerial* sw=&swPort;
+#endif
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+HardwareSerial* sw=&Serial;
+#endif
 
 #include "nucleo.h"
 #define HARDI2C
@@ -14,20 +21,20 @@
 ////ln -s ~/git/PN532/PN532 ~/Arduino/libraries/
 ////ln -s ~/git/PN532/PN532_SPI/ ~/Arduino/libraries/
 ////Needed flash size: 1.3K
-//#include <PN532_SPI.h>
-//#include <PN532.h>
+#include <PN532_SPI.h>
+#include <PN532.h>
 
 ////git clone git@github.com:LieBtrau/NDEF.git ~/git/NDEF
 ////ln -s ~/git/NDEF/ ~/Arduino/libraries/
 ////Needed flash size: 0.8K
-//#include <NfcAdapter.h>
+#include <NfcAdapter.h>
 
 //git clone git@github.com:LieBtrau/RadioHead.git ~/git/RadioHead
 //ln -s ~/git/RadioHead/ ~/Arduino/libraries/
 //Needed flash size: 2.8K
-#include "RadioHead.h"
-#include <RH_MRF89XA.h>
-#include <RHReliableDatagram.h>
+//#include "RadioHead.h"
+//#include <RH_MRF89XA.h>
+//#include <RHReliableDatagram.h>
 
 ////git clone git@github.com:LieBtrau/microBox.git ~/git/microBox
 ////ln -s ~/git/microBox/ ~/Arduino/libraries/
@@ -49,8 +56,8 @@
 
 ////git clone git@github.com:LieBtrau/arduino-ntag.git ~/git/arduino-ntag
 ////ln -s ~/git/arduino-ntag ~/Arduino/libraries/
-//#include "ntag.h"
-//#include "ntagsramadapter.h"
+#include "ntag.h"
+#include "ntagsramadapter.h"
 
 ////git clone git@github.com:LieBtrau/arduino-nfc-sec-01.git ~/git/arduino-nfc-sec-01
 ////ln -s ~/git/arduino-nfc-sec-01 ~/Arduino/libraries/
@@ -86,18 +93,24 @@
 //char publicKey[64+1];//base64 string representation of 192bit key (x,y)
 //byte data[] = "HalloWereld!";
 // Don't put this on the stack:
-uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
+//uint8_t buf[RH_MRF89XA_MAX_MESSAGE_LEN];
 
 uint32_t ulStartTime;
 uint32_t ulStartTime2;
 
 //#ifdef ARDUINO_SAM_DUE
-//PN532_SPI pn532spi(SPI, 10);
-//NfcAdapter nfc= NfcAdapter(pn532spi);
+//SCK => ICSP.3
+//MISO => ICSP.1
+//MOSI => ICSP.4
+//SS => D10
+//VCC => 3V3 (or 5V)
+//GND => ICSP.6
+PN532_SPI pn532spi(SPI, 10);
+NfcAdapter nfc= NfcAdapter(pn532spi);
 //nfcAuthentication nfca(&nfc);
 //#else
-//Ntag ntag(Ntag::NTAG_I2C_1K,2,5);
-//NtagSramAdapter ntagAdapter(&ntag);
+Ntag ntag(Ntag::NTAG_I2C_1K,7,9);
+NtagSramAdapter ntagAdapter(&ntag);
 //nfcAuthentication nfca(&ntagAdapter);
 //#endif
 //PARAM_ENTRY Params[]=
@@ -141,35 +154,50 @@ RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 #endif
 
-//SCK => ICSP.3
-//MISO => ICSP.1
-//MOSI => ICSP.4
-//SS => D6
-//VCC => 3V3 (or 5V)
-//GND => ICSP.6
-
 void i2cRelease();
-SoftwareSerial sw(3,4);//RX, TX
 
 void setup() {
     ulStartTime2=ulStartTime=millis();
-//    while (!Serial) ;
-    sw.begin(9600);
-    sw.println("I'm ready, folk!");
+    while (!(*sw)) ;
+    sw->begin(9600);
+    sw->println("I'm ready, folk!");
 
     i2cRelease();
+//    if(!ntagAdapter.begin())
+//    {
+//        return;
+//    }
+//    NdefMessage message = NdefMessage();
+//    message.addUriRecord("http://www.google.be");
+//    if(!ntagAdapter.write(message))
+//    {
+//        return;
+//    }
+//    sw->println("Message written to tag.");
+//    nfc.begin();
+//    if(!nfc.tagPresent())
+//    {
+//        sw->println("No tag present.");
+//        return;
+//    }
+//    NfcTag tag=nfc.read();
+//    if(!tag.hasNdefMessage())
+//    {
+//        sw->println("No NDEF message");
+//    }
+//    NdefMessage msg=tag.getNdefMessage();
+//    msg.print();
+//    while(1);
+
     if(!ble.begin(false))
     {
-        sw.println("RN4020 not set up");
+        sw->println("RN4020 not set up");
         return;
     }
+
+
 //    nfca.begin();
 //    byte data[10];
-//    NdefMessage message = NdefMessage();
-//    message.addUnknownRecord(data,sizeof(data));
-//    if(ntagAdapter.write(message)){
-//        Serial.println("I²C has written message to tag.");
-//    }
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)
     //    {
     //        return false;
@@ -323,7 +351,7 @@ void loop() {
 
 void i2cRelease()
 {
-#ifdef ARDUINO_STM_NUCLEU_F103RB
+#ifdef ARDUINO_STM_NUCLEO_F103RB
     const byte SCL_PIN=PB8;
 #elif defined ARDUINO_SAM_DUE
     const byte SCL_PIN=21;
