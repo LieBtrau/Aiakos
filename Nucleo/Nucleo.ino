@@ -189,12 +189,12 @@ void setup() {
 //    msg.print();
 //    while(1);
 
-    if(!ble.begin(false))
+    if(!ble.begin(true))
     {
         sw->println("RN4020 not set up");
         return;
     }
-
+    ble.findRemoteDevices();
 
 //    nfca.begin();
 //    byte data[10];
