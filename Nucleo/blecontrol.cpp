@@ -25,6 +25,7 @@ extern HardwareSerial* sw;
 static void connectionEvent(bool bConnectionUp);
 static void alertLevelEvent(char* value, byte& length);
 static void bondingRequested();
+static void advertisementEvent(rn4020::ADVERTISEMENT* adv);
 
 //https://www.bluetooth.com/specifications/gatt/services
 //https://www.bluetooth.com/specifications/gatt/characteristics
@@ -79,6 +80,7 @@ bool bleControl::begin(bool bCentral)
                 return false;
             }
         }
+        rn.setAdvertisementListener(advertisementEvent);
         return rn.setOperatingMode(rn4020::OM_NORMAL);
     }else
     {
@@ -191,5 +193,10 @@ void alertLevelEvent(char* value, byte &length)
 void bondingRequested()
 {
     rn.setBondingPasscode("123456");
+}
+
+static void advertisementEvent(rn4020::ADVERTISEMENT* adv)
+{
+    sw->println(adv->btAddress);
 }
 
