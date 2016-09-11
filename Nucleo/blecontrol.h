@@ -10,7 +10,10 @@ public:
     bool begin(bool bCentral);
     bool loop(void);
     bool getLocalMacAddress(byte* address, byte& length);
-    bool findRemoteDevices();
+    bool findUnboundPeripheral(const char *remoteBtAddress);
+    bool secureConnect(const char* remoteBtAddress, unsigned long &passcode);
+private:
+    bool _isCentral;
 };
 
 #endif // BLECONTROL_H

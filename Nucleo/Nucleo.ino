@@ -194,8 +194,19 @@ void setup() {
         sw->println("RN4020 not set up");
         return;
     }
-    ble.findRemoteDevices();
-
+    if(ble.findUnboundPeripheral("001EC01D03EA"))
+    {
+        sw->println("Remote peer found");
+    }
+    unsigned long passcode;
+    if(ble.secureConnect("001EC01D03EA", passcode))
+    {
+        sw->println("Entered by captain Hook");
+        sw->println(passcode, DEC);
+    }else
+    {
+        sw->println("no bonding");
+    }
 //    nfca.begin();
 //    byte data[10];
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)

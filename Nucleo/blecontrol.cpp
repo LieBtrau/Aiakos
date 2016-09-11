@@ -26,6 +26,9 @@ static void connectionEvent(bool bConnectionUp);
 static void alertLevelEvent(char* value, byte& length);
 static void bondingRequested();
 static void advertisementEvent(rn4020::ADVERTISEMENT* adv);
+static void passcodeGeneratedEvent(unsigned long passcode);
+static unsigned long pass;
+static volatile bool bPassReady=false;
 
 //https://www.bluetooth.com/specifications/gatt/services
 //https://www.bluetooth.com/specifications/gatt/characteristics
@@ -38,13 +41,13 @@ static btCharacteristic rfid_key("f1a87912-5950-479c-a5e5-b6cc81cd0502",        
                                  "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
                                  btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
                                  btCharacteristic::ENCR_W);                     //security
+static volatile char* foundBtAddress=0;
 
 bleControl::bleControl()
 {
 }
 
 //Set up the RN4020 module
-
 bool bleControl::begin(bool bCentral)
 {
     char dataname[20];
@@ -81,6 +84,7 @@ bool bleControl::begin(bool bCentral)
             }
         }
         rn.setAdvertisementListener(advertisementEvent);
+        rn.setBondingPasscodeListener(passcodeGeneratedEvent);
         return rn.setOperatingMode(rn4020::OM_NORMAL);
     }else
     {
@@ -142,26 +146,86 @@ bool bleControl::loop()
     rn.loop();
 }
 
-bool bleControl::findRemoteDevices()
+bool bleControl::findUnboundPeripheral(const char* remoteBtAddress)
 {
+    bool bFound=false;
+    //Start search
     if(!rn.doFindRemoteDevices(true))
     {
         return false;
     }
+    //Polling loop
     unsigned long ulStartTime=millis();
     while(millis()<ulStartTime+6000)
     {
         loop();
+        if(!strcmp(remoteBtAddress, (char*)foundBtAddress))
+        {
+            bFound=true;
+            break;
+        }
     }
+    //Stop searching
     if(!rn.doFindRemoteDevices(false))
     {
         return false;
     }
+    return bFound;
+}
+
+bool bleControl::secureConnect(const char* remoteBtAddress, unsigned long &passcode)
+{
+    if(!rn.doConnecting(remoteBtAddress))
+    {
+        return false;
+    }
+    delay(1000);
+    if(!rn.startBonding())
+    {
+        return false;
+    }
+    unsigned long ulStartTime=millis();
+    while(millis()<ulStartTime+10000)
+    {
+        loop();
+        if(bPassReady)
+        {
+            passcode=pass;
+            bPassReady=false;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool bleControl::getLocalMacAddress(byte* address, byte& length)
 {
     return rn.getMacAddress(address, length);
+}
+
+void advertisementEvent(rn4020::ADVERTISEMENT* adv)
+{
+    foundBtAddress=(char*)malloc(strlen(adv->btAddress)+1);
+    if(!foundBtAddress)
+    {
+        return;
+    }
+    strcpy((char*)foundBtAddress, adv->btAddress);
+}
+
+void alertLevelEvent(char* value, byte &length)
+{
+    for(byte i=0;i<length;i++)
+    {
+        sw->print(value[i], HEX);
+        sw->print(" ");
+    }
+    sw->println();
+}
+
+void bondingRequested()
+{
+    rn.setBondingPasscode("123456");
 }
 
 void connectionEvent(bool bConnectionUp)
@@ -180,23 +244,8 @@ void connectionEvent(bool bConnectionUp)
     }
 }
 
-void alertLevelEvent(char* value, byte &length)
+void passcodeGeneratedEvent(unsigned long passcode)
 {
-    for(byte i=0;i<length;i++)
-    {
-        sw->print(value[i], HEX);
-        sw->print(" ");
-    }
-    sw->println();
+    pass=passcode;
+    bPassReady=true;
 }
-
-void bondingRequested()
-{
-    rn.setBondingPasscode("123456");
-}
-
-static void advertisementEvent(rn4020::ADVERTISEMENT* adv)
-{
-    sw->println(adv->btAddress);
-}
-
