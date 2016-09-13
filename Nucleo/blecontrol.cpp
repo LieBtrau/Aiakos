@@ -24,11 +24,13 @@ extern HardwareSerial* sw;
 
 static void connectionEvent(bool bConnectionUp);
 static void alertLevelEvent(char* value, byte& length);
-static void bondingRequested();
+static void bondingEvent(rn4020::BONDING_MODES bd);
 static void advertisementEvent(rn4020::ADVERTISEMENT* adv);
 static void passcodeGeneratedEvent(unsigned long passcode);
 static unsigned long pass;
 static volatile bool bPassReady=false;
+static volatile bool bIsBonded;
+static bool bIsCentral;
 
 //https://www.bluetooth.com/specifications/gatt/services
 //https://www.bluetooth.com/specifications/gatt/characteristics
@@ -45,6 +47,7 @@ static volatile char* foundBtAddress=0;
 
 bleControl::bleControl()
 {
+    bIsBonded=false;
 }
 
 //Set up the RN4020 module
@@ -54,6 +57,7 @@ bool bleControl::begin(bool bCentral)
     const char BT_NAME_KEYFOB[]="AiakosKeyFob";
     const char BT_NAME_BIKE[]="AiakosBike";
 
+    bIsCentral=bCentral;
     //Switch to 2400baud
     // + It's more reliable than 115200baud with the ProTrinket 3V.
     // + It also works when the module is in deep sleep mode.
@@ -62,6 +66,7 @@ bool bleControl::begin(bool bCentral)
         return false;
     }
     rn.setConnectionListener(connectionEvent);
+    rn.setBondingListener(bondingEvent);
     //Check if settings have already been done.  If yes, we don't have to set them again.
     //This is check is performed by checking if the last setting command has finished successfully:
     if(!rn.getBluetoothDeviceName(dataname))
@@ -125,7 +130,6 @@ bool bleControl::begin(bool bCentral)
         {
             return false;
         }
-        rn.setBondingListener(bondingRequested);
         //        byte mac[6];
         //        byte macLength;
         //        if(!rn.getMacAddress(mac, macLength))
@@ -139,6 +143,11 @@ bool bleControl::begin(bool bCentral)
         return rn.setOperatingMode(rn4020::OM_DEEP_SLEEP);
     }
 
+}
+
+void bleControl::disconnect()
+{
+    rn.doDisconnect();
 }
 
 bool bleControl::loop()
@@ -173,30 +182,60 @@ bool bleControl::findUnboundPeripheral(const char* remoteBtAddress)
     return bFound;
 }
 
-bool bleControl::secureConnect(const char* remoteBtAddress, unsigned long &passcode)
+bleControl::CONNECT_STATE bleControl::secureConnect(const char* remoteBtAddress, CONNECT_STATE state)
 {
-    if(!rn.doConnecting(remoteBtAddress))
+    unsigned long ulStartTime;
+    switch(state)
     {
-        return false;
-    }
-    delay(1000);
-    if(!rn.startBonding())
-    {
-        return false;
-    }
-    unsigned long ulStartTime=millis();
-    while(millis()<ulStartTime+10000)
-    {
-        loop();
-        if(bPassReady)
+    case ST_NOTCONNECTED:
+        if(!rn.doConnecting(remoteBtAddress))
         {
-            passcode=pass;
-            bPassReady=false;
-            return true;
+            return ST_NOTCONNECTED;
         }
+        delay(1000);
+        if(!rn.startBonding())
+        {
+            rn.doDisconnect();
+            return ST_NOTCONNECTED;
+        }
+        ulStartTime=millis();
+        while(millis()<ulStartTime+10000)
+        {
+            loop();
+            if(bPassReady)
+            {
+                bPassReady=false;
+                return ST_PASS_GENERATED;
+            }
+            if(bIsBonded)
+            {
+                return ST_BONDED;
+            }
+        }
+        disconnect();
+        return ST_NOTCONNECTED;
+    case ST_PASS_GENERATED:
+        ulStartTime=millis();
+        while(millis()<ulStartTime+10000)
+        {
+            loop();
+            if(bIsBonded)
+            {
+                return ST_BONDED;
+            }
+        }
+        disconnect();
+        return ST_NOTCONNECTED;
+    case ST_BONDED:
+        return ST_BONDED;
     }
-    return false;
 }
+
+unsigned long bleControl::getPasscode()
+{
+    return pass;
+}
+
 
 bool bleControl::getLocalMacAddress(byte* address, byte& length)
 {
@@ -223,9 +262,19 @@ void alertLevelEvent(char* value, byte &length)
     sw->println();
 }
 
-void bondingRequested()
+void bondingEvent(rn4020::BONDING_MODES bd)
 {
-    rn.setBondingPasscode("123456");
+    switch(bd)
+    {
+    case rn4020::BD_ESTABLISHED:
+        bIsBonded=true;
+        break;
+    case rn4020::BD_PASSCODE_NEEDED:
+        rn.setBondingPasscode("123456");
+        break;
+    default:
+        break;
+    }
 }
 
 void connectionEvent(bool bConnectionUp)
@@ -236,10 +285,13 @@ void connectionEvent(bool bConnectionUp)
     }else
     {
         sw->println("down");
-        //After connection went down, advertizing must be restarted or the module will no longer be connectable.
-        if(!rn.doAdvertizing(true,5000))
+        if(!bIsCentral)
         {
-            return;
+            //After connection went down, advertizing must be restarted or the module will no longer be connectable.
+            if(!rn.doAdvertizing(true,5000))
+            {
+                return;
+            }
         }
     }
 }

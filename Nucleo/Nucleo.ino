@@ -163,31 +163,31 @@ void setup() {
     sw->println("I'm ready, folk!");
 
     i2cRelease();
-//    if(!ntagAdapter.begin())
-//    {
-//        return;
-//    }
-//    NdefMessage message = NdefMessage();
-//    message.addUriRecord("http://www.google.be");
-//    if(!ntagAdapter.write(message))
-//    {
-//        return;
-//    }
-//    sw->println("Message written to tag.");
-//    nfc.begin();
-//    if(!nfc.tagPresent())
-//    {
-//        sw->println("No tag present.");
-//        return;
-//    }
-//    NfcTag tag=nfc.read();
-//    if(!tag.hasNdefMessage())
-//    {
-//        sw->println("No NDEF message");
-//    }
-//    NdefMessage msg=tag.getNdefMessage();
-//    msg.print();
-//    while(1);
+    //    if(!ntagAdapter.begin())
+    //    {
+    //        return;
+    //    }
+    //    NdefMessage message = NdefMessage();
+    //    message.addUriRecord("http://www.google.be");
+    //    if(!ntagAdapter.write(message))
+    //    {
+    //        return;
+    //    }
+    //    sw->println("Message written to tag.");
+    //    nfc.begin();
+    //    if(!nfc.tagPresent())
+    //    {
+    //        sw->println("No tag present.");
+    //        return;
+    //    }
+    //    NfcTag tag=nfc.read();
+    //    if(!tag.hasNdefMessage())
+    //    {
+    //        sw->println("No NDEF message");
+    //    }
+    //    NdefMessage msg=tag.getNdefMessage();
+    //    msg.print();
+    //    while(1);
 
     if(!ble.begin(true))
     {
@@ -198,17 +198,13 @@ void setup() {
     {
         sw->println("Remote peer found");
     }
-    unsigned long passcode;
-    if(ble.secureConnect("001EC01D03EA", passcode))
-    {
-        sw->println("Entered by captain Hook");
-        sw->println(passcode, DEC);
-    }else
-    {
-        sw->println("no bonding");
-    }
-//    nfca.begin();
-//    byte data[10];
+    secureConnect();
+    delay(5000);
+    ble.disconnect();
+    delay(5000);
+    secureConnect();
+    //    nfca.begin();
+    //    byte data[10];
     //    if(base64_decode((char*)_localPrivateKey, pLocalPrivateKey, (uECC_BYTES<<2)/3) != uECC_BYTES)
     //    {
     //        return false;
@@ -238,33 +234,33 @@ void setup() {
     }
     Serial.println("driver init OK");
 #endif
-//    RingBuffer rb(3);
-//    rb.push(1);
-//    rb.push(2);
-//    rb.push(3);
-//    rb.push(4);
-//    byte a;
-//    rb.pop(a);rb.pop(a);rb.pop(a);rb.pop(a);
+    //    RingBuffer rb(3);
+    //    rb.push(1);
+    //    rb.push(2);
+    //    rb.push(3);
+    //    rb.push(4);
+    //    byte a;
+    //    rb.pop(a);rb.pop(a);rb.pop(a);rb.pop(a);
 }
 
 void loop() {
     ble.loop();
-//    if(nfca.loop())
-//    {
-//        Serial.println("Pairing successful");
-//    }
-//        if(millis()>ulStartTime2+3000){
-//            ulStartTime2=millis();
-//            NfcTag nf=ntagAdapter.read();
-//            if(!nf.hasNdefMessage()){
-//                return;
-//            }
-//            NdefMessage nfm=nf.getNdefMessage();
-//            nfm.print();
-//            NdefRecord ndf=nfm.getRecord(0);
-//            byte dat[ndf.getPayloadLength()];
-//            ndf.getPayload(dat);
-//        }
+    //    if(nfca.loop())
+    //    {
+    //        Serial.println("Pairing successful");
+    //    }
+    //        if(millis()>ulStartTime2+3000){
+    //            ulStartTime2=millis();
+    //            NfcTag nf=ntagAdapter.read();
+    //            if(!nf.hasNdefMessage()){
+    //                return;
+    //            }
+    //            NdefMessage nfm=nf.getNdefMessage();
+    //            nfm.print();
+    //            NdefRecord ndf=nfm.getRecord(0);
+    //            byte dat[ndf.getPayloadLength()];
+    //            ndf.getPayload(dat);
+    //        }
 #ifdef CLIENT_MRF89XA_RELIABLE
     Serial.println("Sending to mrf89xa_reliable_datagram_server");
 
@@ -359,7 +355,6 @@ void loop() {
 #endif
 }
 
-
 void i2cRelease()
 {
 #ifdef ARDUINO_STM_NUCLEO_F103RB
@@ -380,3 +375,23 @@ void i2cRelease()
     delayMicroseconds(1000);
 }
 
+void secureConnect()
+{
+    bleControl::CONNECT_STATE state=bleControl::ST_NOTCONNECTED;
+    do
+    {
+        state=ble.secureConnect("001EC01D03EA", state);
+        switch(state)
+        {
+        case bleControl::ST_PASS_GENERATED:
+            sw->print("Setting PASS: ");
+            sw->println(ble.getPasscode(), DEC);
+            break;
+        case bleControl::ST_BONDED:
+            sw->println("Bonded!");
+            break;
+        default:
+            break;
+        }
+    }while(state!=bleControl::ST_NOTCONNECTED && state!=bleControl::ST_BONDED);
+}
