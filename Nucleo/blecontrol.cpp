@@ -2,11 +2,21 @@
 #include "rn4020.h"
 #include "btcharacteristic.h"
 
-#ifdef ARDUINO_AVR_PROTRINKET3FTDI
+#if defined(ARDUINO_AVR_PROTRINKET3FTDI) || defined(ARDUINO_AVR_PROTRINKET3)
 #include <SoftwareSerial.h>
 extern SoftwareSerial* sw;
-rn4020 rn(Serial,5,A3,A4,6);
+rn4020 rn(Serial,3,4,5,A3);
 SoftwareSerial* sPortDebug;
+/*Connections between ProTrinket3V and RN4020
+ * RN4020.1 -> GND
+ * RN4020.5 -> RX
+ * RN4020.6 -> TX
+ * RN4020.7 -> 3
+ * RN4020.12 -> 4
+ * RN4020.15 -> 5
+ * RN4020.PWREN -> A3
+ * RN4020.3V3 -> 3V
+ */
 #elif defined(ARDUINO_STM_NUCLEO_F103RB)
 /*Connections between Nucleo and RN4020
  * RN4020.1 -> GND

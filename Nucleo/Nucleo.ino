@@ -1,8 +1,8 @@
 //declaration of needed libraries must be done in the ino-file of the project.
 #include "Arduino.h"
-#ifdef ARDUINO_AVR_PROTRINKET3FTDI
+#if defined(ARDUINO_AVR_PROTRINKET3FTDI) || defined(ARDUINO_AVR_PROTRINKET3)
 #include <SoftwareSerial.h>
-SoftwareSerial swPort(3,4);//RX, TX
+SoftwareSerial swPort(A3,A2);//RX, TX
 SoftwareSerial* sw=&swPort;
 #endif
 #ifdef ARDUINO_STM_NUCLEO_F103RB
@@ -105,12 +105,22 @@ uint32_t ulStartTime2;
 //SS => D10
 //VCC => 3V3 (or 5V)
 //GND => ICSP.6
-PN532_SPI pn532spi(SPI, 10);
-NfcAdapter nfc= NfcAdapter(pn532spi);
 //nfcAuthentication nfca(&nfc);
 //#else
-Ntag ntag(Ntag::NTAG_I2C_1K,7,9);
+#ifdef ARDUINO_AVR_PROTRINKET3FTDI
+//NT3H-module   ProTrinket
+//1             3V
+//2             8
+//3             A4
+//4             A5
+//5             6
+//6             GND
+Ntag ntag(Ntag::NTAG_I2C_1K,8,6);
 NtagSramAdapter ntagAdapter(&ntag);
+#elif defined(ARDUINO_STM_NUCLEO_F103RB)
+PN532_SPI pn532spi(SPI, 10);
+NfcAdapter nfc= NfcAdapter(pn532spi);
+#endif
 //nfcAuthentication nfca(&ntagAdapter);
 //#endif
 //PARAM_ENTRY Params[]=
@@ -361,7 +371,7 @@ void i2cRelease()
     const byte SCL_PIN=PB8;
 #elif defined ARDUINO_SAM_DUE
     const byte SCL_PIN=21;
-#elif defined ARDUINO_AVR_PROTRINKET3FTDI
+#elif defined(ARDUINO_AVR_PROTRINKET3FTDI) || defined(ARDUINO_AVR_PROTRINKET3)
     const byte SCL_PIN=A5;
 #endif
     pinMode(SCL_PIN, OUTPUT);

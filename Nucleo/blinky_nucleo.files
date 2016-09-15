@@ -1704,3 +1704,5 @@ blecontrol.cpp
 ../../Click_BLE2_RN4020/library/Arduino/rn4020.h
 ../../Click_BLE2_RN4020/library/Arduino/btcharacteristic.h
 ../../Click_BLE2_RN4020/library/Arduino/btcharacteristic.cpp
+nfccomm.h
+nfccomm.cpp
