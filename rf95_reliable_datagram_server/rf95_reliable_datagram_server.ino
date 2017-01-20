@@ -5,6 +5,19 @@
 // It is designed to work with the other example rf95_reliable_datagram_client
 // Tested with Anarduino MiniWirelessLoRa, Rocket Scream Mini Ultra Pro with the RFM95W 
 
+/* Connections to Nucleo F103RB
+ * XL1276   Nucleo
+ * ---------------
+ * NSS      A2
+ * MOSI     D11
+ * MISO     D12
+ * SCK      D13  (Be careful, this is the 6th pin on the left row of the right most pin header connector, not the fifth!)
+ * REST     NRST
+ * DIO0     D2
+ * VCC      3V
+ * GND      GND
+ *
+ */
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
@@ -13,7 +26,7 @@
 #define SERVER_ADDRESS 2
 
 // Singleton instance of the radio driver
-RH_RF95 driver(10,3);
+RH_RF95 driver(A2,2);
 //RH_RF95 driver(5, 2); // Rocket Scream Mini Ultra Pro with the RFM95W
 
 // Class to manage message delivery and receipt, using the driver declared above
@@ -34,6 +47,8 @@ void setup()
   while (!Serial) ; // Wait for serial port to be available
   if (!manager.init())
     Serial.println("init failed");
+  else
+      Serial.println("init ok");
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
 
   // The default transmitter power is 13dBm, using PA_BOOST.

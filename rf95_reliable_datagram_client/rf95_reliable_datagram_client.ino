@@ -5,6 +5,18 @@
 // It is designed to work with the other example rf95_reliable_datagram_server
 // Tested with Anarduino MiniWirelessLoRa, Rocket Scream Mini Ultra Pro with the RFM95W 
 
+/*
+ * Connections to Adafruit ProTrinket3V
+ * NSS      10
+ * MOSI     11
+ * MISO     12
+ * SCK      13
+ * REST     RST
+ * DIO0     3
+ * VCC      3V
+ * GND      G
+ * */
+
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
