@@ -578,3 +578,5 @@
 ../Arduino_STM32/STM32F1/variants/STM32VLD/pins_arduino.h
 ../Arduino_STM32/STM32F1/variants/STM32VLD/variant.h
 Aiakos.ino
+../RadioHead/RH_SwSerial.h
+../RadioHead/RH_SwSerial.cpp
