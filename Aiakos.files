@@ -1,5 +1,3 @@
-rf95_reliable_datagram_client/rf95_reliable_datagram_client.ino
-rf95_reliable_datagram_server/rf95_reliable_datagram_server.ino
 ../RadioHead/examples/nrf24/nrf24_reliable_datagram_client/RH_ASK.cpp
 ../RadioHead/examples/nrf24/nrf24_reliable_datagram_client/RH_ASK.h
 ../RadioHead/examples/raspi/RasPiRH.cpp
@@ -579,3 +577,4 @@ rf95_reliable_datagram_server/rf95_reliable_datagram_server.ino
 ../Arduino_STM32/STM32F1/variants/STM32VLD/board.cpp
 ../Arduino_STM32/STM32F1/variants/STM32VLD/pins_arduino.h
 ../Arduino_STM32/STM32F1/variants/STM32VLD/variant.h
+Aiakos.ino
