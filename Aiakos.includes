@@ -101,3 +101,9 @@ rf95_reliable_datagram_server
 ../Arduino_STM32/STM32F1/libraries/Ethernet_STM/src
 ../Arduino_STM32/STM32F1/libraries/RTClock/src
 ../Arduino_STM32/STM32F1/variants/microduino/wirish
+../arduino-nfc-sec-01/micro-ecc
+../arduino-nfc-sec-01/micro-ecc/apps
+../arduino-nfc-sec-01/micro-ecc/test
+../arduino-nfc-sec-01
+../arduino-nfc-sec-01/AES-CMAC-RFC
+../arduino-nfc-sec-01/AES-CMAC-RFC/examples
