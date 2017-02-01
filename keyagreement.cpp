@@ -25,49 +25,82 @@ bool Keyagreement::runKeyAgreement(RHReliableDatagram& datagram, byte peerAddres
 {
     _datagram=&datagram;
     _peer=peerAddress;
-    byte rnfcid[NfcSec01::NFCID_SIZE];
     byte length;
-    if(_isInitiator)
-    {
-        //send ID + public key
-        length=NfcSec01::NFCID_SIZE;
-        _sec.getNFCIDi(_data, length);
-        _sec.getPublicKey(_data + NfcSec01::NFCID_SIZE);
-        if(!send(NFCID, _data, NfcSec01::NFCID_SIZE + _sec.getPublicKeySize()))
-        {
-            return false;
-        }
-        //wait for ID & public key of peer
-        if(!waitFor(RESP_NFCID, _data, length, 3000))
-        {
-            return false;
-        }
-        memcpy(rnfcid, _data, NfcSec01::NFCID_SIZE);
-        _sec.setRemotePublicKey(_data+NfcSec01::NFCID_SIZE);
-        //Send Nonce
-        _sec.generateRandomNonce(&RNG);
-        _sec.getLocalNonce(_data);
-        if(!send(NONCE, _data, _sec.getNonceSize()))
-        {
-            return false;
-        }
-        //wait for nonce of peer
-        if(!waitFor(RESP_NONCE, _data, length, 3000))
-        {
-            return false;
-        }
-        if(!_sec.calcMasterKeySSE(_data,rnfcid,NfcSec01::NFCID_SIZE))
-        {
-            return false;
-        }
-#ifdef DEBUG
-        _sec.getMasterKey(_data);
-        printBuffer("MKsseA", _data, _sec.getMasterKeySize());
-#endif
-    }
-    else{
+    byte rnfcid[NfcSec01::NFCID_SIZE];
+    Serial.println("here");
 
+    //Transfer ID & PublicKey
+    for(byte i=0;i<2;i++)
+    {
+        switch(i ^ (_isInitiator ? 0 : 1))
+        {
+        case 0:
+            //send ID + public key
+            length=NfcSec01::NFCID_SIZE;
+            _sec.getNFCIDi(_data, length);
+            _sec.getPublicKey(_data + NfcSec01::NFCID_SIZE);
+            if(!send(NFCID, _data, NfcSec01::NFCID_SIZE + _sec.getPublicKeySize()))
+            {
+#ifdef DEBUG
+                Serial.println("Can't send ID + pubkey.");
+#endif
+                return false;
+            }
+            break;
+        case 1:
+            //wait for ID & public key of peer
+            if(!waitFor(RESP_NFCID, _data, length, 30000))
+            {
+#ifdef DEBUG
+                Serial.println("No ID + pubkey received.");
+#endif
+                return false;
+            }
+            memcpy(rnfcid, _data, NfcSec01::NFCID_SIZE);
+            _sec.setRemotePublicKey(_data+NfcSec01::NFCID_SIZE);
+        }
     }
+
+    _sec.generateRandomNonce(&RNG);
+    _sec.getLocalNonce(_data);
+
+    for(byte i=0;i<2;i++)
+    {
+        switch(i ^ (_isInitiator ? 0 : 1))
+        {
+        case 0:
+            //Send Nonce
+            if(!send(NONCE, _data, _sec.getNonceSize()))
+            {
+#ifdef DEBUG
+                Serial.println("Can't send nonce.");
+#endif
+                return false;
+            }
+            break;
+        case 1:
+            //wait for nonce of peer
+            if(!waitFor(RESP_NONCE, _data, length, 3000))
+            {
+#ifdef DEBUG
+                Serial.println("No nonce received");
+#endif
+                return false;
+            }
+            break;
+        }
+    }
+    if(!_sec.calcMasterKeySSE(_data,rnfcid,NfcSec01::NFCID_SIZE))
+    {
+#ifdef DEBUG
+        Serial.println("Can't calculate SSE");
+#endif
+        return false;
+    }
+#ifdef DEBUG
+    _sec.getMasterKey(_data);
+    printBuffer("MKsseA", _data, _sec.getMasterKeySize());
+#endif
 }
 
 
@@ -131,10 +164,16 @@ bool Keyagreement::waitFor(COMM_ID commid, byte* data, byte& length, unsigned lo
     unsigned long ulStartTime=millis();
     while(millis()<ulStartTime+ulTimeout)
     {
-        if (_datagram->available() && _datagram->recvfromAck(data, &length, &peer) && peer==_peer && data[0]==commid)
+        if (_datagram->available() && _datagram->recvfromAck(data, &length, &peer))
         {
-            memmove(data,data+1, length-1);
-            return true;
+#ifdef DEBUG
+            Serial.println("Packet received");
+#endif
+            if(peer==_peer && data[0]==commid)
+            {
+                memmove(data,data+1, length-1);
+                return true;
+            }
         }
     }
     return false;

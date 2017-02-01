@@ -26,16 +26,15 @@ const byte SERVER_ADDRESS=2;
 //Nucleo
 uint8_t data[] = "And hello back to you";
 RH_RF95 driver(A2,3);
-Keyagreement keyagr(true);
 RHReliableDatagram manager(driver, SERVER_ADDRESS);
 RH_Serial driverSerial(Serial1);
 RHReliableDatagram managerSerial(driverSerial, SERVER_ADDRESS);
+Keyagreement keyagr(true);
 
 #elif defined(ARDUINO_AVR_PROTRINKET3)
 //ProTrinket
 uint8_t data[] = "Hello World!";
 RH_RF95 driver(10,3);
-Keyagreement keyagr(true);
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 #include <SoftwareSerial.h>
 SoftwareSerial SerialSw(4, 5); // RX, TX
@@ -50,6 +49,7 @@ void setup()
 {
     Serial.begin(9600);
     while (!Serial) ; // Wait for serial port to be available
+    Serial.println("Hallo!");
     if (!manager.init())
     {
         Serial.println("init failed");
