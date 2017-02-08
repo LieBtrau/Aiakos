@@ -1,6 +1,25 @@
 #include <RHReliableDatagram.h>
 #include <RH_RF95.h>
 #include <SPI.h>
+#include "kryptoknight.h"
+
+#define DEBUG
+
+static int RNG(uint8_t *dest, unsigned size);
+void print(const byte* array, byte length);
+
+void dataReceived(byte* data, byte length)
+{
+    Serial.println("Event received with the following data:");
+    print(data, length);
+}
+
+const byte IDLENGTH=10;
+byte sharedkey[16]={0xA,0xB,0xC,0xD,
+                    0xE,0xF,0xE,0xD,
+                    0xC,0xB,0xA,0x9,
+                    0x8,0x7,0x6,0x5};
+byte id2[IDLENGTH]={9,8,7,6,5,4,3,2,1,0};
 
 /* Connections to Nucleo F103RB
 * XL1276   Protrinket 3V    Nucleo
@@ -15,21 +34,26 @@
 * GND      G                GND
 *
 */
-#define SERVER
+const byte ADDRESS1=1;
+const byte ADDRESS2=2;
 
-const byte CLIENT_ADDRESS=1;
-const byte SERVER_ADDRESS=2;
-
-#ifdef SERVER && !defined(CLIENT)
-//Nucleo
-RH_RF95 driver(A2,2);
-uint8_t data[] = "And hello back to you";
-RHReliableDatagram manager(driver, SERVER_ADDRESS);
-#elif defined(CLIENT) && !defined(SERVER)
-//ProTrinket
-uint8_t data[] = "Hello World!";
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+//STM Nucleo
+byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
+byte id1[IDLENGTH]={0,1,2,3,4,5,6,7,8,9};
+Kryptoknight k1= Kryptoknight(id1,IDLENGTH,sharedkey, &RNG, writeData, readData);
+RH_RF95 driver(A2,2);//NSS, DIO0
+RHReliableDatagram manager(driver, ADDRESS1);
+#elif defined(ARDUINO_AVR_PROTRINKET3)
+//Adafruit ProTrinket
+Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
 RH_RF95 driver(10,3);
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+RHReliableDatagram manager(driver, ADDRESS2);
+#elif defined(ARDUINO_SAM_DUE)
+//Arduino Due
+Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
+RH_RF95 driver(4,3);
+RHReliableDatagram manager(driver, ADDRESS2);
 #else
 #error No device type defined.
 #endif
@@ -40,58 +64,138 @@ void setup()
     while (!Serial) ; // Wait for serial port to be available
     if (!manager.init())
     {
+#ifdef DEBUG
         Serial.println("init failed");
+#endif
     }
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+    Serial.println("Initiator starts authentication");
+    if(!k1.sendMessage(id2,payload,4))
+    {
+        Serial.println("Sending message failed.");
+        return;
+    }
+#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+    k2.setMessageReceivedHandler(dataReceived);
+#else
+#error No device
+#endif
+#ifdef DEBUG
+        Serial.println("ready");
+#endif
+
+}
+
+
+void loop()
+{
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+    if(k1.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+    {
+        Serial.println("Message received by peer and acknowledged");
+    }
+#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+    if(k2.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
+    {
+        Serial.println("Message received by remote initiator");
+    }
+#else
+#error No device
+#endif
+}
+
+//Dummy function to write data from device 2 to device 1
+bool writeData(byte* data, byte length)
+{
+#ifdef DEBUG
+        Serial.println("Sending data: ");print(data, length);
+#endif
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+    return manager.sendtoWait(data, length, ADDRESS2);
+#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+    return manager.sendtoWait(data, length, ADDRESS1);
+#else
+#error No device
+#endif
 }
 
 // Dont put this on the stack:
 uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 
-void loop()
+//Dummy function to read incoming data on device 1
+bool readData(byte** data, byte& length)
 {
-#ifdef SERVER
-    if (manager.available())
+    byte from;
+    if (!manager.available())
     {
-      // Wait for a message addressed to us from the client
-      uint8_t len = sizeof(buf);
-      uint8_t from;
-      if (manager.recvfromAck(buf, &len, &from))
-      {
-        Serial.print("got request from : 0x");
-        Serial.print(from, HEX);
-        Serial.print(": ");
-        Serial.println((char*)buf);
-
-        // Send a reply back to the originator client
-        if (!manager.sendtoWait(data, sizeof(data), from))
-          Serial.println("sendtoWait failed");
-      }
+        return false;
     }
-#elif defined(CLIENT)
-  Serial.println("Sending to rf95_reliable_datagram_server");
-
-  // Send a message to manager_server
-  if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS))
-  {
-    // Now wait for a reply from the server
-    uint8_t len = sizeof(buf);
-    uint8_t from;
-    if (manager.recvfromAckTimeout(buf, &len, 2000, &from))
+    if(!manager.recvfromAck(buf, &length, &from))
     {
-      Serial.print("got reply from : 0x");
-      Serial.print(from, HEX);
-      Serial.print(": ");
-      Serial.println((char*)buf);
+        return false;
     }
-    else
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+    if(from != ADDRESS2)
     {
-      Serial.println("No reply, is rf95_reliable_datagram_server running?");
-    }
-  }
-  else
-    Serial.println("sendtoWait failed");
-  delay(500);
+#ifdef DEBUG
+        Serial.println("Sender doesn't match");
 #endif
+        return false;
+    }
+#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+    if(from != ADDRESS1)
+    {
+#ifdef DEBUG
+        Serial.println("Sender doesn't match");
+#endif
+        return false;
+    }
+#else
+#error No device
+#endif
+    *data=buf;
+    return true;
 }
 
+//TODO: replace by safe external RNG
+static int RNG(uint8_t *dest, unsigned size) {
+    // Use the least-significant bits from the ADC for an unconnected pin (or connected to a source of
+    // random noise). This can take a long time to generate random data if the result of analogRead(0)
+    // doesn't change very frequently.
+    while (size) {
+    uint8_t val = 0;
+    for (unsigned i = 0; i < 8; ++i) {
+        int init = analogRead(0);
+        int count = 0;
+        while (analogRead(0) == init) {
+        ++count;
+        }
 
+        if (count == 0) {
+        val = (val << 1) | (init & 0x01);
+        } else {
+        val = (val << 1) | (count & 0x01);
+        }
+    }
+    *dest = val;
+    ++dest;
+    --size;
+    }
+    // NOTE: it would be a good idea to hash the resulting random data using SHA-256 or similar.
+    return 1;
+}
+
+void print(const byte* array, byte length)
+{
+  Serial.print("Length = ");Serial.println(length,DEC);
+    for (byte i = 0; i < length; i++)
+    {
+    Serial.print(array[i], HEX);
+    Serial.print(" ");
+    if ((i + 1) % 16 == 0)
+    {
+        Serial.println();
+    }
+    }
+    Serial.println();
+}

@@ -578,3 +578,8 @@
 ../Arduino_STM32/STM32F1/variants/STM32VLD/pins_arduino.h
 ../Arduino_STM32/STM32F1/variants/STM32VLD/variant.h
 Aiakos.ino
+../arduino-kryptoknight/kryptoknight.cpp
+../arduino-kryptoknight/kryptoknight.h
+../arduino-kryptoknight/examples/kryptoknight-test/kryptoknight-test.ino
+../RadioHead/RH_SwSerial.cpp
+../RadioHead/RH_SwSerial.h
