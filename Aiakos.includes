@@ -101,3 +101,5 @@ rf95_reliable_datagram_server
 ../Arduino_STM32/STM32F1/libraries/Ethernet_STM/src
 ../Arduino_STM32/STM32F1/libraries/RTClock/src
 ../Arduino_STM32/STM32F1/variants/microduino/wirish
+../arduino-kryptoknight
+../arduino-kryptoknight/examples/kryptoknight-test
