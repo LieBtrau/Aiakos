@@ -103,3 +103,10 @@ rf95_reliable_datagram_server
 ../Arduino_STM32/STM32F1/variants/microduino/wirish
 ../arduino-kryptoknight
 ../arduino-kryptoknight/examples/kryptoknight-test
+../CryptoAuthLib-arduino
+../CryptoAuthLib-arduino/basic
+../CryptoAuthLib-arduino/hal
+../CryptoAuthLib-arduino/test
+../CryptoAuthLib-arduino/test/atsha204-test
+../CryptoAuthLib-arduino/examples/atsha204-test
+../CryptoAuthLib-arduino/examples

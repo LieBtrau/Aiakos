@@ -2,11 +2,9 @@
 #include <RH_RF95.h>
 #include <SPI.h>
 #include "kryptoknight.h"
+#include "cryptoauthlib.h"
 
 #define DEBUG
-
-static int RNG(uint8_t *dest, unsigned size);
-void print(const byte* array, byte length);
 
 void dataReceived(byte* data, byte length)
 {
@@ -14,43 +12,43 @@ void dataReceived(byte* data, byte length)
     print(data, length);
 }
 
-const byte IDLENGTH=10;
+const byte IDLENGTH=9;
 byte sharedkey[16]={0xA,0xB,0xC,0xD,
                     0xE,0xF,0xE,0xD,
                     0xC,0xB,0xA,0x9,
                     0x8,0x7,0x6,0x5};
-byte id2[IDLENGTH]={9,8,7,6,5,4,3,2,1,0};
+byte id2[]={9,8,7,6,5,4,3,2,1};
 
 /* Connections to Nucleo F103RB
-* XL1276   Protrinket 3V    Nucleo
-* --------------------------------
-* NSS      10               A2
-* MOSI     11               D11
-* MISO     12               D12
-* SCK      13               D13  (Be careful, this is the 6th pin on the left row of the right most pin header connector, not the fifth!)
-* REST     RST              NRST
-* DIO0     3                D2
-* VCC      3V               3V
-* GND      G                GND
+* XL1276   Protrinket 3V    Due    Nucleo
+* ---------------------------------------
+* NSS      10               4       A2
+* MOSI     11               ICSP.4  D11
+* MISO     12               ICSP.1  D12
+* SCK      13               ICSP.3  D13  (Be careful, this is the 6th pin on the left row of the right most pin header connector, not the fifth!)
+* REST     RST              RESET   NRST
+* DIO0     3                3       D2
+* VCC      3V               3.3V    3V
+* GND      G                GND     GND
 *
 */
 const byte ADDRESS1=1;
 const byte ADDRESS2=2;
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-//STM Nucleo
+//STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-byte id1[IDLENGTH]={0,1,2,3,4,5,6,7,8,9};
-Kryptoknight k1= Kryptoknight(id1,IDLENGTH,sharedkey, &RNG, writeData, readData);
+Kryptoknight k1= Kryptoknight(sharedkey,&ATSHA_RNG, writeData, readData);
 RH_RF95 driver(A2,2);//NSS, DIO0
 RHReliableDatagram manager(driver, ADDRESS1);
+ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 #elif defined(ARDUINO_AVR_PROTRINKET3)
-//Adafruit ProTrinket
+//Adafruit ProTrinket = Key fob
 Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
 RH_RF95 driver(10,3);
 RHReliableDatagram manager(driver, ADDRESS2);
 #elif defined(ARDUINO_SAM_DUE)
-//Arduino Due
+//Arduino Due = Key fob
 Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
 RH_RF95 driver(4,3);
 RHReliableDatagram manager(driver, ADDRESS2);
@@ -67,8 +65,14 @@ void setup()
 #ifdef DEBUG
         Serial.println("init failed");
 #endif
+        return;
     }
 #ifdef ARDUINO_STM_NUCLEO_F103RB
+    byte buf[10];
+    if( (!getSerialNumber(buf,IDLENGTH)) || (!k1.setLocalId(buf,IDLENGTH)) )
+    {
+       return;
+    }
     Serial.println("Initiator starts authentication");
     if(!k1.sendMessage(id2,payload,4))
     {
@@ -126,10 +130,10 @@ uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
 bool readData(byte** data, byte& length)
 {
     byte from;
-    if (!manager.available())
-    {
-        return false;
-    }
+//    if (!manager.available())
+//    {
+//        return false;
+//    }
     if(!manager.recvfromAck(buf, &length, &from))
     {
         return false;
@@ -156,6 +160,53 @@ bool readData(byte** data, byte& length)
     *data=buf;
     return true;
 }
+
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+static int ATSHA_RNG(byte *dest, unsigned size)
+{
+    byte randomnum[RANDOM_RSP_SIZE];
+
+    if(atcab_init( gCfg ) != ATCA_SUCCESS)
+    {
+        return 0;
+    }
+    while(size)
+    {
+        if(atcab_random( randomnum ) != ATCA_SUCCESS)
+        {
+            return 0;
+        }
+        byte nrOfBytes = size > 32 ? 32 : size;
+        memcpy(dest,randomnum, nrOfBytes);
+        dest+=nrOfBytes;
+        size-=nrOfBytes;
+    }
+    if(atcab_release() != ATCA_SUCCESS)
+    {
+        return 0;
+    }
+    return 1;
+}
+bool getSerialNumber(byte* bufout, byte length)
+{
+    byte buf[11];
+    if(atcab_init( gCfg ) != ATCA_SUCCESS)
+    {
+        return false;
+    }
+    if(atcab_read_serial_number(buf) != ATCA_SUCCESS)
+    {
+        return false;
+    }
+    if(atcab_release() != ATCA_SUCCESS)
+    {
+        return false;
+    }
+    memcpy(bufout, buf, length > 9 ? 9 : length);
+    return true;
+}
+
+#endif
 
 //TODO: replace by safe external RNG
 static int RNG(uint8_t *dest, unsigned size) {
