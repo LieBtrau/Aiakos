@@ -110,3 +110,10 @@ rf95_reliable_datagram_server
 ../CryptoAuthLib-arduino/test/atsha204-test
 ../CryptoAuthLib-arduino/examples/atsha204-test
 ../CryptoAuthLib-arduino/examples
+../arduino-nfc-sec-01/micro-ecc/apps
+../arduino-nfc-sec-01/micro-ecc
+../arduino-nfc-sec-01/micro-ecc/test
+../arduino-nfc-sec-01
+../arduino-nfc-sec-01/AES-CMAC-RFC
+../arduino-nfc-sec-01/AES-CMAC-RFC/examples
+../arduino-nfc-sec-01/examples/MasterKeySse

@@ -1,8 +1,9 @@
-#include <RHReliableDatagram.h>
-#include <RH_RF95.h>
+#include <RHReliableDatagram.h> //for wireless comm
+#include <RH_RF95.h>            //for wireless comm
 #include <SPI.h>
-#include "kryptoknight.h"
-#include "cryptoauthlib.h"
+#include "kryptoknight.h"       //for authentication
+#include "cryptoauthlib.h"      //for TRNG & serial number
+#include "ecdhcomm.h"           //for secure pairing
 
 #define DEBUG
 
@@ -39,17 +40,20 @@ const byte ADDRESS2=2;
 //STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
 Kryptoknight k1= Kryptoknight(sharedkey,&ATSHA_RNG, writeData, readData);
+EcdhComm ecdh1= EcdhComm(&ATSHA_RNG, writeData, readData);
 RH_RF95 driver(A2,2);//NSS, DIO0
 RHReliableDatagram manager(driver, ADDRESS1);
 ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 #elif defined(ARDUINO_AVR_PROTRINKET3)
-//Adafruit ProTrinket = Key fob
-Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
-RH_RF95 driver(10,3);
-RHReliableDatagram manager(driver, ADDRESS2);
+#error Target no longer supported because of lack of RAM space
+////Adafruit ProTrinket = Key fob
+//Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
+//RH_RF95 driver(10,3);
+//RHReliableDatagram manager(driver, ADDRESS2);
 #elif defined(ARDUINO_SAM_DUE)
 //Arduino Due = Key fob
 Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
+EcdhComm ecdh2=EcdhComm(&RNG, writeData, readData);
 RH_RF95 driver(4,3);
 RHReliableDatagram manager(driver, ADDRESS2);
 #else
@@ -69,17 +73,25 @@ void setup()
     }
 #ifdef ARDUINO_STM_NUCLEO_F103RB
     byte buf[10];
-    if( (!getSerialNumber(buf,IDLENGTH)) || (!k1.setLocalId(buf,IDLENGTH)) )
+    if((!getSerialNumber(buf,IDLENGTH)) || (!k1.setLocalId(buf,IDLENGTH) ) || (!ecdh1.init(buf, IDLENGTH)) )
     {
        return;
     }
-    Serial.println("Initiator starts authentication");
-    if(!k1.sendMessage(id2,payload,4))
+    if(!ecdh1.startPairing())
     {
         Serial.println("Sending message failed.");
+    }
+//    Serial.println("Initiator starts authentication");
+//    if(!k1.sendMessage(id2,payload,4))
+//    {
+//        Serial.println("Sending message failed.");
+//        return;
+//    }
+#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+    if(!ecdh2.init(id2, IDLENGTH))
+    {
         return;
     }
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
     k2.setMessageReceivedHandler(dataReceived);
 #else
 #error No device
@@ -94,17 +106,25 @@ void setup()
 void loop()
 {
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-    if(k1.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+//    if(k1.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+//    {
+//        Serial.println("Message received by peer and acknowledged");
+//    }
+    if(ecdh1.loop()==EcdhComm::AUTHENTICATION_OK)
     {
         Serial.println("Message received by peer and acknowledged");
     }
 #elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    if(k2.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
+//    if(k2.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
+//    {
+//        Serial.println("Message received by remote initiator");
+//    }
+    if(ecdh2.loop()==EcdhComm::AUTHENTICATION_OK)
     {
-        Serial.println("Message received by remote initiator");
+        Serial.println("Message received by peer and acknowledged");
     }
 #else
-#error No device
+//#error No device
 #endif
 }
 
@@ -209,12 +229,17 @@ static int RNG(uint8_t *dest, unsigned size) {
     // Use the least-significant bits from the ADC for an unconnected pin (or connected to a source of
     // random noise). This can take a long time to generate random data if the result of analogRead(0)
     // doesn't change very frequently.
+#ifdef ARDUINO_AVR_PROTRINKET3
+        byte adcpin=0;
+#elif defined(ARDUINO_SAM_DUE) || defined(ARDUINO_STM_NUCLEO_F103RB)
+        byte adcpin=A0;
+#endif
     while (size) {
     uint8_t val = 0;
     for (unsigned i = 0; i < 8; ++i) {
-        int init = analogRead(0);
+        int init = analogRead(adcpin);
         int count = 0;
-        while (analogRead(0) == init) {
+        while (analogRead(adcpin) == init) {
         ++count;
         }
 
