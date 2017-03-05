@@ -4,9 +4,9 @@ When arriving at home  with my bike, I find the garage door still locked.  I hav
 #Wish
 While riding and coming near to my house, press a button on my bike so that the door opens.  By the time I arrive at the door, it's fully open and I can ride in the garage without having to stop on the drive way.
 
-#Solution
-##Using smartphone
-An off-the-shelf bluetooth tracker is attached to the bike.  The user has a smartphone with a data connection and bluetooth low energy support.  The garage is equipped with an internet connected controller.  After binding the tracker with the smartphone, the system is ready to use.  
+#Proposed solutions
+##Not implemented: Using smartphone
+An off-the-shelf bluetooth tracker is attached to the bike.  The user has a smartphone with a wireless data connection and bluetooth low energy support.  The garage is equipped with an internet connected controller.  After binding the tracker with the smartphone, the system is ready to use.  
 Pressing the button on the bluetooth tracker, wakes up the service running on the smartphone.  The smartphone uses geo-location service to check if the smartphone is in the neighbourhood of the garage.  If so, then a command is sent through the cloud to instruct the garage controller to open the door.  
 
 ##Without smartphone
