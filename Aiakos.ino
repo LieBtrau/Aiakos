@@ -1,6 +1,7 @@
 #include <RHReliableDatagram.h> //for wireless comm
 #include <RH_RF95.h>            //for wireless comm
-#include <SPI.h>
+#include <RH_Serial.h>          //for wired comm
+#include <SPI.h>                //for wireless comm
 #include "kryptoknight.h"       //for authentication
 #include "cryptoauthlib.h"      //for TRNG & serial number
 #include "ecdhcomm.h"           //for secure pairing
@@ -31,7 +32,8 @@ byte id2[]={9,8,7,6,5,4,3,2,1};
 * DIO0     3                3       D2
 * VCC      3V               3.3V    3V
 * GND      G                GND     GND
-*
+*                           RX1     D8
+*                           TX1     D2
 */
 const byte ADDRESS1=1;
 const byte ADDRESS2=2;
@@ -39,10 +41,12 @@ const byte ADDRESS2=2;
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 //STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-Kryptoknight k1= Kryptoknight(sharedkey,&ATSHA_RNG, writeData, readData);
-EcdhComm ecdh1= EcdhComm(&ATSHA_RNG, writeData, readData);
-RH_RF95 driver(A2,2);//NSS, DIO0
-RHReliableDatagram manager(driver, ADDRESS1);
+//Kryptoknight k1= Kryptoknight(sharedkey,&ATSHA_RNG, writeDataLoRa, readDataLoRa);
+EcdhComm ecdh1= EcdhComm(&ATSHA_RNG, writeDataSer, readDataSer);
+//RH_RF95 rhLoRa(A2,5);//NSS, DIO0
+//RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
+RH_Serial rhSerial(Serial1);
+RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
 ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 #elif defined(ARDUINO_AVR_PROTRINKET3)
 #error Target no longer supported because of lack of RAM space
@@ -52,10 +56,12 @@ ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 //RHReliableDatagram manager(driver, ADDRESS2);
 #elif defined(ARDUINO_SAM_DUE)
 //Arduino Due = Key fob
-Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
-EcdhComm ecdh2=EcdhComm(&RNG, writeData, readData);
-RH_RF95 driver(4,3);
-RHReliableDatagram manager(driver, ADDRESS2);
+//Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeDataLoRa, readDataLoRa);
+EcdhComm ecdh2=EcdhComm(&RNG, writeDataSer, readDataSer);
+//RH_RF95 rhLoRa(4,3);
+//RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
+RH_Serial rhSerial(Serial1);
+RHReliableDatagram mgrSer(rhSerial, ADDRESS2);
 #else
 #error No device type defined.
 #endif
@@ -63,17 +69,25 @@ RHReliableDatagram manager(driver, ADDRESS2);
 void setup()
 {
     Serial.begin(9600);
+    rhSerial.serial().begin(9600);
     while (!Serial) ; // Wait for serial port to be available
-    if (!manager.init())
+//    if ((!mgrLoRa.init()))
+//    {
+//#ifdef DEBUG
+//        Serial.println("LoRa init failed");
+//#endif
+//        return;
+//    }
+    if ((!mgrSer.init()))
     {
 #ifdef DEBUG
-        Serial.println("init failed");
+        Serial.println("Serial init failed");
 #endif
         return;
     }
 #ifdef ARDUINO_STM_NUCLEO_F103RB
     byte buf[10];
-    if((!getSerialNumber(buf,IDLENGTH)) || (!k1.setLocalId(buf,IDLENGTH) ) || (!ecdh1.init(buf, IDLENGTH)) )
+    if((!getSerialNumber(buf,IDLENGTH)) /*|| (!k1.setLocalId(buf,IDLENGTH) )*/ || (!ecdh1.init(buf, IDLENGTH)) )
     {
        return;
     }
@@ -92,7 +106,7 @@ void setup()
     {
         return;
     }
-    k2.setMessageReceivedHandler(dataReceived);
+    //k2.setMessageReceivedHandler(dataReceived);
 #else
 #error No device
 #endif
@@ -124,34 +138,46 @@ void loop()
         Serial.println("Message received by peer and acknowledged");
     }
 #else
-//#error No device
+#error No device
 #endif
 }
 
-//Dummy function to write data from device 2 to device 1
-bool writeData(byte* data, byte length)
+bool writeDataSer(byte* data, byte length)
 {
 #ifdef DEBUG
         Serial.println("Sending data: ");print(data, length);
 #endif
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-    return manager.sendtoWait(data, length, ADDRESS2);
+    return mgrSer.sendtoWait(data, length, ADDRESS2);
 #elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    return manager.sendtoWait(data, length, ADDRESS1);
+    return mgrSer.sendtoWait(data, length, ADDRESS1);
 #else
 #error No device
 #endif
 }
 
-//Dummy function to read incoming data on device 1
-bool readData(byte** data, byte& length)
+//bool writeDataLoRa(byte* data, byte length)
+//{
+//#ifdef DEBUG
+//        Serial.println("Sending data: ");print(data, length);
+//#endif
+//#ifdef ARDUINO_STM_NUCLEO_F103RB
+//    return mgrLoRa.sendtoWait(data, length, ADDRESS2);
+//#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+//    return mgrLoRa.sendtoWait(data, length, ADDRESS1);
+//#else
+//#error No device
+//#endif
+//}
+
+bool readDataSer(byte** data, byte& length)
 {
     byte from;
-    if (!manager.available())
+    if (!mgrSer.available())
     {
         return false;
     }
-    if(!manager.recvfromAck(*data, &length, &from))
+    if(!mgrSer.recvfromAck(*data, &length, &from))
     {
         return false;
     }
@@ -176,6 +202,40 @@ bool readData(byte** data, byte& length)
 #endif
     return true;
 }
+
+//bool readDataLoRa(byte** data, byte& length)
+//{
+//    byte from;
+//    if (!mgrLoRa.available())
+//    {
+//        return false;
+//    }
+//    if(!mgrLoRa.recvfromAck(*data, &length, &from))
+//    {
+//        return false;
+//    }
+//#ifdef ARDUINO_STM_NUCLEO_F103RB
+//    if(from != ADDRESS2)
+//    {
+//#ifdef DEBUG
+//        Serial.println("Sender doesn't match");
+//#endif
+//        return false;
+//    }
+//#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+//    if(from != ADDRESS1)
+//    {
+//#ifdef DEBUG
+//        Serial.println("Sender doesn't match");
+//#endif
+//        return false;
+//    }
+//#else
+//#error No device
+//#endif
+//    return true;
+//}
+
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 static int ATSHA_RNG(byte *dest, unsigned size)
