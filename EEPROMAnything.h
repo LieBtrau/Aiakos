@@ -30,29 +30,11 @@ template <class T> int EEPROM_writeAnything(int ee, const T& value)
         crc=_crc_ccitt_update(crc,*p);
         if(EEPROM.read(ee)!=*p)
         {
-#ifdef DEBUG
-            Serial.print("Writing to EEPROM: address: ");
-            Serial.print(ee, HEX);
-            Serial.print(" value: ");
-            Serial.println(*p);
-#endif
             EEPROM.write(ee, *p++);
         }
         ee++;
     }
-#ifdef DEBUG
-            Serial.print("Writing CRC to EEPROM: address: ");
-            Serial.print(ee, HEX);
-            Serial.print(" value: ");
-            Serial.println(crc>>8, HEX);
-#endif
     EEPROM.write(ee++, crc>>8);
-#ifdef DEBUG
-            Serial.print("Writing CRC to EEPROM: address: ");
-            Serial.print(ee, HEX);
-            Serial.print(" value: ");
-            Serial.println(crc & 0xFF, HEX);
-#endif
     EEPROM.write(ee,crc & 0xFF);
     return i;
 }
@@ -64,19 +46,9 @@ template <class T> boolean EEPROM_readAnything(int ee, T& value)
     unsigned int i;
     for (i = 0; i < sizeof(value); i++){
         *p++ = EEPROM.read(ee++);
-#ifdef DEBUG
-            Serial.print("Reading from EEPROM: address: ");
-            Serial.print(ee-1, HEX);
-            Serial.print(" value: ");
-            Serial.println(*(p-1));
-#endif
         crcIn=_crc_ccitt_update(crcIn,*(p-1));
     }
     word crcRead=EEPROM.read(ee++)<<8;
     crcRead+=EEPROM.read(ee);
-#ifdef DEBUG
-            Serial.print("Reading CRC: ");
-            Serial.println(crcRead, HEX);
-#endif
     return (crcRead==crcIn?true:false);
 }

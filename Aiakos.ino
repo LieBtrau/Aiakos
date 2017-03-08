@@ -37,8 +37,8 @@ Configuration cfg;
 
 //STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-Kryptoknight k1= Kryptoknight(&ATSHA_RNG, writeDataLoRa, readDataLoRa);
-EcdhComm ecdh1= EcdhComm(&ATSHA_RNG, writeDataSer, readDataSer);
+Kryptoknight k= Kryptoknight(&ATSHA_RNG, writeDataLoRa, readDataLoRa);
+EcdhComm ecdh= EcdhComm(&ATSHA_RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
@@ -47,14 +47,14 @@ ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 #elif defined(ARDUINO_AVR_PROTRINKET3)
 #error Target no longer supported because of lack of RAM space
 //Adafruit ProTrinket = Key fob
-Kryptoknight k2= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
-RH_RF95 driver(10,3);
-RHReliableDatagram manager(driver, ADDRESS2);
+Kryptoknight k= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
+RH_RF95 rhLoRa(10,3);
+RHReliableDatagram manager(rhLoRa, ADDRESS2);
 
 #elif defined(ARDUINO_SAM_DUE)
 //Arduino Due = Key fob
-Kryptoknight k2= Kryptoknight(id2, Configuration::IDLENGTH, &RNG, writeDataLoRa, readDataLoRa);
-EcdhComm ecdh2=EcdhComm(&RNG, writeDataSer, readDataSer);
+Kryptoknight k= Kryptoknight(id2, Configuration::IDLENGTH, &RNG, writeDataLoRa, readDataLoRa);
+EcdhComm ecdh=EcdhComm(&RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(4,3);
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS2);
@@ -84,58 +84,46 @@ void setup()
 #endif
         return;
     }
+    if(!cfg.init())
+    {
+#ifdef DEBUG
+        Serial.println("Config invalid");
+#endif
+    }
+    else
+    {
+#ifdef DEBUG
+        Serial.println("Config valid");
+#endif
+        k.setSharedKey(cfg.getKey(0));
+    }
+
 #ifdef ARDUINO_STM_NUCLEO_F103RB
     byte buf[10];
-    if((!getSerialNumber(buf, Configuration::IDLENGTH)) || (!k1.setLocalId(buf,Configuration::IDLENGTH) ) || (!ecdh1.init(buf, Configuration::IDLENGTH)) )
+    if((!getSerialNumber(buf, Configuration::IDLENGTH)) || (!k.setLocalId(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
         return;
     }
-    if(!cfg.init())
-    {
 #ifdef DEBUG
-        Serial.println("Config invalid");
+    Serial.println("Config valid");
 #endif
-        if(!ecdh1.startPairing())
-        {
-            Serial.println("Sending message failed.");
-            return;
-        }
-    }
-    else
+    k.setSharedKey(cfg.getKey(0));
+    Serial.println("Initiator starts authentication");
+    if(!k.sendMessage(id2,payload,4))
     {
-#ifdef DEBUG
-        Serial.println("Config valid");
-#endif
-        k1.setSharedKey(cfg.getKey(0));
-        Serial.println("Initiator starts authentication");
-        if(!k1.sendMessage(id2,payload,4))
-        {
-            Serial.println("Sending message failed.");
-            return;
-        }
+        Serial.println("Sending message failed.");
+        return;
     }
 #elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    if(!cfg.init())
-    {
-#ifdef DEBUG
-        Serial.println("Config invalid");
-#endif
-    }
-    else
-    {
-#ifdef DEBUG
-        Serial.println("Config valid");
-#endif
-        k2.setSharedKey(cfg.getKey(0));
-    }
-    if(!ecdh2.init(id2, Configuration::IDLENGTH))
+    if(!ecdh.init(id2, Configuration::IDLENGTH))
     {
         return;
     }
-    k2.setMessageReceivedHandler(dataReceived);
+    k.setMessageReceivedHandler(dataReceived);
 #else
 #error No device
 #endif
+
 #ifdef DEBUG
     Serial.println("ready");
 #endif
@@ -146,25 +134,33 @@ void setup()
 void loop()
 {
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-    if(k1.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
     {
         Serial.println("Message received by peer and acknowledged");
     }
-    if(ecdh1.loop()==EcdhComm::AUTHENTICATION_OK)
+    if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
     {
         Serial.println("Securely paired");
-        k1.setSharedKey(ecdh1.getMasterKey());
+        k.setSharedKey(ecdh.getMasterKey());
         saveKey();
     }
+    if(!digitalRead(25))
+    {
+        if(!ecdh.startPairing())
+        {
+            Serial.println("Sending message failed.");
+            return;
+        }
+    }
 #elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    if(k2.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
+    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
     {
         Serial.println("Message received by remote initiator");
     }
-    if(ecdh2.loop()==EcdhComm::AUTHENTICATION_OK)
+    if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
     {
         Serial.println("Securely paired");
-        k2.setSharedKey(ecdh2.getMasterKey());
+        k.setSharedKey(ecdh.getMasterKey());
         saveKey();
     }
 #else
@@ -349,11 +345,7 @@ static int RNG(uint8_t *dest, unsigned size) {
 
 void saveKey()
 {
-#ifdef ARDUINO_STM_NUCLEO_F103RB
-    cfg.setKey(0,ecdh1.getRemoteId(), ecdh1.getMasterKey());
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    cfg.setKey(0,ecdh2.getRemoteId(), ecdh2.getMasterKey());
-#endif
+    cfg.setKey(0,ecdh.getRemoteId(), ecdh.getMasterKey());
     cfg.saveData();
 }
 
