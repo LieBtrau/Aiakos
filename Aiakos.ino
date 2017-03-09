@@ -21,17 +21,22 @@
 #include <RH_Serial.h>          //for wired comm
 #include <SPI.h>                //for wireless comm
 #include "kryptoknight.h"       //for authentication
-#include "cryptoauthlib.h"      //for TRNG & serial number
 #include "ecdhcomm.h"           //for secure pairing
 #include "configuration.h"      //for non-volatile storage of parameters
+#include "cryptohelper.h"
 
 #define DEBUG
 
 const byte ADDRESS1=1;
 const byte ADDRESS2=2;
 RH_Serial rhSerial(Serial1);
-byte id2[]={9,8,7,6,5,4,3,2,1};
 Configuration cfg;
+
+bool writeDataLoRa(byte* data, byte length);
+bool readDataLoRa(byte** data, byte& length);
+bool readDataSer(byte** data, byte& length);
+bool writeDataSer(byte* data, byte length);
+
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 
@@ -42,7 +47,6 @@ EcdhComm ecdh= EcdhComm(&ATSHA_RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
-ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 
 #elif defined(ARDUINO_AVR_PROTRINKET3)
 #error Target no longer supported because of lack of RAM space
@@ -53,7 +57,7 @@ RHReliableDatagram manager(rhLoRa, ADDRESS2);
 
 #elif defined(ARDUINO_SAM_DUE)
 //Arduino Due = Key fob
-Kryptoknight k= Kryptoknight(id2, Configuration::IDLENGTH, &RNG, writeDataLoRa, readDataLoRa);
+Kryptoknight k= Kryptoknight(&RNG, writeDataLoRa, readDataLoRa);
 EcdhComm ecdh=EcdhComm(&RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(4,3);
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
@@ -97,28 +101,23 @@ void setup()
 #endif
         k.setSharedKey(cfg.getKey(0));
     }
-
-#ifdef ARDUINO_STM_NUCLEO_F103RB
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH)) || (!k.setLocalId(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
         return;
     }
+#ifdef ARDUINO_STM_NUCLEO_F103RB
 #ifdef DEBUG
     Serial.println("Config valid");
 #endif
     k.setSharedKey(cfg.getKey(0));
     Serial.println("Initiator starts authentication");
-    if(!k.sendMessage(id2,payload,4))
+    if(!k.sendMessage(cfg.getId(0),payload,4))
     {
         Serial.println("Sending message failed.");
         return;
     }
 #elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    if(!ecdh.init(id2, Configuration::IDLENGTH))
-    {
-        return;
-    }
     k.setMessageReceivedHandler(dataReceived);
 #else
 #error No device
@@ -133,16 +132,16 @@ void setup()
 
 void loop()
 {
-#ifdef ARDUINO_STM_NUCLEO_F103RB
-    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
-    {
-        Serial.println("Message received by peer and acknowledged");
-    }
     if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
     {
         Serial.println("Securely paired");
         k.setSharedKey(ecdh.getMasterKey());
         saveKey();
+    }
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+    {
+        Serial.println("Message received by peer and acknowledged");
     }
     if(!digitalRead(25))
     {
@@ -156,12 +155,6 @@ void loop()
     if(k.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
     {
         Serial.println("Message received by remote initiator");
-    }
-    if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
-    {
-        Serial.println("Securely paired");
-        k.setSharedKey(ecdh.getMasterKey());
-        saveKey();
     }
 #else
 #error No device
@@ -262,86 +255,6 @@ bool readDataLoRa(byte** data, byte& length)
     return true;
 }
 
-
-#ifdef ARDUINO_STM_NUCLEO_F103RB
-static int ATSHA_RNG(byte *dest, unsigned size)
-{
-    byte randomnum[RANDOM_RSP_SIZE];
-
-    if(atcab_init( gCfg ) != ATCA_SUCCESS)
-    {
-        return 0;
-    }
-    while(size)
-    {
-        if(atcab_random( randomnum ) != ATCA_SUCCESS)
-        {
-            return 0;
-        }
-        byte nrOfBytes = size > 32 ? 32 : size;
-        memcpy(dest,randomnum, nrOfBytes);
-        dest+=nrOfBytes;
-        size-=nrOfBytes;
-    }
-    if(atcab_release() != ATCA_SUCCESS)
-    {
-        return 0;
-    }
-    return 1;
-}
-bool getSerialNumber(byte* bufout, byte length)
-{
-    byte buf[11];
-    if(atcab_init( gCfg ) != ATCA_SUCCESS)
-    {
-        return false;
-    }
-    if(atcab_read_serial_number(buf) != ATCA_SUCCESS)
-    {
-        return false;
-    }
-    if(atcab_release() != ATCA_SUCCESS)
-    {
-        return false;
-    }
-    memcpy(bufout, buf, length > 9 ? 9 : length);
-    return true;
-}
-
-#endif
-
-//TODO: replace by safe external RNG
-static int RNG(uint8_t *dest, unsigned size) {
-    // Use the least-significant bits from the ADC for an unconnected pin (or connected to a source of
-    // random noise). This can take a long time to generate random data if the result of analogRead(0)
-    // doesn't change very frequently.
-#ifdef ARDUINO_AVR_PROTRINKET3
-    byte adcpin=0;
-#elif defined(ARDUINO_SAM_DUE) || defined(ARDUINO_STM_NUCLEO_F103RB)
-    byte adcpin=A0;
-#endif
-    while (size) {
-        uint8_t val = 0;
-        for (unsigned i = 0; i < 8; ++i) {
-            int init = analogRead(adcpin);
-            int count = 0;
-            while (analogRead(adcpin) == init) {
-                ++count;
-            }
-
-            if (count == 0) {
-                val = (val << 1) | (init & 0x01);
-            } else {
-                val = (val << 1) | (count & 0x01);
-            }
-        }
-        *dest = val;
-        ++dest;
-        --size;
-    }
-    // NOTE: it would be a good idea to hash the resulting random data using SHA-256 or similar.
-    return 1;
-}
 
 void saveKey()
 {

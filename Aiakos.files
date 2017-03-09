@@ -796,3 +796,5 @@ Aiakos.ino
 EEPROMAnything.h
 configuration.cpp
 configuration.h
+cryptohelper.cpp
+cryptohelper.h

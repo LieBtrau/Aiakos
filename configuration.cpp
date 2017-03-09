@@ -67,3 +67,9 @@ byte* Configuration::getKey(byte index)
 {
     return _config.keys[index].sharedKey;
 }
+
+byte* Configuration::getId(byte index)
+{
+    return _config.keys[index].peerId;
+}
+

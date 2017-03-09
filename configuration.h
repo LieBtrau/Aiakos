@@ -10,6 +10,7 @@ public:
     bool init();
     void setKey(byte index, const byte* id, const byte* key);
     byte* getKey(byte index);
+    byte* getId(byte index);
 private:
     static const byte KEY_SIZE=16;
     static const byte KEY_COUNT=2;
