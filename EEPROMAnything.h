@@ -30,8 +30,9 @@ template <class T> int EEPROM_writeAnything(int ee, const T& value)
         crc=_crc_ccitt_update(crc,*p);
         if(EEPROM.read(ee)!=*p)
         {
-            EEPROM.write(ee, *p++);
+            EEPROM.write(ee, *p);
         }
+        p++;
         ee++;
     }
     EEPROM.write(ee++, crc>>8);
