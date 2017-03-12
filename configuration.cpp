@@ -34,7 +34,8 @@ bool Configuration::loadData(){
     Serial.println("Loading data");
 #endif
     bool bResult= EEPROM_readAnything(0,_config);
-    print(_config.keys[0].sharedKey,16);
+    print(_config.keys[0].sharedKey,KEY_SIZE);
+    print(_config.keys[0].peerId,IDLENGTH);
     return bResult;
 }
 

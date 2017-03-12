@@ -42,8 +42,8 @@ bool writeDataSer(byte* data, byte length);
 
 //STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-Kryptoknight k= Kryptoknight(&ATSHA_RNG, writeDataLoRa, readDataLoRa);
-EcdhComm ecdh= EcdhComm(&ATSHA_RNG, writeDataSer, readDataSer);
+Kryptoknight k= Kryptoknight(&RNG, writeDataLoRa, readDataLoRa);
+EcdhComm ecdh= EcdhComm(&RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
@@ -72,7 +72,7 @@ RHReliableDatagram mgrSer(rhSerial, ADDRESS2);
 void setup()
 {
     Serial.begin(9600);
-    rhSerial.serial().begin(9600);
+    rhSerial.serial().begin(2400);
     while (!Serial) ; // Wait for serial port to be available
     if ((!mgrLoRa.init()))
     {
@@ -101,15 +101,15 @@ void setup()
 #endif
         k.setSharedKey(cfg.getKey(0));
     }
+#ifdef ARDUINO_SAM_DUE
+    initRng();
+#endif
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH)) || (!k.setLocalId(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
         return;
     }
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-#ifdef DEBUG
-    Serial.println("Config valid");
-#endif
     k.setSharedKey(cfg.getKey(0));
     Serial.println("Initiator starts authentication");
     if(!k.sendMessage(cfg.getId(0),payload,4))
@@ -218,6 +218,9 @@ bool readDataSer(byte** data, byte& length)
     }
 #else
 #error No device
+#endif
+#ifdef DEBUG
+    Serial.println("Received data: ");print(*data, length);
 #endif
     return true;
 }
