@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "cryptoauthlib.h"      //for TRNG & serial number
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 extern void print(const byte* array, byte length);
 #endif

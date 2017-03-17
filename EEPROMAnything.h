@@ -6,7 +6,7 @@
 DueFlashStorage EEPROM;
 #endif
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef ARDUINO_ARCH_AVR
 #include <util/crc16.h>
@@ -46,10 +46,15 @@ template <class T> boolean EEPROM_readAnything(int ee, T& value)
     byte* p = (byte*)(void*)&value;
     unsigned int i;
     for (i = 0; i < sizeof(value); i++){
-        *p++ = EEPROM.read(ee++);
-        crcIn=_crc_ccitt_update(crcIn,*(p-1));
+        *p = EEPROM.read(ee++);
+        crcIn=_crc_ccitt_update(crcIn,*p);
+        p++;
     }
     word crcRead=EEPROM.read(ee++)<<8;
     crcRead+=EEPROM.read(ee);
+#ifdef DEBUG
+    Serial.print("Read CRC: "); Serial.println(crcRead, HEX);
+    Serial.print("Calculated CRC: "); Serial.println(crcIn, HEX);
+#endif
     return (crcRead==crcIn?true:false);
 }

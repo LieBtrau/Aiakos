@@ -20,7 +20,7 @@
 #include <RH_RF95.h>            //for wireless comm
 #include <RH_Serial.h>          //for wired comm
 #include <SPI.h>                //for wireless comm
-#include "kryptoknight.h"       //for authentication
+#include "kryptoknightcomm.h"  //for authentication
 #include "ecdhcomm.h"           //for secure pairing
 #include "configuration.h"      //for non-volatile storage of parameters
 #include "cryptohelper.h"
@@ -42,22 +42,15 @@ bool writeDataSer(byte* data, byte length);
 
 //STM Nucleo = Garage controller
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-Kryptoknight k= Kryptoknight(&RNG, writeDataLoRa, readDataLoRa);
+KryptoKnightComm k= KryptoKnightComm(&RNG, writeDataLoRa, readDataLoRa);
 EcdhComm ecdh= EcdhComm(&RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
 
-#elif defined(ARDUINO_AVR_PROTRINKET3)
-#error Target no longer supported because of lack of RAM space
-//Adafruit ProTrinket = Key fob
-Kryptoknight k= Kryptoknight(id2,IDLENGTH,sharedkey, &RNG, writeData, readData);
-RH_RF95 rhLoRa(10,3);
-RHReliableDatagram manager(rhLoRa, ADDRESS2);
-
 #elif defined(ARDUINO_SAM_DUE)
 //Arduino Due = Key fob
-Kryptoknight k= Kryptoknight(&RNG, writeDataLoRa, readDataLoRa);
+KryptoKnightComm k= KryptoKnightComm(&RNG, writeDataLoRa, readDataLoRa);
 EcdhComm ecdh=EcdhComm(&RNG, writeDataSer, readDataSer);
 RH_RF95 rhLoRa(4,3);
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
@@ -88,40 +81,34 @@ void setup()
 #endif
         return;
     }
-    if(!cfg.init())
-    {
-#ifdef DEBUG
-        Serial.println("Config invalid");
-#endif
-    }
-    else
-    {
-#ifdef DEBUG
-        Serial.println("Config valid");
-#endif
-        k.setSharedKey(cfg.getKey(0));
-    }
 #ifdef ARDUINO_SAM_DUE
     initRng();
 #endif
     byte buf[10];
-    if((!getSerialNumber(buf, Configuration::IDLENGTH)) || (!k.setLocalId(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
+    if((!getSerialNumber(buf, Configuration::IDLENGTH))
+            || (!k.init(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
         return;
     }
+    if(cfg.init())
+    {
+#ifdef DEBUG
+        Serial.println("Config valid");
+#endif
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-    k.setSharedKey(cfg.getKey(0));
-    Serial.println("Initiator starts authentication");
-    if(!k.sendMessage(cfg.getId(0),payload,4))
-    {
-        Serial.println("Sending message failed.");
-        return;
-    }
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    k.setMessageReceivedHandler(dataReceived);
+        Serial.println("Initiator starts authentication");
+        if(!k.sendMessage(payload,sizeof(payload), cfg.getId(0), cfg.getIdLength(), cfg.getKey(0)))
+        {
+            Serial.println("Sending message failed.");
+            return;
+        }
+#elif defined(ARDUINO_SAM_DUE)
+        k.setMessageReceivedHandler(dataReceived);
+        k.setKeyRequestHandler(setKeyInfo);
 #else
 #error No device
 #endif
+    }
 
 #ifdef DEBUG
     Serial.println("ready");
@@ -134,12 +121,14 @@ void loop()
 {
     if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
     {
+#ifdef DEBUG
         Serial.println("Securely paired");
-        k.setSharedKey(ecdh.getMasterKey());
-        saveKey();
+#endif
+        cfg.setKey(0,ecdh.getRemoteId(), ecdh.getMasterKey());
+        cfg.saveData();
     }
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_INITIATOR_OK)
+    if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
     {
         Serial.println("Message received by peer and acknowledged");
     }
@@ -151,8 +140,8 @@ void loop()
             return;
         }
     }
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
-    if(k.loop()==Kryptoknight::AUTHENTICATION_AS_PEER_OK)
+#elif defined(ARDUINO_SAM_DUE)
+    if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
     {
         Serial.println("Message received by remote initiator");
     }
@@ -258,17 +247,21 @@ bool readDataLoRa(byte** data, byte& length)
     return true;
 }
 
-
-void saveKey()
-{
-    cfg.setKey(0,ecdh.getRemoteId(), ecdh.getMasterKey());
-    cfg.saveData();
-}
-
 void dataReceived(byte* data, byte length)
 {
     Serial.println("Event received with the following data:");
     print(data, length);
+}
+
+void setKeyInfo(byte* remoteId, byte length)
+{
+    Serial.println("ID Event received with the following data:");
+    print(remoteId, length);
+    byte keyIndex=cfg.findKeyIndex(remoteId, length);
+    if( keyIndex != 255)
+    {
+        k.setRemoteParty(cfg.getId(keyIndex), cfg.getIdLength(), cfg.getKey(keyIndex));
+    }
 }
 
 void print(const byte* array, byte length)

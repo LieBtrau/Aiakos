@@ -66,6 +66,10 @@ void Configuration::setKey(byte index, const byte *id, const byte* key)
 
 byte* Configuration::getKey(byte index)
 {
+    if(index>=KEY_COUNT)
+    {
+        return 0;
+    }
     return _config.keys[index].sharedKey;
 }
 
@@ -73,4 +77,25 @@ byte* Configuration::getId(byte index)
 {
     return _config.keys[index].peerId;
 }
+
+byte Configuration::getIdLength()
+{
+    return IDLENGTH;
+}
+
+byte Configuration::findKeyIndex(const byte* remoteId, byte length)
+{
+    for(byte i=0;i<KEY_COUNT;i++)
+    {
+        if(_config.keys[i].keyValid)
+        {
+            if(!memcmp(_config.keys[i].peerId, remoteId, length))
+            {
+                return i;
+            }
+        }
+    }
+    return 255;
+}
+
 
