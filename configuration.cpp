@@ -30,12 +30,12 @@ void Configuration::saveData(){
 }
 
 bool Configuration::loadData(){
+    bool bResult= EEPROM_readAnything(0,_config);
 #ifdef DEBUG
     Serial.println("Loading data");
+    Serial.print("Shared key: ");print(_config.keys[0].sharedKey,KEY_SIZE);
+    Serial.print("Remote ID: ");print(_config.keys[0].peerId,IDLENGTH);
 #endif
-    bool bResult= EEPROM_readAnything(0,_config);
-    print(_config.keys[0].sharedKey,KEY_SIZE);
-    print(_config.keys[0].peerId,IDLENGTH);
     return bResult;
 }
 

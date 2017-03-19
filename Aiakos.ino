@@ -20,7 +20,7 @@
 #include <RH_RF95.h>            //for wireless comm
 #include <RH_Serial.h>          //for wired comm
 #include <SPI.h>                //for wireless comm
-#include "kryptoknightcomm.h"  //for authentication
+#include "kryptoknightcomm.h"   //for authentication
 #include "ecdhcomm.h"           //for secure pairing
 #include "configuration.h"      //for non-volatile storage of parameters
 #include "cryptohelper.h"
@@ -29,37 +29,38 @@
 
 const byte ADDRESS1=1;
 const byte ADDRESS2=2;
-RH_Serial rhSerial(Serial1);
-Configuration cfg;
 
 bool writeDataLoRa(byte* data, byte length);
 bool readDataLoRa(byte** data, byte& length);
 bool readDataSer(byte** data, byte& length);
 bool writeDataSer(byte* data, byte length);
 
-
-#ifdef ARDUINO_STM_NUCLEO_F103RB
-
-//STM Nucleo = Garage controller
-byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
+RH_Serial rhSerial(Serial1);
+Configuration cfg;
 KryptoKnightComm k= KryptoKnightComm(&RNG, writeDataLoRa, readDataLoRa);
 EcdhComm ecdh= EcdhComm(&RNG, writeDataSer, readDataSer);
+
+#ifdef ARDUINO_STM_NUCLEO_F103RB
+#define ROLE_KEYFOB
+#elif defined(ARDUINO_SAM_DUE)
+#define ROLE_GARAGE_CONTROLLER
+#else
+#error No device type defined.
+#endif
+
+#ifdef ARDUINO_STM_NUCLEO_F103RB
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
+#elif defined(ARDUINO_SAM_DUE)
+RH_RF95 rhLoRa(4,3);
+#endif
+
+#ifdef ROLE_GARAGE_CONTROLLER
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
-
-#elif defined(ARDUINO_SAM_DUE)
-//Arduino Due = Key fob
-KryptoKnightComm k= KryptoKnightComm(&RNG, writeDataLoRa, readDataLoRa);
-EcdhComm ecdh=EcdhComm(&RNG, writeDataSer, readDataSer);
-RH_RF95 rhLoRa(4,3);
+#elif defined(ROLE_KEYFOB)
+byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS2);
-
-#else
-
-#error No device type defined.
-
 #endif
 
 void setup()
@@ -86,7 +87,8 @@ void setup()
 #endif
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH))
-            || (!k.init(buf,Configuration::IDLENGTH) ) || (!ecdh.init(buf, Configuration::IDLENGTH)) )
+            || (!k.init(buf,Configuration::IDLENGTH) )
+            || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
         return;
     }
@@ -95,18 +97,16 @@ void setup()
 #ifdef DEBUG
         Serial.println("Config valid");
 #endif
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#ifdef ROLE_KEYFOB
         Serial.println("Initiator starts authentication");
         if(!k.sendMessage(payload,sizeof(payload), cfg.getId(0), cfg.getIdLength(), cfg.getKey(0)))
         {
             Serial.println("Sending message failed.");
             return;
         }
-#elif defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_GARAGE_CONTROLLER)
         k.setMessageReceivedHandler(dataReceived);
         k.setKeyRequestHandler(setKeyInfo);
-#else
-#error No device
 #endif
     }
 
@@ -127,7 +127,7 @@ void loop()
         cfg.setKey(0,ecdh.getRemoteId(), ecdh.getMasterKey());
         cfg.saveData();
     }
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#ifdef ROLE_KEYFOB
     if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
     {
         Serial.println("Message received by peer and acknowledged");
@@ -140,27 +140,27 @@ void loop()
             return;
         }
     }
-#elif defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_GARAGE_CONTROLLER)
     if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
     {
         Serial.println("Message received by remote initiator");
     }
-#else
-#error No device
 #endif
 }
 
 bool writeDataSer(byte* data, byte length)
 {
+    Serial.print("Sending data...");
+#ifdef ROLE_GARAGE_CONTROLLER
 #ifdef DEBUG
-    Serial.println("Sending data: ");print(data, length);
+    Serial.println("to key fob: ");print(data, length);
 #endif
-#ifdef ARDUINO_STM_NUCLEO_F103RB
     return mgrSer.sendtoWait(data, length, ADDRESS2);
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_KEYFOB)
+#ifdef DEBUG
+    Serial.println("to garage controller: ");print(data, length);
+#endif
     return mgrSer.sendtoWait(data, length, ADDRESS1);
-#else
-#error No device
 #endif
 }
 
@@ -169,12 +169,10 @@ bool writeDataLoRa(byte* data, byte length)
 #ifdef DEBUG
     Serial.println("Sending data: ");print(data, length);
 #endif
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#ifdef ROLE_GARAGE_CONTROLLER
     return mgrLoRa.sendtoWait(data, length, ADDRESS2);
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_KEYFOB)
     return mgrLoRa.sendtoWait(data, length, ADDRESS1);
-#else
-#error No device
 #endif
 }
 
@@ -189,7 +187,7 @@ bool readDataSer(byte** data, byte& length)
     {
         return false;
     }
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#ifdef ROLE_GARAGE_CONTROLLER
     if(from != ADDRESS2)
     {
 #ifdef DEBUG
@@ -197,7 +195,7 @@ bool readDataSer(byte** data, byte& length)
 #endif
         return false;
     }
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_KEYFOB)
     if(from != ADDRESS1)
     {
 #ifdef DEBUG
@@ -205,8 +203,6 @@ bool readDataSer(byte** data, byte& length)
 #endif
         return false;
     }
-#else
-#error No device
 #endif
 #ifdef DEBUG
     Serial.println("Received data: ");print(*data, length);
@@ -225,7 +221,7 @@ bool readDataLoRa(byte** data, byte& length)
     {
         return false;
     }
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#ifdef ROLE_GARAGE_CONTROLLER
     if(from != ADDRESS2)
     {
 #ifdef DEBUG
@@ -233,7 +229,7 @@ bool readDataLoRa(byte** data, byte& length)
 #endif
         return false;
     }
-#elif defined(ARDUINO_AVR_PROTRINKET3) || defined(ARDUINO_SAM_DUE)
+#elif defined(ROLE_KEYFOB)
     if(from != ADDRESS1)
     {
 #ifdef DEBUG
@@ -241,8 +237,6 @@ bool readDataLoRa(byte** data, byte& length)
 #endif
         return false;
     }
-#else
-#error No device
 #endif
     return true;
 }
