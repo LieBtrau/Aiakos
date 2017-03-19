@@ -99,7 +99,7 @@ void setup()
 #endif
 #ifdef ROLE_KEYFOB
         Serial.println("Initiator starts authentication");
-        if(!k.sendMessage(payload,sizeof(payload), cfg.getId(0), cfg.getIdLength(), cfg.getKey(0)))
+        if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
         {
             Serial.println("Sending message failed.");
             return;
@@ -124,8 +124,7 @@ void loop()
 #ifdef DEBUG
         Serial.println("Securely paired");
 #endif
-        cfg.setKey(0,ecdh.getRemoteId(), ecdh.getMasterKey());
-        cfg.saveData();
+        cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
     }
 #ifdef ROLE_KEYFOB
     if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)

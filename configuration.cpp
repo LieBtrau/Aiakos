@@ -21,14 +21,6 @@ void Configuration::initializeEEPROM(){
     saveData();
 }
 
-void Configuration::saveData(){
-#ifdef DEBUG
-    Serial.println("Saving data");
-#endif
-    print(_config.keys[0].sharedKey,16);
-    EEPROM_writeAnything(0,_config);
-}
-
 bool Configuration::loadData(){
     bool bResult= EEPROM_readAnything(0,_config);
 #ifdef DEBUG
@@ -57,25 +49,33 @@ bool Configuration::init(){
     return true;
 }
 
-void Configuration::setKey(byte index, const byte *id, const byte* key)
+//For new IDs a new entry for key storage will be created.  If the ID is known, then the key value will be updated.
+void Configuration::addKey(const byte *remoteId, const byte* key)
 {
-    memcpy(_config.keys[index].peerId, id, IDLENGTH);
+    byte index=0;
+    //Check if remote ID is already known
+    for(byte i=0;i<KEY_COUNT;i++)
+    {
+        if(_config.keys[i].keyValid && (!memcmp(_config.keys[i].peerId, remoteId, IDLENGTH)))
+        {
+            index=i;
+            break;
+        }
+    }
+    memcpy(_config.keys[index].peerId, remoteId, IDLENGTH);
     memcpy(_config.keys[index].sharedKey, key, KEY_SIZE);
     _config.keys[index].keyValid=true;
+    saveData();
 }
 
-byte* Configuration::getKey(byte index)
+byte* Configuration::getDefaultKey()
 {
-    if(index>=KEY_COUNT)
-    {
-        return 0;
-    }
-    return _config.keys[index].sharedKey;
+    return _config.keys[0].keyValid ? _config.keys[0].sharedKey : 0;
 }
 
-byte* Configuration::getId(byte index)
+byte* Configuration::getDefaultId()
 {
-    return _config.keys[index].peerId;
+    return _config.keys[0].keyValid ? _config.keys[0].peerId : 0;
 }
 
 byte Configuration::getIdLength()
@@ -87,15 +87,20 @@ byte* Configuration::findKey(const byte* remoteId, byte length)
 {
     for(byte i=0;i<KEY_COUNT;i++)
     {
-        if(_config.keys[i].keyValid)
+        if(_config.keys[i].keyValid && (!memcmp(_config.keys[i].peerId, remoteId, length)))
         {
-            if(!memcmp(_config.keys[i].peerId, remoteId, length))
-            {
-                return _config.keys[i].sharedKey;
-            }
+            return _config.keys[i].sharedKey;
         }
     }
     return 0;
+}
+
+void Configuration::saveData(){
+#ifdef DEBUG
+    Serial.println("Saving data");
+    print(_config.keys[0].sharedKey,16);
+#endif
+    EEPROM_writeAnything(0,_config);
 }
 
 

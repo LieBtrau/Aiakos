@@ -5,13 +5,12 @@ class Configuration
 public:
     static const byte IDLENGTH=9;
     Configuration();
-    void saveData();
     bool loadData();
     bool init();
     static byte getIdLength();
-    void setKey(byte index, const byte* id, const byte* key);
-    byte* getKey(byte index);
-    byte* getId(byte index);
+    void addKey(const byte* remoteId, const byte* key);
+    byte* getDefaultKey();
+    byte* getDefaultId();
     byte* findKey(const byte* remoteId, byte length);
 private:
     static const byte KEY_SIZE=16;
@@ -28,6 +27,7 @@ private:
     }CONFIG;
     void initializeEEPROM();
     CONFIG _config;
+    void saveData();
 };
 
 #endif // CONFIGURATION_H
