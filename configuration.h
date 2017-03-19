@@ -12,7 +12,7 @@ public:
     void setKey(byte index, const byte* id, const byte* key);
     byte* getKey(byte index);
     byte* getId(byte index);
-    byte findKeyIndex(const byte* remoteId, byte length);
+    byte* findKey(const byte* remoteId, byte length);
 private:
     static const byte KEY_SIZE=16;
     static const byte KEY_COUNT=2;

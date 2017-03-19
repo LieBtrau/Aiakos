@@ -249,12 +249,12 @@ void dataReceived(byte* data, byte length)
 
 void setKeyInfo(byte* remoteId, byte length)
 {
-    Serial.println("ID Event received with the following data:");
+    Serial.println("Remote ID Event received with the following data:");
     print(remoteId, length);
-    byte keyIndex=cfg.findKeyIndex(remoteId, length);
-    if( keyIndex != 255)
+    byte* key = cfg.findKey(remoteId, length);
+    if(key)
     {
-        k.setRemoteParty(cfg.getId(keyIndex), cfg.getIdLength(), cfg.getKey(keyIndex));
+        k.setRemoteParty(remoteId, length, key);
     }
 }
 

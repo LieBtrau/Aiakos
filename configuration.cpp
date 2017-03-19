@@ -83,7 +83,7 @@ byte Configuration::getIdLength()
     return IDLENGTH;
 }
 
-byte Configuration::findKeyIndex(const byte* remoteId, byte length)
+byte* Configuration::findKey(const byte* remoteId, byte length)
 {
     for(byte i=0;i<KEY_COUNT;i++)
     {
@@ -91,11 +91,11 @@ byte Configuration::findKeyIndex(const byte* remoteId, byte length)
         {
             if(!memcmp(_config.keys[i].peerId, remoteId, length))
             {
-                return i;
+                return _config.keys[i].sharedKey;
             }
         }
     }
-    return 255;
+    return 0;
 }
 
 
