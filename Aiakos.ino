@@ -1,19 +1,40 @@
-/* Connections to Nucleo F103RB
-* XL1276    Protrinket  Due    Nucleo   ATSHA204A
-*           3V
-* ---------------------------------------------------
-* NSS       10          4       A2
-* MOSI      11          ICSP.4  D11
-* MISO      12          ICSP.1  D12
-* SCK       13          ICSP.3  D13  (Be careful, this is the 6th pin on the left row of the right most pin header connector, not the fifth!)
-* REST      RST         RESET   NRST
-* DIO0      3           3       D5
-* VCC       3V          3.3V    3V
-* GND       G           GND     GND
-*                       RX1     D8
-*                       TX1     D2
-*                               D3      SDA
-*                               D4      SCL
+/* Hardware Connections
+ * **************************************************
+ * LoRa module
+ * **************************************************
+ * XL1276    Protrinket  Due    Nucleo   ATSHA204A
+ *           3V
+ *****************************************************
+ * NSS       10          4       A2
+ * MOSI      11          ICSP.4  D11
+ * MISO      12          ICSP.1  D12
+ * SCK       13          ICSP.3  D13  (Be careful, this is the 6th pin on the left row of the right most pin header connector, not the fifth!)
+ * REST      RST         RESET   NRST
+ * DIO0      3           3       D5
+ * VCC       3V          3.3V    3V
+ * GND       G           GND     GND
+ *****************************************************
+ * ATSHA204A for TRNG and unique serial number
+ *****************************************************
+ *                               D3      SDA
+ *                               D4      SCL
+ *****************************************************
+ * Serial connection for secure pairing
+ *****************************************************
+ * Tip                   TX1     D2
+ * Ring                  RX1     D8
+ * Sleeve                GND     GND
+ * Cable detect Contact  2       D6
+ * Pushbutton                    25
+ *****************************************************
+ * Pairing procedure:
+ * ------------------
+ * Interconnect the keyfob and the garage controller with the stereo jack cable.  Press the blue button on the Nucleo
+ * to start the pairing.
+ * Authenticating procedure:
+ * -------------------------
+ * Disconnect the stereo jack cable from the key fob as well as from the garage controller.  Press the blue button on
+ * the Nucleo to initiate authentication.
 */
 
 #include <RHReliableDatagram.h> //for wireless comm
@@ -23,7 +44,8 @@
 #include "kryptoknightcomm.h"   //for authentication
 #include "ecdhcomm.h"           //for secure pairing
 #include "configuration.h"      //for non-volatile storage of parameters
-#include "cryptohelper.h"
+#include "cryptohelper.h"       //for unique serial numbers & true random number generators
+#include <Bounce2.h>            //for switch debouncing
 
 #define DEBUG
 
@@ -39,6 +61,7 @@ RH_Serial rhSerial(Serial1);
 Configuration cfg;
 KryptoKnightComm k= KryptoKnightComm(&RNG, writeDataLoRa, readDataLoRa);
 EcdhComm ecdh= EcdhComm(&RNG, writeDataSer, readDataSer);
+Bounce cableDetect = Bounce();
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 #define ROLE_KEYFOB
@@ -50,8 +73,12 @@ EcdhComm ecdh= EcdhComm(&RNG, writeDataSer, readDataSer);
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
+const byte CABLE_DETECT_PIN=6;
+const byte BUTTON_PIN=25;
+Bounce pushButton = Bounce();
 #elif defined(ARDUINO_SAM_DUE)
 RH_RF95 rhLoRa(4,3);
+const byte CABLE_DETECT_PIN=2;
 #endif
 
 #ifdef ROLE_GARAGE_CONTROLLER
@@ -85,6 +112,9 @@ void setup()
 #ifdef ARDUINO_SAM_DUE
     initRng();
 #endif
+    pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
+    cableDetect.attach(CABLE_DETECT_PIN);
+    cableDetect.interval(5); // interval in ms
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH))
             || (!k.init(buf,Configuration::IDLENGTH) )
@@ -97,59 +127,96 @@ void setup()
 #ifdef DEBUG
         Serial.println("Config valid");
 #endif
-#ifdef ROLE_KEYFOB
-        Serial.println("Initiator starts authentication");
-        if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
-        {
-            Serial.println("Sending message failed.");
-            return;
-        }
-#elif defined(ROLE_GARAGE_CONTROLLER)
+#ifdef ROLE_GARAGE_CONTROLLER
         k.setMessageReceivedHandler(dataReceived);
         k.setKeyRequestHandler(setKeyInfo);
+#elif defined(ROLE_KEYFOB)
+        pinMode(BUTTON_PIN, INPUT_PULLUP);
+        pushButton.attach(BUTTON_PIN);
+        pushButton.interval(5); // interval in ms
 #endif
     }
 
 #ifdef DEBUG
     Serial.println("ready");
 #endif
-
 }
 
-
+#ifdef ROLE_KEYFOB
 void loop()
 {
-    if(ecdh.loop()==EcdhComm::AUTHENTICATION_OK)
+    cableDetect.update();
+    pushButton.update();
+    if(!cableDetect.read())
     {
-#ifdef DEBUG
-        Serial.println("Securely paired");
-#endif
-        cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
-    }
-#ifdef ROLE_KEYFOB
-    if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
-    {
-        Serial.println("Message received by peer and acknowledged");
-    }
-    if(!digitalRead(25))
-    {
-        if(!ecdh.startPairing())
+        //Secure pairing mode
+        if(pushButton.fell())
         {
-            Serial.println("Sending message failed.");
-            return;
+            if(!ecdh.startPairing())
+            {
+                Serial.println("Sending message failed.");
+                return;
+            }
+        }
+        switch(ecdh.loop())
+        {
+        case EcdhComm::AUTHENTICATION_OK:
+#ifdef DEBUG
+            Serial.println("Securely paired");
+#endif
+            cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+            break;
+        case EcdhComm::NO_AUTHENTICATION:
+        case EcdhComm::AUTHENTICATION_BUSY:
+            break;
+        }
+    }else
+    {
+        //Authenticating mode
+        if(pushButton.fell())
+        {
+            Serial.println("Initiator starts authentication");
+            if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
+            {
+                Serial.println("Sending message failed.");
+                return;
+            }
+        }
+        if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
+        {
+            Serial.println("Message received by peer and acknowledged");
         }
     }
-#elif defined(ROLE_GARAGE_CONTROLLER)
-    if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
-    {
-        Serial.println("Message received by remote initiator");
-    }
-#endif
 }
+
+#elif defined(ROLE_GARAGE_CONTROLLER)
+void loop()
+{
+    cableDetect.update();
+    if(!cableDetect.read())
+    {
+        //Secure pairing mode
+        if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
+        {
+#ifdef DEBUG
+            Serial.println("Securely paired");
+#endif
+            cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+        }
+    }else
+    {
+        if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
+        {
+            Serial.println("Message received by remote initiator");
+        }
+    }
+}
+#endif
+
 
 bool writeDataSer(byte* data, byte length)
 {
-    Serial.print("Sending data...");
+    Serial.print("Sending serial data...");
 #ifdef ROLE_GARAGE_CONTROLLER
 #ifdef DEBUG
     Serial.println("to key fob: ");print(data, length);
@@ -166,7 +233,7 @@ bool writeDataSer(byte* data, byte length)
 bool writeDataLoRa(byte* data, byte length)
 {
 #ifdef DEBUG
-    Serial.println("Sending data: ");print(data, length);
+    Serial.println("Sending LoRa data: ");print(data, length);
 #endif
 #ifdef ROLE_GARAGE_CONTROLLER
     return mgrLoRa.sendtoWait(data, length, ADDRESS2);

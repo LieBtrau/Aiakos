@@ -800,3 +800,5 @@ cryptohelper.cpp
 cryptohelper.h
 ../arduino-kryptoknight/kryptoknightcomm.cpp
 ../arduino-kryptoknight/kryptoknightcomm.h
+../bounce2/Bounce2.cpp
+../bounce2/Bounce2.h
