@@ -13,11 +13,13 @@
  * DIO0      3           3       D5
  * VCC       3V          3.3V    3V
  * GND       G           GND     GND
+ *
  *****************************************************
  * ATSHA204A for TRNG and unique serial number
  *****************************************************
  *                               D3      SDA
  *                               D4      SCL
+ *
  *****************************************************
  * Serial connection for secure pairing
  *****************************************************
@@ -26,11 +28,17 @@
  * Sleeve                GND     GND
  * Cable detect Contact  2       D6
  * Pushbutton                    25
+ *
  *****************************************************
+ * Pulse output for opening/closing garage door
+ *****************************************************
+ * Pulse                 5
+ *
  * Pairing procedure:
  * ------------------
  * Interconnect the keyfob and the garage controller with the stereo jack cable.  Press the blue button on the Nucleo
  * to start the pairing.
+ *
  * Authenticating procedure:
  * -------------------------
  * Disconnect the stereo jack cable from the key fob as well as from the garage controller.  Press the blue button on
@@ -74,7 +82,6 @@ Bounce cableDetect = Bounce();
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 const byte CABLE_DETECT_PIN=6;
-const byte BUTTON_PIN=25;
 Bounce pushButton = Bounce();
 #elif defined(ARDUINO_SAM_DUE)
 RH_RF95 rhLoRa(4,3);
@@ -84,11 +91,14 @@ const byte CABLE_DETECT_PIN=2;
 #ifdef ROLE_GARAGE_CONTROLLER
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS1);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS1);
+const byte PULSE_PIN=5;
 #elif defined(ROLE_KEYFOB)
 byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
 RHReliableDatagram mgrLoRa(rhLoRa, ADDRESS2);
 RHReliableDatagram mgrSer(rhSerial, ADDRESS2);
+const byte BUTTON_PIN=25;
 #endif
+static unsigned long ulTime;
 
 void setup()
 {
@@ -130,6 +140,7 @@ void setup()
 #ifdef ROLE_GARAGE_CONTROLLER
         k.setMessageReceivedHandler(dataReceived);
         k.setKeyRequestHandler(setKeyInfo);
+        pinMode(PULSE_PIN, OUTPUT);
 #elif defined(ROLE_KEYFOB)
         pinMode(BUTTON_PIN, INPUT_PULLUP);
         pushButton.attach(BUTTON_PIN);
@@ -140,6 +151,7 @@ void setup()
 #ifdef DEBUG
     Serial.println("ready");
 #endif
+    ulTime=millis();
 }
 
 #ifdef ROLE_KEYFOB
@@ -152,6 +164,7 @@ void loop()
         //Secure pairing mode
         if(pushButton.fell())
         {
+            k.reset();
             if(!ecdh.startPairing())
             {
                 Serial.println("Sending message failed.");
@@ -175,6 +188,7 @@ void loop()
         //Authenticating mode
         if(pushButton.fell())
         {
+            ecdh.reset();
             Serial.println("Initiator starts authentication");
             if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
             {
@@ -209,6 +223,14 @@ void loop()
         {
             Serial.println("Message received by remote initiator");
         }
+    }
+    if(millis()>ulTime+2000)
+    {
+        ulTime=millis();
+        digitalWrite(PULSE_PIN, HIGH);
+        delayMicroseconds(10);
+        digitalWrite(PULSE_PIN, LOW);
+        Serial.println("0");
     }
 }
 #endif
