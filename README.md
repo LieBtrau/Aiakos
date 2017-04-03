@@ -14,7 +14,7 @@ The system will consist of three parts:
 
 * door controller in the garage  
 * Wake up initializer
-* NFC-enabled key fob in my back pack  
+* BLE-enabled key fob in my back pack  
 
 ### Door controller in the garage
 The door controller in the garage is connected to the motor that can open and close the gate.  It will only do this when an authenticated request from a paired keyfob has been received by its wireless UHF-receiver.
