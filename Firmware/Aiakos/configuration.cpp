@@ -95,6 +95,16 @@ byte* Configuration::findKey(const byte* remoteId, byte length)
     return 0;
 }
 
+void Configuration::removeAllKeys()
+{
+    for(byte i=0;i<KEY_COUNT;i++)
+    {
+        _config.keys[i].keyValid==false;
+    }
+    saveData();
+}
+
+
 void Configuration::saveData(){
 #ifdef DEBUG
     Serial.println("Saving data");

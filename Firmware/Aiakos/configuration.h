@@ -9,6 +9,7 @@ public:
     bool init();
     static byte getIdLength();
     void addKey(const byte* remoteId, const byte* key);
+    void removeAllKeys();
     byte* getDefaultKey();
     byte* getDefaultId();
     byte* findKey(const byte* remoteId, byte length);

@@ -17,8 +17,8 @@
  *****************************************************
  * ATSHA204A for TRNG and unique serial number
  *****************************************************
- *                               D3      SDA
- *                               D4      SCL
+ *                               D3      5 (SDA)
+ *                               D4      6 (SCL)
  *
  *****************************************************
  * Serial connection for secure pairing
@@ -73,19 +73,15 @@ Bounce cableDetect = Bounce();
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 #define ROLE_KEYFOB
-#elif defined(ARDUINO_SAM_DUE)
-#define ROLE_GARAGE_CONTROLLER
-#else
-#error No device type defined.
-#endif
-
-#ifdef ARDUINO_STM_NUCLEO_F103RB
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 const byte CABLE_DETECT_PIN=6;
 Bounce pushButton = Bounce();
 #elif defined(ARDUINO_SAM_DUE)
+#define ROLE_GARAGE_CONTROLLER
 RH_RF95 rhLoRa(4,3);
 const byte CABLE_DETECT_PIN=2;
+#else
+#error No device type defined.
 #endif
 
 #ifdef ROLE_GARAGE_CONTROLLER
@@ -124,12 +120,15 @@ void setup()
 #endif
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
-    cableDetect.interval(5); // interval in ms
+    cableDetect.interval(100); // interval in ms
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH))
             || (!k.init(buf,Configuration::IDLENGTH) )
             || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
+#ifdef DEBUG
+        Serial.println("Security init failed");
+#endif
         return;
     }
     if(cfg.init())
@@ -144,7 +143,7 @@ void setup()
 #elif defined(ROLE_KEYFOB)
         pinMode(BUTTON_PIN, INPUT_PULLUP);
         pushButton.attach(BUTTON_PIN);
-        pushButton.interval(5); // interval in ms
+        pushButton.interval(100); // interval in ms
 #endif
     }
 
@@ -164,6 +163,9 @@ void loop()
         //Secure pairing mode
         if(pushButton.fell())
         {
+#ifdef DEBUG
+            Serial.println("Starting pairing...");
+#endif
             k.reset();
             if(!ecdh.startPairing())
             {
@@ -189,7 +191,9 @@ void loop()
         if(pushButton.fell())
         {
             ecdh.reset();
+#ifdef DEBUG
             Serial.println("Initiator starts authentication");
+#endif
             if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
             {
                 Serial.println("Sending message failed.");
@@ -209,13 +213,24 @@ void loop()
     cableDetect.update();
     if(!cableDetect.read())
     {
-        //Secure pairing mode
-        if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
+        if(cableDetect.fell())
         {
+            //on falling edge of cable detect, all keys must be cleared.
 #ifdef DEBUG
-            Serial.println("Securely paired");
+            Serial.println("Entering pairing mode");
 #endif
-            cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+            cfg.removeAllKeys();
+        }
+        else
+        {
+            //Secure pairing mode
+            if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
+            {
+#ifdef DEBUG
+                Serial.println("Securely paired");
+#endif
+                cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+            }
         }
     }else
     {
@@ -223,14 +238,6 @@ void loop()
         {
             Serial.println("Message received by remote initiator");
         }
-    }
-    if(millis()>ulTime+2000)
-    {
-        ulTime=millis();
-        digitalWrite(PULSE_PIN, HIGH);
-        delayMicroseconds(10);
-        digitalWrite(PULSE_PIN, LOW);
-        Serial.println("0");
     }
 }
 #endif
@@ -333,6 +340,18 @@ void dataReceived(byte* data, byte length)
 {
     Serial.println("Event received with the following data:");
     print(data, length);
+#ifdef ROLE_GARAGE_CONTROLLER
+    const byte PORTPULSE[4]={0xFE, 0xDC, 0xBA, 0x98};
+    if(!memcmp(data,PORTPULSE,sizeof(PORTPULSE)))
+    {
+#ifdef DEBUG
+        Serial.println("Generating port pulse.");
+#endif
+        digitalWrite(PULSE_PIN, HIGH);
+        delay(500);
+        digitalWrite(PULSE_PIN, LOW);
+    }
+#endif
 }
 
 void setKeyInfo(byte* remoteId, byte length)
