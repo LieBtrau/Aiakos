@@ -98,9 +98,12 @@ static unsigned long ulTime;
 
 void setup()
 {
-    Serial.begin(9600);
     rhSerial.serial().begin(2400);
+#ifdef DEBUG
+    Serial.begin(9600);
+    //Serial port will only be connected in debug mode
     while (!Serial) ; // Wait for serial port to be available
+#endif
     if ((!mgrLoRa.init()))
     {
 #ifdef DEBUG
@@ -136,6 +139,7 @@ void setup()
 #ifdef DEBUG
         Serial.println("Config valid");
 #endif
+    }
 #ifdef ROLE_GARAGE_CONTROLLER
         k.setMessageReceivedHandler(dataReceived);
         k.setKeyRequestHandler(setKeyInfo);
@@ -145,7 +149,6 @@ void setup()
         pushButton.attach(BUTTON_PIN);
         pushButton.interval(100); // interval in ms
 #endif
-    }
 
 #ifdef DEBUG
     Serial.println("ready");
@@ -219,6 +222,7 @@ void loop()
 #ifdef DEBUG
             Serial.println("Entering pairing mode");
 #endif
+            k.reset();
             cfg.removeAllKeys();
         }
         else
@@ -234,6 +238,13 @@ void loop()
         }
     }else
     {
+#ifdef DEBUG
+        if(cableDetect.rose())
+        {
+            //on falling edge of cable detect, all keys must be cleared.
+            Serial.println("Leaving pairing mode");
+        }
+#endif
         if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
         {
             Serial.println("Message received by remote initiator");
@@ -363,6 +374,12 @@ void setKeyInfo(byte* remoteId, byte length)
     {
         k.setRemoteParty(remoteId, length, key);
     }
+#ifdef DEBUG
+    else
+    {
+        Serial.println("Key not found in database.");
+    }
+#endif
 }
 
 void print(const byte* array, byte length)
