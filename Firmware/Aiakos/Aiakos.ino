@@ -120,6 +120,47 @@ void setup()
     }
 #ifdef ARDUINO_SAM_DUE
     initRng();
+    //See §9.1 Peripheral identifiers of the SAM3X datasheet
+    pmc_disable_periph_clk(2);      // real-time clock
+    pmc_disable_periph_clk(3);      // real-time timer
+    pmc_disable_periph_clk(4);      // watchdog timer
+    pmc_disable_periph_clk(6);      // EEFC0  flash ctrl
+    pmc_disable_periph_clk(7);      // EEFC1  flash ctrl
+    pmc_disable_periph_clk(9);      // SMC_SDRAMC
+    pmc_disable_periph_clk(10);     // SDRAMC
+    pmc_disable_periph_clk(11);     // PIO A 
+    pmc_disable_periph_clk(12);     // PIO B 
+    pmc_disable_periph_clk(14);     // PIO D 
+    pmc_disable_periph_clk(15);     // PIO E 
+    pmc_disable_periph_clk(16);     // PIO F
+    pmc_disable_periph_clk(18);     // USART1
+    pmc_disable_periph_clk(19);     // USART2
+    pmc_disable_periph_clk(20);     // USART3
+    pmc_disable_periph_clk(21);     // HSMCI (SD/MMC ctrl, N/C)
+    pmc_disable_periph_clk(22);     // TWI/I2C bus 0 (i.MX6 controlling)
+    pmc_disable_periph_clk(23);     // TWI/I2C bus 1
+    pmc_disable_periph_clk(25);     // SPI1
+    pmc_disable_periph_clk(26);     // SSC (I2S digital audio, N/C)
+    pmc_disable_periph_clk(27);     // timer/counter 0
+    pmc_disable_periph_clk(28);     // timer/counter 1
+    pmc_disable_periph_clk(29);     // timer/counter 2
+    pmc_disable_periph_clk(30);     // timer/counter 3
+    pmc_disable_periph_clk(31);     // timer/counter 4
+    pmc_disable_periph_clk(32);     // timer/counter 5
+    pmc_disable_periph_clk(33);     // timer/counter 6
+    pmc_disable_periph_clk(34);     // timer/counter 7
+    pmc_disable_periph_clk(35);     // timer/counter 8
+    pmc_disable_periph_clk(36);     // PWM
+    pmc_disable_periph_clk(37);     // ADC
+    pmc_disable_periph_clk(38);     // DAC ctrl
+    pmc_disable_periph_clk(39);     // DMA ctrl
+    pmc_disable_periph_clk(40);     // USB OTG high-speed ctrl
+    pmc_disable_periph_clk(42);     // ethernet MAC - N/C
+    pmc_disable_periph_clk(43);     // CAN controller 0
+    pmc_disable_periph_clk(44);     // CAN controller 1
+    pinMode(13, OUTPUT);
+    digitalWrite(13, LOW);
+    setHighMcuSpeed(false);
 #endif
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
@@ -141,13 +182,13 @@ void setup()
 #endif
     }
 #ifdef ROLE_GARAGE_CONTROLLER
-        k.setMessageReceivedHandler(dataReceived);
-        k.setKeyRequestHandler(setKeyInfo);
-        pinMode(PULSE_PIN, OUTPUT);
+    k.setMessageReceivedHandler(dataReceived);
+    k.setKeyRequestHandler(setKeyInfo);
+    pinMode(PULSE_PIN, OUTPUT);
 #elif defined(ROLE_KEYFOB)
-        pinMode(BUTTON_PIN, INPUT_PULLUP);
-        pushButton.attach(BUTTON_PIN);
-        pushButton.interval(100); // interval in ms
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    pushButton.attach(BUTTON_PIN);
+    pushButton.interval(100); // interval in ms
 #endif
 
 #ifdef DEBUG
@@ -222,6 +263,7 @@ void loop()
 #ifdef DEBUG
             Serial.println("Entering pairing mode");
 #endif
+            setHighMcuSpeed(true);
             k.reset();
             cfg.removeAllKeys();
         }
@@ -245,9 +287,17 @@ void loop()
             Serial.println("Leaving pairing mode");
         }
 #endif
-        if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
+        switch(k.loop())
         {
-            Serial.println("Message received by remote initiator");
+          case KryptoKnightComm::AUTHENTICATION_AS_PEER_OK:
+           Serial.println("Message received by remote initiator");
+           break;
+          case KryptoKnightComm::NO_AUTHENTICATION:
+            setHighMcuSpeed(false);
+            break;
+          case KryptoKnightComm::AUTHENTICATION_BUSY:
+            setHighMcuSpeed(true);
+            break;
         }
     }
 }
@@ -395,4 +445,12 @@ void print(const byte* array, byte length)
         }
     }
     Serial.println();
+}
+
+void setHighMcuSpeed(bool bHigh)
+{
+#ifdef ARDUINO_SAM_DUE
+    pmc_set_writeprotect(false);
+    pmc_mck_set_prescaler(bHigh ? 16 : 64);   // 84 MHz or 10.5//96=2.6MHz
+#endif
 }
