@@ -451,6 +451,6 @@ void setHighMcuSpeed(bool bHigh)
 {
 #ifdef ARDUINO_SAM_DUE
     pmc_set_writeprotect(false);
-    pmc_mck_set_prescaler(bHigh ? 16 : 64);   // 84 MHz or 10.5//96=2.6MHz
+    pmc_mck_set_prescaler(bHigh ? 16 : 96);   // 84 MHz or 2.6MHz
 #endif
 }
