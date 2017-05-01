@@ -9,6 +9,7 @@ public:
     bool init();
     static byte getIdLength();
     void addKey(const byte* remoteId, const byte* key);
+    void removeAllKeys();
     byte* getDefaultKey();
     byte* getDefaultId();
     byte* findKey(const byte* remoteId, byte length);
@@ -19,16 +20,16 @@ private:
     {
         byte sharedKey[KEY_SIZE];
         byte peerId[IDLENGTH];
-        bool keyValid;
     }SHARED_KEY;
     typedef struct
     {
+        byte nrOfValidKeys;
         SHARED_KEY keys[KEY_COUNT];
     }CONFIG;
     void initializeEEPROM();
-    CONFIG _config;
     void saveData();
-};
+    CONFIG _config;
+ };
 
 #endif // CONFIGURATION_H
 

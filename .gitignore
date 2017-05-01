@@ -1,2 +1,10 @@
-Nucleo/build/*
+# Ignores for Eagle files
 Hardware/Simulations/*
+Hardware/*/*.b#*
+Hardware/*/*.l#*
+Hardware/*/*.s#*
+*_DL.scr
+*DRILEGEND.CFG
+*drilegend.lbr
+*.pdf
+*.csv

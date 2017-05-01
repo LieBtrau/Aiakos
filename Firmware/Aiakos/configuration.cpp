@@ -1,32 +1,43 @@
 #include "EEPROMAnything.h"
 #include "configuration.h"
 
-#define DEBUG
+//#define DEBUG
 #ifdef DEBUG
 extern void print(const byte* array, byte length);
 #endif
 
 Configuration::Configuration()
 {
+    _config.nrOfValidKeys=0;
 }
 
 void Configuration::initializeEEPROM(){
 #ifdef ARDUINO_STM_NUCLEO_F103RB
     EEPROM.format();
 #endif
-    for(byte i=0;i<KEY_COUNT;i++)
-    {
-        _config.keys[i].keyValid=false;
-    }
     saveData();
 }
 
 bool Configuration::loadData(){
-    bool bResult= EEPROM_readAnything(0,_config);
+    CONFIG testcfg;
+    bool bResult= EEPROM_readAnything(0,testcfg) && testcfg.nrOfValidKeys<=KEY_COUNT;
+    if(bResult)
+    {
+        //Make sure only valid data is used in the application
+       _config=testcfg;
+    }
 #ifdef DEBUG
+    else
+    {
+        Serial.println("Loading: config invalid");
+    }
     Serial.println("Loading data");
-    Serial.print("Shared key: ");print(_config.keys[0].sharedKey,KEY_SIZE);
-    Serial.print("Remote ID: ");print(_config.keys[0].peerId,IDLENGTH);
+    Serial.print("Number of valid keys: "); print(&_config.nrOfValidKeys, 1);
+    if(_config.nrOfValidKeys)
+    {
+        Serial.print("Shared key: ");print(_config.keys[0].sharedKey,KEY_SIZE);
+        Serial.print("Remote ID: ");print(_config.keys[0].peerId,IDLENGTH);
+    }
 #endif
     return bResult;
 }
@@ -53,29 +64,38 @@ bool Configuration::init(){
 void Configuration::addKey(const byte *remoteId, const byte* key)
 {
     byte index=0;
+    bool bKeyFound=false;
+
     //Check if remote ID is already known
-    for(byte i=0;i<KEY_COUNT;i++)
+    for(byte index=0;index<_config.nrOfValidKeys;index++)
     {
-        if(_config.keys[i].keyValid && (!memcmp(_config.keys[i].peerId, remoteId, IDLENGTH)))
+        if(!memcmp(_config.keys[index].peerId, remoteId, IDLENGTH))
         {
-            index=i;
+            bKeyFound=true;
             break;
         }
     }
+    if(!bKeyFound)
+    {
+        index=_config.nrOfValidKeys++;
+    }
     memcpy(_config.keys[index].peerId, remoteId, IDLENGTH);
     memcpy(_config.keys[index].sharedKey, key, KEY_SIZE);
-    _config.keys[index].keyValid=true;
+#ifdef DEBUG
+    Serial.print("Storing key at location: ");
+    Serial.println(index, DEC);
+#endif
     saveData();
 }
 
 byte* Configuration::getDefaultKey()
 {
-    return _config.keys[0].keyValid ? _config.keys[0].sharedKey : 0;
-}
+    return _config.nrOfValidKeys ? _config.keys[0].sharedKey : 0;
+    }
 
-byte* Configuration::getDefaultId()
-{
-    return _config.keys[0].keyValid ? _config.keys[0].peerId : 0;
+    byte* Configuration::getDefaultId()
+    {
+    return _config.nrOfValidKeys ? _config.keys[0].peerId : 0;
 }
 
 byte Configuration::getIdLength()
@@ -85,9 +105,9 @@ byte Configuration::getIdLength()
 
 byte* Configuration::findKey(const byte* remoteId, byte length)
 {
-    for(byte i=0;i<KEY_COUNT;i++)
+    for(byte i=0;i<_config.nrOfValidKeys;i++)
     {
-        if(_config.keys[i].keyValid && (!memcmp(_config.keys[i].peerId, remoteId, length)))
+        if(!memcmp(_config.keys[i].peerId, remoteId, length))
         {
             return _config.keys[i].sharedKey;
         }
@@ -95,9 +115,17 @@ byte* Configuration::findKey(const byte* remoteId, byte length)
     return 0;
 }
 
+void Configuration::removeAllKeys()
+{
+    _config.nrOfValidKeys=0;
+    saveData();
+}
+
+
 void Configuration::saveData(){
 #ifdef DEBUG
     Serial.println("Saving data");
+    print(&_config.nrOfValidKeys,1);
     print(_config.keys[0].sharedKey,16);
 #endif
     EEPROM_writeAnything(0,_config);

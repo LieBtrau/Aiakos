@@ -17,8 +17,8 @@
  *****************************************************
  * ATSHA204A for TRNG and unique serial number
  *****************************************************
- *                               D3      SDA
- *                               D4      SCL
+ *                               D3      5 (SDA)
+ *                               D4      6 (SCL)
  *
  *****************************************************
  * Serial connection for secure pairing
@@ -73,19 +73,15 @@ Bounce cableDetect = Bounce();
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 #define ROLE_KEYFOB
-#elif defined(ARDUINO_SAM_DUE)
-#define ROLE_GARAGE_CONTROLLER
-#else
-#error No device type defined.
-#endif
-
-#ifdef ARDUINO_STM_NUCLEO_F103RB
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 const byte CABLE_DETECT_PIN=6;
 Bounce pushButton = Bounce();
 #elif defined(ARDUINO_SAM_DUE)
+#define ROLE_GARAGE_CONTROLLER
 RH_RF95 rhLoRa(4,3);
 const byte CABLE_DETECT_PIN=2;
+#else
+#error No device type defined.
 #endif
 
 #ifdef ROLE_GARAGE_CONTROLLER
@@ -102,9 +98,12 @@ static unsigned long ulTime;
 
 void setup()
 {
-    Serial.begin(9600);
     rhSerial.serial().begin(2400);
+#ifdef DEBUG
+    Serial.begin(9600);
+    //Serial port will only be connected in debug mode
     while (!Serial) ; // Wait for serial port to be available
+#endif
     if ((!mgrLoRa.init()))
     {
 #ifdef DEBUG
@@ -121,15 +120,59 @@ void setup()
     }
 #ifdef ARDUINO_SAM_DUE
     initRng();
+    //See §9.1 Peripheral identifiers of the SAM3X datasheet
+    pmc_disable_periph_clk(2);      // real-time clock
+    pmc_disable_periph_clk(3);      // real-time timer
+    pmc_disable_periph_clk(4);      // watchdog timer
+    pmc_disable_periph_clk(6);      // EEFC0  flash ctrl
+    pmc_disable_periph_clk(7);      // EEFC1  flash ctrl
+    pmc_disable_periph_clk(9);      // SMC_SDRAMC
+    pmc_disable_periph_clk(10);     // SDRAMC
+    pmc_disable_periph_clk(11);     // PIO A 
+    pmc_disable_periph_clk(12);     // PIO B 
+    pmc_disable_periph_clk(14);     // PIO D 
+    pmc_disable_periph_clk(15);     // PIO E 
+    pmc_disable_periph_clk(16);     // PIO F
+    pmc_disable_periph_clk(18);     // USART1
+    pmc_disable_periph_clk(19);     // USART2
+    pmc_disable_periph_clk(20);     // USART3
+    pmc_disable_periph_clk(21);     // HSMCI (SD/MMC ctrl, N/C)
+    pmc_disable_periph_clk(22);     // TWI/I2C bus 0 (i.MX6 controlling)
+    pmc_disable_periph_clk(23);     // TWI/I2C bus 1
+    pmc_disable_periph_clk(25);     // SPI1
+    pmc_disable_periph_clk(26);     // SSC (I2S digital audio, N/C)
+    pmc_disable_periph_clk(27);     // timer/counter 0
+    pmc_disable_periph_clk(28);     // timer/counter 1
+    pmc_disable_periph_clk(29);     // timer/counter 2
+    pmc_disable_periph_clk(30);     // timer/counter 3
+    pmc_disable_periph_clk(31);     // timer/counter 4
+    pmc_disable_periph_clk(32);     // timer/counter 5
+    pmc_disable_periph_clk(33);     // timer/counter 6
+    pmc_disable_periph_clk(34);     // timer/counter 7
+    pmc_disable_periph_clk(35);     // timer/counter 8
+    pmc_disable_periph_clk(36);     // PWM
+    pmc_disable_periph_clk(37);     // ADC
+    pmc_disable_periph_clk(38);     // DAC ctrl
+    pmc_disable_periph_clk(39);     // DMA ctrl
+    pmc_disable_periph_clk(40);     // USB OTG high-speed ctrl
+    pmc_disable_periph_clk(42);     // ethernet MAC - N/C
+    pmc_disable_periph_clk(43);     // CAN controller 0
+    pmc_disable_periph_clk(44);     // CAN controller 1
+    pinMode(13, OUTPUT);
+    digitalWrite(13, LOW);
+    setHighMcuSpeed(false);
 #endif
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
-    cableDetect.interval(5); // interval in ms
+    cableDetect.interval(100); // interval in ms
     byte buf[10];
     if((!getSerialNumber(buf, Configuration::IDLENGTH))
             || (!k.init(buf,Configuration::IDLENGTH) )
             || (!ecdh.init(buf, Configuration::IDLENGTH)) )
     {
+#ifdef DEBUG
+        Serial.println("Security init failed");
+#endif
         return;
     }
     if(cfg.init())
@@ -137,16 +180,16 @@ void setup()
 #ifdef DEBUG
         Serial.println("Config valid");
 #endif
-#ifdef ROLE_GARAGE_CONTROLLER
-        k.setMessageReceivedHandler(dataReceived);
-        k.setKeyRequestHandler(setKeyInfo);
-        pinMode(PULSE_PIN, OUTPUT);
-#elif defined(ROLE_KEYFOB)
-        pinMode(BUTTON_PIN, INPUT_PULLUP);
-        pushButton.attach(BUTTON_PIN);
-        pushButton.interval(5); // interval in ms
-#endif
     }
+#ifdef ROLE_GARAGE_CONTROLLER
+    k.setMessageReceivedHandler(dataReceived);
+    k.setKeyRequestHandler(setKeyInfo);
+    pinMode(PULSE_PIN, OUTPUT);
+#elif defined(ROLE_KEYFOB)
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    pushButton.attach(BUTTON_PIN);
+    pushButton.interval(100); // interval in ms
+#endif
 
 #ifdef DEBUG
     Serial.println("ready");
@@ -164,6 +207,9 @@ void loop()
         //Secure pairing mode
         if(pushButton.fell())
         {
+#ifdef DEBUG
+            Serial.println("Starting pairing...");
+#endif
             k.reset();
             if(!ecdh.startPairing())
             {
@@ -189,7 +235,9 @@ void loop()
         if(pushButton.fell())
         {
             ecdh.reset();
+#ifdef DEBUG
             Serial.println("Initiator starts authentication");
+#endif
             if(!k.sendMessage(payload,sizeof(payload), cfg.getDefaultId(), cfg.getIdLength(), cfg.getDefaultKey()))
             {
                 Serial.println("Sending message failed.");
@@ -209,28 +257,48 @@ void loop()
     cableDetect.update();
     if(!cableDetect.read())
     {
-        //Secure pairing mode
-        if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
+        if(cableDetect.fell())
         {
+            //on falling edge of cable detect, all keys must be cleared.
 #ifdef DEBUG
-            Serial.println("Securely paired");
+            Serial.println("Entering pairing mode");
 #endif
-            cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+            setHighMcuSpeed(true);
+            k.reset();
+            cfg.removeAllKeys();
+        }
+        else
+        {
+            //Secure pairing mode
+            if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
+            {
+#ifdef DEBUG
+                Serial.println("Securely paired");
+#endif
+                cfg.addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+            }
         }
     }else
     {
-        if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_PEER_OK)
+#ifdef DEBUG
+        if(cableDetect.rose())
         {
-            Serial.println("Message received by remote initiator");
+            //on falling edge of cable detect, all keys must be cleared.
+            Serial.println("Leaving pairing mode");
         }
-    }
-    if(millis()>ulTime+2000)
-    {
-        ulTime=millis();
-        digitalWrite(PULSE_PIN, HIGH);
-        delayMicroseconds(10);
-        digitalWrite(PULSE_PIN, LOW);
-        Serial.println("0");
+#endif
+        switch(k.loop())
+        {
+          case KryptoKnightComm::AUTHENTICATION_AS_PEER_OK:
+           Serial.println("Message received by remote initiator");
+           break;
+          case KryptoKnightComm::NO_AUTHENTICATION:
+            setHighMcuSpeed(false);
+            break;
+          case KryptoKnightComm::AUTHENTICATION_BUSY:
+            setHighMcuSpeed(true);
+            break;
+        }
     }
 }
 #endif
@@ -333,6 +401,18 @@ void dataReceived(byte* data, byte length)
 {
     Serial.println("Event received with the following data:");
     print(data, length);
+#ifdef ROLE_GARAGE_CONTROLLER
+    const byte PORTPULSE[4]={0xFE, 0xDC, 0xBA, 0x98};
+    if(!memcmp(data,PORTPULSE,sizeof(PORTPULSE)))
+    {
+#ifdef DEBUG
+        Serial.println("Generating port pulse.");
+#endif
+        digitalWrite(PULSE_PIN, HIGH);
+        delay(500);
+        digitalWrite(PULSE_PIN, LOW);
+    }
+#endif
 }
 
 void setKeyInfo(byte* remoteId, byte length)
@@ -344,6 +424,12 @@ void setKeyInfo(byte* remoteId, byte length)
     {
         k.setRemoteParty(remoteId, length, key);
     }
+#ifdef DEBUG
+    else
+    {
+        Serial.println("Key not found in database.");
+    }
+#endif
 }
 
 void print(const byte* array, byte length)
@@ -359,4 +445,12 @@ void print(const byte* array, byte length)
         }
     }
     Serial.println();
+}
+
+void setHighMcuSpeed(bool bHigh)
+{
+#ifdef ARDUINO_SAM_DUE
+    pmc_set_writeprotect(false);
+    pmc_mck_set_prescaler(bHigh ? 16 : 96);   // 84 MHz or 2.6MHz
+#endif
 }
