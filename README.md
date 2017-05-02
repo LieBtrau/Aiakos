@@ -33,4 +33,4 @@ After the key fob has been paired with the controller in the garage it will retu
 # Future addon
 The garage controller can be equipped with a bluetooth low energy peripheral IC.  The user could then operate the door using an application on a smartphone.  
 
-* [Garage controller](../../wiki/Master:-garage-controller)
+* [Garage controller](https://github.com/LieBtrau/Aiakos/wiki/Garage-controller)
