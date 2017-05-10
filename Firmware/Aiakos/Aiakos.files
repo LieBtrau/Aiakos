@@ -33,3 +33,9 @@ cryptohelper.h
 ../../../arduino-nfc-sec-01/ecdhcomm.cpp
 ../../../arduino-nfc-sec-01/ecdhcomm.h
 Aiakos.ino
+garagecontroller.h
+garagecontroller.cpp
+keyfob.h
+keyfob.cpp
+loradevice.h
+loradevice.cpp
