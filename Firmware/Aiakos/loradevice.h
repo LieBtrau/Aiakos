@@ -29,7 +29,6 @@ protected:
     RHReliableDatagram mgrSer;
     byte CABLE_DETECT_PIN;
     byte localAddress;
-    byte peerAddress;
 };
 
 #endif // LORADEVICE_H

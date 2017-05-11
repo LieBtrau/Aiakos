@@ -46,8 +46,6 @@
 */
 
 #include "loradevice.h"
-#include "keyfob.h"
-#include "garagecontroller.h"
 
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 #define ROLE_KEYFOB
@@ -61,21 +59,34 @@ namespace
 {
 Configuration cfg;
 RH_Serial rhSerial(Serial1);
-#ifdef ROLE_GARAGE_CONTROLLER
-    #include "garagecontroller.h"
-    RH_RF95 rhLoRa(4,3);
-    GarageController device(1,2, &cfg, &rhLoRa, &rhSerial);
-#elif defined(ROLE_KEYFOB)
-    #include "keyfob.h"
-    RH_RF95 rhLoRa(A2,5);//NSS, DIO0
-    KeyFob device(2,1, &cfg, &rhLoRa, &rhSerial);
-#endif
 LoRaDevice* ld;
-#define DEBUG
 }
+
+#ifdef ROLE_GARAGE_CONTROLLER
+#include "garagecontroller.h"
+namespace
+{
+RH_RF95 rhLoRa(4,3);
+GarageController device(1,2, &cfg, &rhLoRa, &rhSerial);
+}
+#elif defined(ROLE_KEYFOB)
+#include "keyfob.h"
+namespace
+{
+RH_RF95 rhLoRa(A2,5);//NSS, DIO0
+KeyFob device(2,1, &cfg, &rhLoRa, &rhSerial);
+}
+#endif
+
+#define DEBUG
 
 void setup()
 {
+#ifdef DEBUG
+    Serial.begin(9600);
+    //Serial port will only be connected in debug mode
+    while (!Serial) ; // Wait for serial port to be available
+#endif
     ld=&device;
     ld->setup();
     if(cfg.init())

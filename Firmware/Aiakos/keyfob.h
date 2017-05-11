@@ -13,5 +13,4 @@ private:
     const byte BUTTON_PIN=25;
     Bounce pushButton;
 };
-
 #endif // KEYFOB_H

@@ -1,4 +1,5 @@
 #include "loradevice.h"
+#define DEBUG
 
 namespace
 {
@@ -10,10 +11,10 @@ bool writeDataLoRa(byte* data, byte length);
 bool readDataLoRa(byte** data, byte& length);
 bool readDataSer(byte** data, byte& length);
 bool writeDataSer(byte* data, byte length);
+extern void print(const byte* array, byte length);
 
 LoRaDevice::LoRaDevice(byte ownAddress, byte remoteAddress, Configuration *cfg, RH_RF95 *prhLora, RH_Serial *prhSerial):
     localAddress(ownAddress),
-    peerAddress(peerAddress),
     rhLoRa(prhLora),
     rhSerial(prhSerial),
     ecdh(&RNG, writeDataSer, readDataSer),
@@ -29,11 +30,6 @@ LoRaDevice::LoRaDevice(byte ownAddress, byte remoteAddress, Configuration *cfg, 
 void LoRaDevice::setup()
 {
     rhSerial->serial().begin(2400);
-#ifdef DEBUG
-    Serial.begin(9600);
-    //Serial port will only be connected in debug mode
-    while (!Serial) ; // Wait for serial port to be available
-#endif
     if ((!mgrLoRa.init()))
     {
 #ifdef DEBUG

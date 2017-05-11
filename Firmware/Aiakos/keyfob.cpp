@@ -1,4 +1,5 @@
 #include "keyfob.h"
+#define DEBUG
 
 namespace {
     byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
@@ -77,4 +78,3 @@ void KeyFob::loop()
         }
     }
 }
-

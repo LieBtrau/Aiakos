@@ -1,4 +1,5 @@
 #include "garagecontroller.h"
+#define DEBUG
 
 namespace
 {
