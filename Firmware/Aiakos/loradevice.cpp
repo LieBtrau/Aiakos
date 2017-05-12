@@ -46,26 +46,15 @@ void LoRaDevice::setup()
     }
 }
 
-void LoRaDevice::init()
+bool LoRaDevice::init()
 {
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
     cableDetect.interval(100); // interval in ms
     byte buf[10];
-    if((!getSerialNumber(buf, Configuration::IDLENGTH))
-            || (!k.init(buf,Configuration::IDLENGTH) )
-            || (!ecdh.init(buf, Configuration::IDLENGTH)) )
-    {
-#ifdef DEBUG
-        Serial.println("Security init failed");
-#endif
-        return;
-    }
-
-#ifdef DEBUG
-    Serial.println("ready");
-#endif
-
+    return (getSerialNumber(buf, Configuration::IDLENGTH)
+            && k.init(buf,Configuration::IDLENGTH)
+            && ecdh.init(buf, Configuration::IDLENGTH));
 }
 
 bool writeDataSer(byte* data, byte length)

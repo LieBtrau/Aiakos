@@ -22,7 +22,6 @@ void KeyFob::setup()
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pushButton.attach(BUTTON_PIN);
     pushButton.interval(100); // interval in ms
-    LoRaDevice::init();
 }
 
 

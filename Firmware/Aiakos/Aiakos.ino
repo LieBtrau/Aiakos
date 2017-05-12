@@ -89,6 +89,18 @@ void setup()
 #endif
     ld=&device;
     ld->setup();
+    if(ld->init())
+    {
+#ifdef DEBUG
+        Serial.println("Init Ok");
+#endif
+    }
+    else
+    {
+#ifdef DEBUG
+        Serial.println("Init false");
+#endif
+    }
     if(cfg.init())
     {
 #ifdef DEBUG

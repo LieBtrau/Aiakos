@@ -73,7 +73,6 @@ void GarageController::setup()
     k.setMessageReceivedHandler(dataReceived);
     k.setKeyRequestHandler(setKeyInfo);
     pinMode(PULSE_PIN, OUTPUT);
-    LoRaDevice::init();
 }
 
 void GarageController::loop()

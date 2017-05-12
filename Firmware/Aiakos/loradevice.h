@@ -17,9 +17,9 @@ class LoRaDevice
 public:
     virtual void setup();
     virtual void loop()=0;
+    bool init();
 protected:
     LoRaDevice(byte ownAddress, byte peerAddress, Configuration* cfg, RH_RF95* prhLora, RH_Serial* prhSerial);
-    void init();
     KryptoKnightComm k;
     EcdhComm ecdh;
     Bounce cableDetect;
