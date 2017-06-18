@@ -19,7 +19,8 @@ public:
     virtual void loop()=0;
     bool init();
 protected:
-    LoRaDevice(byte ownAddress, byte peerAddress, Configuration* cfg, RH_RF95* prhLora, RH_Serial* prhSerial);
+    LoRaDevice(byte ownAddress, RH_RF95* prhLora, RH_Serial* prhSerial);
+    void setPeerAddress(byte address);
     KryptoKnightComm k;
     EcdhComm ecdh;
     Bounce cableDetect;
@@ -28,7 +29,6 @@ protected:
     RHReliableDatagram mgrLoRa;
     RHReliableDatagram mgrSer;
     byte CABLE_DETECT_PIN;
-    byte localAddress;
 };
 
 #endif // LORADEVICE_H

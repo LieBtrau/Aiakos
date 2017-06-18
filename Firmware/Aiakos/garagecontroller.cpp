@@ -14,13 +14,13 @@ extern void setKeyInfo(byte* remoteId, byte length);
 
 
 GarageController::GarageController(byte ownAddress,
-        byte peerAddress,
         Configuration* config,
-        RH_RF95 *prhLora, RH_Serial *prhSerial): LoRaDevice(ownAddress, peerAddress, config, prhLora, prhSerial)
+        RH_RF95 *prhLora, RH_Serial *prhSerial): LoRaDevice(ownAddress, prhLora, prhSerial)
 {
     CABLE_DETECT_PIN=2;
     pk=&k;
     cfg=config;
+    setPeerAddress(2);
 }
 
 void GarageController::setup()

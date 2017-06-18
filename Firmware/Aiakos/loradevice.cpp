@@ -13,8 +13,7 @@ bool readDataSer(byte** data, byte& length);
 bool writeDataSer(byte* data, byte length);
 extern void print(const byte* array, byte length);
 
-LoRaDevice::LoRaDevice(byte ownAddress, byte remoteAddress, Configuration *cfg, RH_RF95 *prhLora, RH_Serial *prhSerial):
-    localAddress(ownAddress),
+LoRaDevice::LoRaDevice(byte ownAddress, RH_RF95 *prhLora, RH_Serial *prhSerial):
     rhLoRa(prhLora),
     rhSerial(prhSerial),
     ecdh(&RNG, writeDataSer, readDataSer),
@@ -24,7 +23,6 @@ LoRaDevice::LoRaDevice(byte ownAddress, byte remoteAddress, Configuration *cfg, 
 {
     pmgrLoRa=&mgrLoRa;
     pmgrSer=&mgrSer;
-    peerAddress=remoteAddress;
 }
 
 void LoRaDevice::setup()
@@ -45,6 +43,12 @@ void LoRaDevice::setup()
         return;
     }
 }
+
+void LoRaDevice::setPeerAddress(byte address)
+{
+    peerAddress=address;
+}
+
 
 bool LoRaDevice::init()
 {

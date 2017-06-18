@@ -67,14 +67,14 @@ LoRaDevice* ld;
 namespace
 {
 RH_RF95 rhLoRa(4,3);
-GarageController device(1,2, &cfg, &rhLoRa, &rhSerial);
+GarageController device(1, &cfg, &rhLoRa, &rhSerial);
 }
 #elif defined(ROLE_KEYFOB)
 #include "keyfob.h"
 namespace
 {
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
-KeyFob device(2,1, &cfg, &rhLoRa, &rhSerial);
+KeyFob device(2, &cfg, &rhLoRa, &rhSerial);
 }
 #endif
 

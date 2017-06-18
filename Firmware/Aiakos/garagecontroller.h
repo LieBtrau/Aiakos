@@ -7,7 +7,7 @@
 class GarageController : public LoRaDevice
 {
 public:
-    GarageController(byte ownAddress, byte peerAddress, Configuration* config, RH_RF95* rhLora, RH_Serial *prhSerial);
+    GarageController(byte ownAddress, Configuration* config, RH_RF95* rhLora, RH_Serial *prhSerial);
     void setup();
     void loop();
 private:

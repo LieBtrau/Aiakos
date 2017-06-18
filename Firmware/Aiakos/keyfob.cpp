@@ -2,18 +2,20 @@
 #define DEBUG
 
 namespace {
-    byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
-    Configuration* cfg;
+byte payload[4]={0xFE, 0xDC, 0xBA, 0x98};
+Configuration* cfg;
 }
 
 KeyFob::KeyFob(byte ownAddress,
-        byte peerAddress,
-        Configuration* config,
-        RH_RF95 *prhLora, RH_Serial *prhSerial): LoRaDevice(ownAddress, peerAddress, config, prhLora, prhSerial)
+               Configuration* config,
+               RH_RF95 *prhLora, RH_Serial *prhSerial):
+    LoRaDevice(ownAddress, prhLora, prhSerial),
+    serProtocol(ECDHCOMM)
 {
     CABLE_DETECT_PIN=6;
     pushButton = Bounce();
     cfg=config;
+    setPeerAddress(1);
 }
 
 void KeyFob::setup()
@@ -35,30 +37,49 @@ void KeyFob::loop()
         if(pushButton.fell())
         {
 #ifdef DEBUG
-            Serial.println("Starting pairing...");
+            Serial.println("Starting ECDH pairing...");
 #endif
+            serProtocol=ECDHCOMM;
+            setPeerAddress(1);
             k.reset();
             if(!ecdh.startPairing())
             {
-                Serial.println("Sending message failed.");
+#ifdef DEBUG
+                Serial.println("Starting BLE pairing...");
+#endif
+                serProtocol=BLE_BOND;
+                setPeerAddress(3);
                 return;
             }
         }
-        switch(ecdh.loop())
+        switch(serProtocol)
         {
-        case EcdhComm::AUTHENTICATION_OK:
+        case ECDHCOMM:
+            switch(ecdh.loop())
+            {
+            case EcdhComm::AUTHENTICATION_OK:
 #ifdef DEBUG
-            Serial.println("Securely paired");
+                Serial.println("Securely paired");
 #endif
-            cfg->addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+                cfg->addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+                break;
+            case EcdhComm::NO_AUTHENTICATION:
+            case EcdhComm::AUTHENTICATION_BUSY:
+                break;
+            case EcdhComm::UNKNOWN_DATA:
+                serProtocol=UNKNOWN;
+                break;
+            }
             break;
-        case EcdhComm::NO_AUTHENTICATION:
-        case EcdhComm::AUTHENTICATION_BUSY:
+        case UNKNOWN:
+            //find out the correct protocol
+            break;
+        case BLE_BOND:
             break;
         }
     }else
     {
-        //Authenticating mode
+        //Authenticating remote peer mode
         if(pushButton.fell())
         {
             ecdh.reset();
