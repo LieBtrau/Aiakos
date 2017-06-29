@@ -39,3 +39,5 @@ keyfob.h
 keyfob.cpp
 loradevice.h
 loradevice.cpp
+blepairing.h
+blepairing.cpp
