@@ -1,1 +1,15 @@
 .
+/home/ctack/git/RadioHead
+/home/ctack/Downloads/arduino-1.6.9/hardware/arduino/avr/cores/arduino
+/home/ctack/git/AltSoftSerial
+../../../RadioHead/examples/raspi/irq_test
+../../../RadioHead/examples/raspi/nrf24
+../../../RadioHead/examples/nrf24/nrf24_reliable_datagram_client
+../../../RadioHead/examples/raspi/rf69
+../../../RadioHead/examples/raspi/spi_scan
+../../../RadioHead/examples/raspi
+../../../RadioHead/STM32ArduinoCompat
+../../../RadioHead/examples/raspi/rf95
+../../../RadioHead/examples/raspi/multi_server
+../../../RadioHead/RHutil
+../../../RadioHead/tools

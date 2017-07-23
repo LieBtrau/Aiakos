@@ -8,22 +8,29 @@ Configuration* cfg;
 
 KeyFob::KeyFob(byte ownAddress,
                Configuration* config,
-               RH_RF95 *prhLora, RH_Serial *prhSerial):
-    LoRaDevice(ownAddress, prhLora, prhSerial),
+               RH_RF95 *prhLora,
+               RH_Serial *prhSerial,
+               byte buttonPin,
+               byte cableDetectPin):
+    LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin),
+    BUTTON_PIN(buttonPin),
     serProtocol(ECDHCOMM)
 {
-    CABLE_DETECT_PIN=6;
     pushButton = Bounce();
     cfg=config;
     setPeerAddress(1);
 }
 
-void KeyFob::setup()
+bool KeyFob::setup()
 {
-    LoRaDevice::setup();
+    if(!LoRaDevice::setup())
+    {
+        return false;
+    }
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pushButton.attach(BUTTON_PIN);
     pushButton.interval(100); // interval in ms
+    return true;
 }
 
 

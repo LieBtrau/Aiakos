@@ -1,9 +1,9 @@
-#ifdef ARDUINO_STM_NUCLEO_F103RB || defined(ARDUINO_ARCH_AVR)
-#include <EEPROM.h>
-#elif defined(ARDUINO_SAM_DUE)
+#ifdef ARDUINO_SAM_DUE
 //https://github.com/sebnil/DueFlashStorage/blob/master/examples/DueFlashStorageStructExample/DueFlashStorageStructExample.ino
 #include <DueFlashStorage.h>
 DueFlashStorage EEPROM;
+#else
+#include <EEPROM.h>
 #endif
 
 //#define DEBUG

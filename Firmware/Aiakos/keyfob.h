@@ -6,8 +6,8 @@
 class KeyFob : public LoRaDevice
 {
 public:
-    KeyFob(byte ownAddress, Configuration* config, RH_RF95* prhLora, RH_Serial*prhSerial);
-    void setup();
+    KeyFob(byte ownAddress, Configuration* config, RH_RF95* prhLora, RH_Serial*prhSerial, byte buttonPin, byte cableDetectPin);
+    bool setup();
     void loop();
 private:
     typedef enum
@@ -16,7 +16,7 @@ private:
         BLE_BOND,
         UNKNOWN
     }SER_PROTOCOL;
-    const byte BUTTON_PIN=25;
+    byte BUTTON_PIN;
     Bounce pushButton;
     SER_PROTOCOL serProtocol;
 };

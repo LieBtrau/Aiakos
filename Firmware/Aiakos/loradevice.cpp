@@ -13,19 +13,20 @@ bool readDataSer(byte** data, byte& length);
 bool writeDataSer(byte* data, byte length);
 extern void print(const byte* array, byte length);
 
-LoRaDevice::LoRaDevice(byte ownAddress, RH_RF95 *prhLora, RH_Serial *prhSerial):
+LoRaDevice::LoRaDevice(byte ownAddress, RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin):
     rhLoRa(prhLora),
     rhSerial(prhSerial),
     ecdh(&RNG, writeDataSer, readDataSer),
     mgrLoRa(*rhLoRa, ownAddress),
     mgrSer(*rhSerial, ownAddress),
-    k(&RNG, writeDataLoRa, readDataLoRa)
+    k(&RNG, writeDataLoRa, readDataLoRa),
+    CABLE_DETECT_PIN(cableDetectPin)
 {
     pmgrLoRa=&mgrLoRa;
     pmgrSer=&mgrSer;
 }
 
-void LoRaDevice::setup()
+bool LoRaDevice::setup()
 {
     rhSerial->serial().begin(2400);
     if ((!mgrLoRa.init()))
@@ -33,15 +34,16 @@ void LoRaDevice::setup()
 #ifdef DEBUG
         Serial.println("LoRa init failed");
 #endif
-        return;
+        return false;
     }
     if ((!mgrSer.init()))
     {
 #ifdef DEBUG
         Serial.println("Serial init failed");
 #endif
-        return;
+        return false;
     }
+    return true;
 }
 
 void LoRaDevice::setPeerAddress(byte address)

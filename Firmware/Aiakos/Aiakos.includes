@@ -127,3 +127,15 @@ rf95_reliable_datagram_server
 ../../../arduino-nfc-sec-01/micro-ecc/apps
 ../../../arduino-nfc-sec-01/micro-ecc/test
 ../../../arduino-nfc-sec-01/micro-ecc
+../../../RadioHead/examples/raspi
+../../../RadioHead/examples/raspi/nrf24
+../../../RadioHead/RHutil
+../../../RadioHead/STM32ArduinoCompat
+../../../RadioHead/examples/raspi/irq_test
+../../../RadioHead/examples/nrf24/nrf24_reliable_datagram_client
+../../../RadioHead/examples/raspi/rf69
+../../../RadioHead/examples/raspi/spi_scan
+../../../RadioHead
+../../../RadioHead/examples/raspi/multi_server
+../../../RadioHead/examples/raspi/rf95
+../../../RadioHead/tools

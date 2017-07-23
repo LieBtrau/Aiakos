@@ -15,17 +15,19 @@ extern void setKeyInfo(byte* remoteId, byte length);
 
 GarageController::GarageController(byte ownAddress,
         Configuration* config,
-        RH_RF95 *prhLora, RH_Serial *prhSerial): LoRaDevice(ownAddress, prhLora, prhSerial)
+        RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin): LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin)
 {
-    CABLE_DETECT_PIN=2;
     pk=&k;
     cfg=config;
     setPeerAddress(2);
 }
 
-void GarageController::setup()
+bool GarageController::setup()
 {
-    LoRaDevice::setup();
+    if(!LoRaDevice::setup())
+    {
+        return false;
+    }
 #ifdef ARDUINO_SAM_DUE
     initRng();
     //See §9.1 Peripheral identifiers of the SAM3X datasheet

@@ -7,7 +7,7 @@ extern void print(const byte* array, byte length);
 #endif
 
 //bool getSerialNumber(byte* bufout, byte length)
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#if defined(ARDUINO_STM_NUCLEO_F103RB) || defined(ARDUINO_GENERIC_STM32F103C)
 ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
 
 bool getSerialNumber(byte* bufout, byte length)
@@ -61,10 +61,12 @@ bool getSerialNumber(byte* bufout, byte length)
 #endif
     return true;
 }
+#else
+#error You must define a "getSerialNumber"-function
 #endif
 
 //int RNG(uint8_t *dest, unsigned size)
-#ifdef ARDUINO_STM_NUCLEO_F103RB
+#if defined(ARDUINO_STM_NUCLEO_F103RB) || defined(ARDUINO_GENERIC_STM32F103C)
 int RNG(byte *dest, unsigned size)
 {
     byte randomnum[RANDOM_RSP_SIZE];
@@ -126,6 +128,8 @@ int RNG(uint8_t *dest, unsigned size) {
     byte adcpin=0;
 #elif defined(ARDUINO_SAM_DUE) || defined(ARDUINO_STM_NUCLEO_F103RB)
     byte adcpin=A0;
+#elif defined(ARDUINO_GENERIC_STM32F103C)
+    byte adcpin=PA1;
 #endif
     while (size) {
         uint8_t val = 0;
