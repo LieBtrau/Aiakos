@@ -10,29 +10,59 @@
  */
 
 #include "blepairing.h"
+#include "debug.h"
 
-BlePairing::BlePairing(RHReliableDatagram *mgrSer, byte peer):
-    pmgrSer(mgrSer),
-    peerAddress(peer)
+BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble):
+    _txfunc(tx_func),
+    _rxfunc(rx_func),
+    _messageBuffer(0),
+    _ble(ble)
 {
+}
+
+BlePairing::~BlePairing()
+{
+    if(_messageBuffer)
+    {
+        free(_messageBuffer);
+    }
+}
+
+bool BlePairing::init()
+{
+    if(!_messageBuffer)
+    {
+        _messageBuffer=(byte*)malloc(MAX_MESSAGE_LEN);
+        if(!_messageBuffer)
+        {
+            debug_println("Can't init.");
+            return false;
+        }
+    }
+    return true;
+}
+
+BlePairing::AUTHENTICATION_RESULT BlePairing::loop()
+{
+
 }
 
 bool BlePairing::setRemoteBleAddress(byte* address)
 {
-    return writeDataSer(address, 12);
+    return _txfunc(address, 12);
 }
 
 bool BlePairing::getRemoteBleAddress(byte** address)
 {
     byte length;
-    return readDataSer(address, length) && length==12;
+    return _rxfunc(address, length) && length==12;
 }
 
 bool BlePairing::setPinCode(uint32_t pinCode)
 {
     byte array[4];
     memcpy(array, &pinCode, 4);
-    return writeDataSer(array, 4);
+    return _txfunc(array, 4);
 }
 
 bool BlePairing::getPinCode(uint32_t& pinCode)
@@ -40,43 +70,8 @@ bool BlePairing::getPinCode(uint32_t& pinCode)
     byte length;
     byte array[4];
     byte* array2=array;
-    if(readDataSer(&array2, length) && length==4)
+    if(_rxfunc(&array2, length) && length==4)
     {
         memcpy(&pinCode, array2, 4);
     }
 }
-
-bool BlePairing::writeDataSer(byte* data, byte length)
-{
-    Serial.print("Sending serial data...");
-#ifdef DEBUG
-    print(data, length);
-#endif
-    return pmgrSer->sendtoWait(data, length, peerAddress);
-}
-
-bool BlePairing::readDataSer(byte** data, byte& length)
-{
-    byte from;
-    if (!pmgrSer->available())
-    {
-        return false;
-    }
-    if(!pmgrSer->recvfromAck(*data, &length, &from))
-    {
-        return false;
-    }
-    if(from != peerAddress)
-    {
-#ifdef DEBUG
-        Serial.println("Sender doesn't match");
-#endif
-        return false;
-    }
-#ifdef DEBUG
-    Serial.println("Received data: ");print(*data, length);
-#endif
-    return true;
-}
-
-

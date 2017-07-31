@@ -1,10 +1,6 @@
 #include "EEPROMAnything.h"
 #include "configuration.h"
-
-//#define DEBUG
-#ifdef DEBUG
-extern void print(const byte* array, byte length);
-#endif
+#include "debug.h"
 
 Configuration::Configuration()
 {
@@ -24,7 +20,7 @@ bool Configuration::loadData(){
     if(bResult)
     {
         //Make sure only valid data is used in the application
-       _config=testcfg;
+        _config=testcfg;
     }
 #ifdef DEBUG
     else
@@ -51,9 +47,7 @@ bool Configuration::init(){
 #endif
     //read EEPROM parameters
     if(!loadData()){
-#ifdef DEBUG
-        Serial.println("EEPROM data corrupt!");
-#endif
+        debug_println("EEPROM data corrupt!");
         initializeEEPROM();
         return false;
     }
@@ -81,10 +75,8 @@ void Configuration::addKey(const byte *remoteId, const byte* key)
     }
     memcpy(_config.keys[index].peerId, remoteId, IDLENGTH);
     memcpy(_config.keys[index].sharedKey, key, KEY_SIZE);
-#ifdef DEBUG
-    Serial.print("Storing key at location: ");
-    Serial.println(index, DEC);
-#endif
+    debug_print("Storing key at location: ");
+    debug_println(index, DEC);
     saveData();
 }
 
@@ -123,11 +115,9 @@ void Configuration::removeAllKeys()
 
 
 void Configuration::saveData(){
-#ifdef DEBUG
-    Serial.println("Saving data");
-    print(&_config.nrOfValidKeys,1);
-    print(_config.keys[0].sharedKey,16);
-#endif
+    debug_println("Saving data");
+    debug_printArray(&_config.nrOfValidKeys,1);
+    debug_printArray(_config.keys[0].sharedKey,16);
     EEPROM_writeAnything(0,_config);
 }
 

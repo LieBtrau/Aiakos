@@ -1,6 +1,7 @@
 #ifndef LORADEVICE_H
 #define LORADEVICE_H
 
+#include "debug.h"
 #include <RHReliableDatagram.h> //for wireless comm
 #include <RH_RF95.h>            //for wireless comm
 #include <RH_Serial.h>          //for wired comm

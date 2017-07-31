@@ -139,3 +139,5 @@ rf95_reliable_datagram_server
 ../../../RadioHead/examples/raspi/multi_server
 ../../../RadioHead/examples/raspi/rf95
 ../../../RadioHead/tools
+../../../Click_BLE2_RN4020/library/Arduino
+../../../arduino-debug

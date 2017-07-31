@@ -1,5 +1,4 @@
 #include "garagecontroller.h"
-#define DEBUG
 
 namespace
 {
@@ -9,13 +8,12 @@ Configuration* cfg;
 void dataReceived(byte* data, byte length);
 void setHighMcuSpeed(bool bHigh);
 
-extern void print(const byte* array, byte length);
 extern void setKeyInfo(byte* remoteId, byte length);
 
 
 GarageController::GarageController(byte ownAddress,
-        Configuration* config,
-        RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin): LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin)
+                                   Configuration* config,
+                                   RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin): LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin)
 {
     pk=&k;
     cfg=config;
@@ -85,9 +83,7 @@ void GarageController::loop()
         if(cableDetect.fell())
         {
             //on falling edge of cable detect, all keys must be cleared.
-#ifdef DEBUG
-            Serial.println("Entering pairing mode");
-#endif
+            debug_println("Entering pairing mode");
             setHighMcuSpeed(true);
             k.reset();
             cfg->removeAllKeys();
@@ -97,9 +93,7 @@ void GarageController::loop()
             //Secure pairing mode
             if (ecdh.loop() == EcdhComm::AUTHENTICATION_OK)
             {
-#ifdef DEBUG
-                Serial.println("Securely paired");
-#endif
+                debug_println("Securely paired");
                 cfg->addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
             }
         }
@@ -109,7 +103,7 @@ void GarageController::loop()
         if(cableDetect.rose())
         {
             //on falling edge of cable detect, all keys must be cleared.
-            Serial.println("Leaving pairing mode");
+            debug_println("Leaving pairing mode");
         }
 #endif
         switch(k.loop())
@@ -130,14 +124,12 @@ void GarageController::loop()
 void dataReceived(byte* data, byte length)
 {
     Serial.println("Event received with the following data:");
-    print(data, length);
+    debug_printArray(data, length);
 #ifdef ROLE_GARAGE_CONTROLLER
     const byte PORTPULSE[4]={0xFE, 0xDC, 0xBA, 0x98};
     if(!memcmp(data,PORTPULSE,sizeof(PORTPULSE)))
     {
-#ifdef DEBUG
-        Serial.println("Generating port pulse.");
-#endif
+        debug_println("Generating port pulse.");
         digitalWrite(PULSE_PIN, HIGH);
         delay(500);
         digitalWrite(PULSE_PIN, LOW);
@@ -155,19 +147,17 @@ void setHighMcuSpeed(bool bHigh)
 
 void setKeyInfo(byte* remoteId, byte length)
 {
-    Serial.println("Remote ID Event received with the following data:");
-    print(remoteId, length);
+    debug_println("Remote ID Event received with the following data:");
+    debug_printArray(remoteId, length);
     byte* key = cfg->findKey(remoteId, length);
     if(key)
     {
-       pk->setRemoteParty(remoteId, length, key);
+        pk->setRemoteParty(remoteId, length, key);
     }
-#ifdef DEBUG
     else
     {
-        Serial.println("Key not found in database.");
+        debug_println("Key not found in database.");
     }
-#endif
 }
 
 

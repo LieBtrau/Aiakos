@@ -1,10 +1,6 @@
 #include "Arduino.h"
 #include "cryptoauthlib.h"      //for TRNG & serial number
-
-//#define DEBUG
-#ifdef DEBUG
-extern void print(const byte* array, byte length);
-#endif
+#include "debug.h"
 
 //bool getSerialNumber(byte* bufout, byte length)
 #if defined(ARDUINO_STM_NUCLEO_F103RB) || defined(ARDUINO_GENERIC_STM32F103C)
@@ -55,10 +51,8 @@ bool getSerialNumber(byte* bufout, byte length)
     }
 
     memcpy(bufout, uid_buf, length > 16 ? 16 : length);
-#ifdef DEBUG
-    Serial.print("Own id:");
-    print(bufout, length);
-#endif
+    debug_print("Own id:");
+    debug_printArray(bufout, length);
     return true;
 }
 #else

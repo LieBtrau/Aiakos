@@ -2,11 +2,20 @@
 #define KEYFOB_H
 
 #include "loradevice.h"
+#include "blepairing.h"
+#include "blecontrol.h"
 
 class KeyFob : public LoRaDevice
 {
 public:
-    KeyFob(byte ownAddress, Configuration* config, RH_RF95* prhLora, RH_Serial*prhSerial, byte buttonPin, byte cableDetectPin);
+    KeyFob(byte ownAddress,
+           Configuration* config,
+           RH_RF95* prhLora,
+           RH_Serial*prhSerial,
+           byte buttonPin,
+           byte cableDetectPin,
+           bleControl* ble
+           );
     bool setup();
     void loop();
 private:
@@ -16,8 +25,13 @@ private:
         BLE_BOND,
         UNKNOWN
     }SER_PROTOCOL;
+
+    bool initBlePeripheral();
+
     byte BUTTON_PIN;
     Bounce pushButton;
     SER_PROTOCOL serProtocol;
+    bleControl* _ble;
+    BlePairing _blePair;
 };
 #endif // KEYFOB_H

@@ -1,5 +1,4 @@
 #include "loradevice.h"
-#define DEBUG
 
 namespace
 {
@@ -11,7 +10,6 @@ bool writeDataLoRa(byte* data, byte length);
 bool readDataLoRa(byte** data, byte& length);
 bool readDataSer(byte** data, byte& length);
 bool writeDataSer(byte* data, byte length);
-extern void print(const byte* array, byte length);
 
 LoRaDevice::LoRaDevice(byte ownAddress, RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin):
     rhLoRa(prhLora),
@@ -31,16 +29,12 @@ bool LoRaDevice::setup()
     rhSerial->serial().begin(2400);
     if ((!mgrLoRa.init()))
     {
-#ifdef DEBUG
-        Serial.println("LoRa init failed");
-#endif
+        debug_println("LoRa init failed");
         return false;
     }
     if ((!mgrSer.init()))
     {
-#ifdef DEBUG
-        Serial.println("Serial init failed");
-#endif
+        debug_println("Serial init failed");
         return false;
     }
     return true;
@@ -65,18 +59,14 @@ bool LoRaDevice::init()
 
 bool writeDataSer(byte* data, byte length)
 {
-    Serial.print("Sending serial data...");
-#ifdef DEBUG
-    print(data, length);
-#endif
+    debug_print("Sending serial data...");
+    debug_printArray(data, length);
     return pmgrSer->sendtoWait(data, length, peerAddress);
 }
 
 bool writeDataLoRa(byte* data, byte length)
 {
-#ifdef DEBUG
-    Serial.println("Sending LoRa data: ");print(data, length);
-#endif
+    debug_print("Sending LoRa data: ");debug_printArray(data, length);
     return pmgrLoRa->sendtoWait(data, length, peerAddress);
 }
 
@@ -93,14 +83,10 @@ bool readDataSer(byte** data, byte& length)
     }
     if(from != peerAddress)
     {
-#ifdef DEBUG
-        Serial.println("Sender doesn't match");
-#endif
+        debug_print("Sender doesn't match");
         return false;
     }
-#ifdef DEBUG
-    Serial.println("Received data: ");print(*data, length);
-#endif
+    debug_print("Received data: ");debug_printArray(*data, length);
     return true;
 }
 
@@ -117,9 +103,7 @@ bool readDataLoRa(byte** data, byte& length)
     }
     if(from != peerAddress)
     {
-#ifdef DEBUG
-        Serial.println("Sender doesn't match");
-#endif
+        debug_print("Sender doesn't match");
         return false;
     }
     return true;

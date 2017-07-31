@@ -1,4 +1,5 @@
 #include "loradevice.h"
+#include "debug.h"
 
 /* Hardware Connections
  * **************************************************
@@ -50,7 +51,6 @@
  * the Nucleo to initiate authentication.
 */
 
-
 #ifdef ARDUINO_STM_NUCLEO_F103RB
 #define ROLE_KEYFOB
 #elif defined(ARDUINO_GENERIC_STM32F103C)
@@ -72,52 +72,44 @@ LoRaDevice* ld;
 namespace
 {
 RH_RF95 rhLoRa(4,3);
-RH_Serial rhSerial(Serial1);
-GarageController device(1, &cfg, &rhLoRa, &rhSerial, 2);
+RH_Serial rhStereoJack(Serial1);
+GarageController device(1, &cfg, &rhLoRa, &rhStereoJack, 2);
 }
 #elif defined(ROLE_KEYFOB)
 #include "keyfob.h"
+#include "blecontrol.h"
 namespace
 {
 #ifdef ARDUINO_STM_NUCLEO_F103RB
-RH_Serial rhSerial(Serial1);
+RH_Serial rhStereoJack(Serial1);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
-KeyFob device(2, &cfg, &rhLoRa, &rhSerial, 25, 6);
+KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
 #elif defined(ARDUINO_GENERIC_STM32F103C)
-RH_Serial rhSerial(Serial2);
-RH_RF95 rhLoRa(PA4,PA12);//NSS, DIO0
-KeyFob device(2, &cfg, &rhLoRa, &rhSerial, PA11, PB1);
+RH_Serial rhStereoJack(Serial2);                                    //Serial port for pairing
+RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
+rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //for short range wireless
+bleControl ble(&rn);
+KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble);
 #endif
 }
 #endif
 
-#define DEBUG
-
 void setup()
 {
-#ifdef DEBUG
-    Serial.begin(9600);
-    //Serial port will only be connected in debug mode
-    while (!Serial) ; // Wait for serial port to be available
-#endif
+    openDebug(9600);
     ld=&device;
     if(ld->setup() && ld->init())
     {
-#ifdef DEBUG
-        Serial.println("Init Ok");
-#endif
+        debug_println("Init Ok");
     }
     else
     {
-#ifdef DEBUG
-        Serial.println("Init false");
-#endif
+        debug_println("Init false");
+        while(1);
     }
     if(cfg.init())
     {
-#ifdef DEBUG
-        Serial.println("Config valid");
-#endif
+        debug_println("Config valid");
     }
 }
 
@@ -125,21 +117,4 @@ void loop()
 {
     ld->loop();
 }
-
-void print(const byte* array, byte length)
-{
-    Serial.print("Length = ");Serial.println(length,DEC);
-    for (byte i = 0; i < length; i++)
-    {
-        Serial.print(array[i], HEX);
-        Serial.print(" ");
-        if ((i + 1) % 16 == 0)
-        {
-            Serial.println();
-        }
-    }
-    Serial.println();
-}
-
-
 
