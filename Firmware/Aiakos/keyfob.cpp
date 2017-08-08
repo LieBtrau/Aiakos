@@ -23,7 +23,7 @@ btCharacteristic ias_alertLevel("1802",                                  //IAS A
                                 btCharacteristic::NOTHING,                //security
                                 alertLevelEvent);
 btCharacteristic* _localCharacteristics[2]={&rfid_key, &ias_alertLevel};
-bleControl* bles;
+KeyFob* thiskeyfob;
 bool bConnected;
 }
 
@@ -33,18 +33,18 @@ KeyFob::KeyFob(byte ownAddress,
                RH_Serial *prhSerial,
                byte buttonPin,
                byte cableDetectPin,
-               bleControl* ble):
+               bleControl* pble):
     LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin),
     BUTTON_PIN(buttonPin),
     serProtocol(ECDHCOMM),
-    _ble(ble),
-    _blePair(writeDataSer, readDataSer, ble)
+    _ble(pble),
+    _blePair(writeDataSer, readDataSer, pble, true)
 {
     pushButton = Bounce();
     cfg=config;
     setPeerAddress(1);
     _ble->setEventListener(bleEvent);
-    bles=ble;
+    thiskeyfob=this;
 }
 
 bool KeyFob::setup()
@@ -134,17 +134,26 @@ void KeyFob::loop()
     }
 }
 
+void  KeyFob::eventPasscodeGenerated()
+{
+    _blePair.eventPasscodeGenerated();
+}
+
+void  KeyFob::eventPasscodeInputRequested()
+{
+    _blePair.eventPasscodeInputRequested();
+}
+
+
 void bleEvent(bleControl::EVENT ev)
 {
     switch(ev)
     {
     case bleControl::EV_PASSCODE_WANTED:
-        debug_println("Let's guess that the passcode is 123456");
-        bles->setPasscode(123456);
+        thiskeyfob->eventPasscodeInputRequested();
         break;
     case bleControl::EV_PASSCODE_GENERATED:
-        debug_print("Peripheral must set PASS: ");
-        debug_println(bles->getPasscode(), DEC);
+        thiskeyfob->eventPasscodeGenerated();
         break;
     case bleControl::EV_CONNECTION_DOWN:
         debug_println("Connection down");

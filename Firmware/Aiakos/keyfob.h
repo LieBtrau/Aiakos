@@ -14,10 +14,12 @@ public:
            RH_Serial*prhSerial,
            byte buttonPin,
            byte cableDetectPin,
-           bleControl* ble
+           bleControl* pble
            );
     bool setup();
     void loop();
+    void eventPasscodeGenerated();
+    void eventPasscodeInputRequested();
 private:
     typedef enum
     {

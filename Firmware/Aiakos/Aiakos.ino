@@ -27,7 +27,7 @@
  *
  *****************************************************
  * Serial connection for secure pairing
- *                      Due     Nucleo          Blue Pill
+ *                      Due     Nucleo(Keyfob)  Blue Pill
  *****************************************************
  * Tip                   TX1     D2(UART1_RX)   PB11 (UART3_RX)
  * Ring                  RX1     D8(UART1_TX)   PB10 (UART3_TX)
@@ -84,8 +84,8 @@ namespace
 RH_Serial rhStereoJack(Serial1);
 RH_RF95 rhLoRa(A2,5);//NSS, DIO0
 KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
-#elif defined(ARDUINO_GENERIC_STM32F103C)
-RH_Serial rhStereoJack(Serial2);                                    //Serial port for pairing
+#elif defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
+RH_Serial rhStereoJack(Serial2);                                    //UART3: Serial port for pairing
 RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
 rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //for short range wireless
 bleControl ble(&rn);

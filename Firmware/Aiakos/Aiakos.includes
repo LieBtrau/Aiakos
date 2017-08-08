@@ -6,7 +6,6 @@ rf95_reliable_datagram_server
 ../RadioHead/examples/nrf24/nrf24_reliable_datagram_client
 ../RadioHead/STM32ArduinoCompat
 ../RadioHead
-../RadioHead/examples/raspi
 ../Arduino_STM32/STM32F1/libraries/A_STM32_Examples
 ../Arduino_STM32/STM32F1/variants/microduino/board
 ../Arduino_STM32/STM32F1/variants/generic_stm32f103c
@@ -131,13 +130,6 @@ rf95_reliable_datagram_server
 ../../../RadioHead/examples/raspi/nrf24
 ../../../RadioHead/RHutil
 ../../../RadioHead/STM32ArduinoCompat
-../../../RadioHead/examples/raspi/irq_test
-../../../RadioHead/examples/nrf24/nrf24_reliable_datagram_client
-../../../RadioHead/examples/raspi/rf69
-../../../RadioHead/examples/raspi/spi_scan
 ../../../RadioHead
-../../../RadioHead/examples/raspi/multi_server
-../../../RadioHead/examples/raspi/rf95
-../../../RadioHead/tools
 ../../../Click_BLE2_RN4020/library/Arduino
 ../../../arduino-debug
