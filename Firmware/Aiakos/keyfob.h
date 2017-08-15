@@ -2,7 +2,7 @@
 #define KEYFOB_H
 
 #include "loradevice.h"
-#include "blepairing.h"
+#include "blepairingperipheral.h"
 #include "blecontrol.h"
 
 class KeyFob : public LoRaDevice
@@ -18,7 +18,6 @@ public:
            );
     bool setup();
     void loop();
-    void eventPasscodeGenerated();
     void eventPasscodeInputRequested();
 private:
     typedef enum
@@ -34,6 +33,6 @@ private:
     Bounce pushButton;
     SER_PROTOCOL serProtocol;
     bleControl* _ble;
-    BlePairing _blePair;
+    blePairingPeripheral _blePair;
 };
 #endif // KEYFOB_H

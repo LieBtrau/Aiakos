@@ -10,7 +10,7 @@
  */
 
 #include <RH_Serial.h>          //for wired comm
-#include "blepairing.h"
+#include "blepairingcentral.h"
 #include "debug.h"
 #include "blecontrol.h"
 #include <Bounce2.h>            //for switch debouncing
@@ -26,7 +26,7 @@ RHReliableDatagram mgrSerial(rhSerial, 3);
 RHReliableDatagram* pmgrSer;
 rn4020 rn(Serial1, 3, 4, 5, 7);                 //UART1, for short range wireless
 bleControl ble(&rn);
-BlePairing blePair(writeDataSer, readDataSer, &ble, false);
+blePairingCentral blePair(writeDataSer, readDataSer, &ble);
 byte peerAddress;
 bool bConnected;
 Bounce cableDetect;
@@ -38,7 +38,7 @@ void setup() {
     rhSerial.serial().begin(2400);
     pmgrSer=&mgrSerial;
     peerAddress=2;                  //keyfob has address 2
-    if (!mgrSerial.init())
+    if (!pmgrSer->init())
     {
         debug_println("init failed");
     }
@@ -51,15 +51,29 @@ void setup() {
         debug_println("Ble init failed.");
         return;
     }
-    if(!blePair.init())
-    {
-        debug_println("Can't init ble pairing");
-    }
+    debug_print("All ok");
 }
 
 // the loop function runs over and over again forever
 void loop()
 {
+    cableDetect.update();
+    if(!cableDetect.read())
+    {
+        //Secure pairing mode
+        switch(blePair.loop())
+        {
+        case BlePairing::AUTHENTICATION_OK:
+            debug_println("Securely paired");
+            break;
+        case BlePairing::NO_AUTHENTICATION:
+        case BlePairing::AUTHENTICATION_BUSY:
+            break;
+        }
+    }else
+    {
+        //Keyfob wake up mode
+    }
 }
 
 bool writeDataSer(byte* data, byte length)
@@ -93,9 +107,6 @@ void bleEvent(bleControl::EVENT ev)
 {
     switch(ev)
     {
-    case bleControl::EV_PASSCODE_WANTED:
-        blePair.eventPasscodeInputRequested();
-        break;
     case bleControl::EV_PASSCODE_GENERATED:
         blePair.eventPasscodeGenerated();
         break;

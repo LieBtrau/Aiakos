@@ -38,7 +38,7 @@ KeyFob::KeyFob(byte ownAddress,
     BUTTON_PIN(buttonPin),
     serProtocol(ECDHCOMM),
     _ble(pble),
-    _blePair(writeDataSer, readDataSer, pble, true)
+    _blePair(writeDataSer, readDataSer, pble)
 {
     pushButton = Bounce();
     cfg=config;
@@ -58,10 +58,6 @@ bool KeyFob::setup()
         debug_println("Ble init failed.");
         return false;
     }
-    if(!_blePair.init())
-    {
-        debug_println("Can't init ble pairing");
-    }
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     pushButton.attach(BUTTON_PIN);
     pushButton.interval(100); // interval in ms
@@ -78,15 +74,19 @@ void KeyFob::loop()
         //Secure pairing mode
         if(pushButton.fell())
         {
-            debug_println("Starting ECDH pairing...");
-            serProtocol=ECDHCOMM;
-            setPeerAddress(1);
-            k.reset();
-            if(!ecdh.startPairing())
+            debug_println("Starting BLE pairing...");
+            serProtocol=BLE_BOND;
+            setPeerAddress(3);
+            if(!_blePair.startPairing())
             {
-                debug_println("Starting BLE pairing...");
-                serProtocol=BLE_BOND;
-                setPeerAddress(3);
+                debug_println("Starting ECDH pairing...");
+                serProtocol=ECDHCOMM;
+                setPeerAddress(1);
+                k.reset();
+                if(!ecdh.startPairing())
+                {
+                    debug_println("ECDH pairing doesn't start");
+                }
                 return;
             }
         }
@@ -111,7 +111,7 @@ void KeyFob::loop()
             //find out the correct protocol
             break;
         case BLE_BOND:
-
+            _blePair.loop();
             break;
         }
     }else
@@ -134,11 +134,6 @@ void KeyFob::loop()
     }
 }
 
-void  KeyFob::eventPasscodeGenerated()
-{
-    _blePair.eventPasscodeGenerated();
-}
-
 void  KeyFob::eventPasscodeInputRequested()
 {
     _blePair.eventPasscodeInputRequested();
@@ -151,9 +146,6 @@ void bleEvent(bleControl::EVENT ev)
     {
     case bleControl::EV_PASSCODE_WANTED:
         thiskeyfob->eventPasscodeInputRequested();
-        break;
-    case bleControl::EV_PASSCODE_GENERATED:
-        thiskeyfob->eventPasscodeGenerated();
         break;
     case bleControl::EV_CONNECTION_DOWN:
         debug_println("Connection down");
@@ -208,12 +200,7 @@ bool KeyFob::initBlePeripheral()
 void alertLevelEvent(byte* value, byte &length)
 {
     debug_print("Characteristic changed to: ");
-    for(byte i=0;i<length;i++)
-    {
-        debug_print(value[i], HEX);
-        debug_print(" ");
-    }
-    debug_println();
+    debug_printArray(value, length);
 }
 
 

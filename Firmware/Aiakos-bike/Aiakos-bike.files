@@ -77,3 +77,7 @@ blepairing.h
 ../../../RadioHead/RHSPIDriver.cpp
 ../../../RadioHead/RHSPIDriver.h
 ../../../RadioHead/RHTcpProtocol.h
+blepairingcentral.h
+blepairingcentral.cpp
+blepairingperipheral.h
+blepairingperipheral.cpp
