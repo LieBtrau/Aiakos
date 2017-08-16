@@ -19,6 +19,7 @@ public:
     bool setup();
     void loop();
     void eventPasscodeInputRequested();
+    void eventBondingEstablished();
 private:
     typedef enum
     {

@@ -33,12 +33,13 @@ Bounce cableDetect;
 const byte CABLE_DETECT_PIN=6;
 }
 
-void setup() {
+void setup()
+{
     openDebug(9600);
     rhSerial.serial().begin(2400);
     pmgrSer=&mgrSerial;
     peerAddress=2;                  //keyfob has address 2
-    if (!pmgrSer->init())
+    if(!pmgrSer->init())
     {
         debug_println("init failed");
     }
@@ -67,6 +68,8 @@ void loop()
             debug_println("Securely paired");
             break;
         case BlePairing::NO_AUTHENTICATION:
+            pmgrSer->resetDatagram();
+            break;
         case BlePairing::AUTHENTICATION_BUSY:
             break;
         }

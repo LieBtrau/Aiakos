@@ -20,11 +20,6 @@ BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble
 {
 }
 
-BlePairing::~BlePairing()
-{
-}
-
-
 
 
 

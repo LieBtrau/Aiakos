@@ -33,7 +33,7 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
 {
 
     _ble->loop();
-    if(millis()>_commTimeOut+60000)
+    if(millis()>_commTimeOut+7000)
     {
         debug_println("Timeout");
         _commTimeOut=millis();

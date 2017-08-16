@@ -20,7 +20,6 @@ public:
     }AUTHENTICATION_RESULT;
 
     BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl* ble);
-    ~BlePairing();
     virtual AUTHENTICATION_RESULT loop()=0;
 protected:
     TX_Function _txfunc;

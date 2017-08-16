@@ -111,7 +111,17 @@ void KeyFob::loop()
             //find out the correct protocol
             break;
         case BLE_BOND:
-            _blePair.loop();
+            switch(_blePair.loop())
+            {
+            case BlePairing::AUTHENTICATION_OK:
+                debug_println("Bonded with bike.");
+                break;
+            case BlePairing::NO_AUTHENTICATION:
+                mgrSer.resetDatagram();
+                break;
+            case BlePairing::AUTHENTICATION_BUSY:
+                break;
+            }
             break;
         }
     }else
@@ -139,6 +149,10 @@ void  KeyFob::eventPasscodeInputRequested()
     _blePair.eventPasscodeInputRequested();
 }
 
+void KeyFob::eventBondingEstablished()
+{
+    _blePair.eventBondingEstablished();
+}
 
 void bleEvent(bleControl::EVENT ev)
 {
@@ -154,6 +168,9 @@ void bleEvent(bleControl::EVENT ev)
     case bleControl::EV_CONNECTION_UP:
         debug_println("Connection up");
         bConnected=true;
+        break;
+    case bleControl::EV_BONDING_ESTABLISHED:
+        thiskeyfob->eventBondingEstablished();
         break;
     default:
         debug_print("Unknown event: ");
