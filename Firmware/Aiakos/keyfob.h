@@ -18,8 +18,8 @@ public:
            );
     bool setup();
     void loop();
-    void eventPasscodeInputRequested();
-    void eventBondingEstablished();
+    void event(bleControl::EVENT ev);
+    void rfidEvent(byte* value, byte &length);
 private:
     typedef enum
     {

@@ -3,6 +3,7 @@
 
 void bleEvent(bleControl::EVENT ev);
 void alertLevelEvent(byte *value, byte& length);
+void rfidEvent(byte *value, byte& length);
 extern bool readDataSer(byte** data, byte& length);
 extern bool writeDataSer(byte* data, byte length);
 
@@ -14,13 +15,14 @@ Configuration* cfg;
 btCharacteristic rfid_key("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
                           "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
                           btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
-                          btCharacteristic::ENCR_W);                     //security
+                          btCharacteristic::ENCR_W,                      //security
+                          rfidEvent);                                    //eventhandler
 //https://www.bluetooth.com/specifications/gatt/services
 //https://www.bluetooth.com/specifications/gatt/characteristics
 btCharacteristic ias_alertLevel("1802",                                  //IAS Alert Service
                                 "2A06",                                  //Alert Level characteristic
                                 btCharacteristic::WRITE_WOUT_RESP, 1,    //properties+length
-                                btCharacteristic::NOTHING,                //security
+                                btCharacteristic::NOTHING,               //security
                                 alertLevelEvent);
 btCharacteristic* _localCharacteristics[2]={&rfid_key, &ias_alertLevel};
 KeyFob* thiskeyfob;
@@ -63,7 +65,6 @@ bool KeyFob::setup()
     pushButton.interval(100); // interval in ms
     return true;
 }
-
 
 void KeyFob::loop()
 {
@@ -115,6 +116,7 @@ void KeyFob::loop()
             {
             case BlePairing::AUTHENTICATION_OK:
                 debug_println("Bonded with bike.");
+                _ble->disconnect();
                 break;
             case BlePairing::NO_AUTHENTICATION:
                 mgrSer.resetDatagram();
@@ -133,50 +135,54 @@ void KeyFob::loop()
             debug_println("Initiator starts authentication");
             if(!k.sendMessage(payload,sizeof(payload), cfg->getDefaultId(), cfg->getIdLength(), cfg->getDefaultKey()))
             {
-                Serial.println("Sending message failed.");
+                debug_println("Sending message failed.");
                 return;
             }
         }
         if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
         {
-            Serial.println("Message received by peer and acknowledged");
+            debug_println("Message received by peer and acknowledged");
         }
+        _ble->loop();
     }
 }
 
-void  KeyFob::eventPasscodeInputRequested()
-{
-    _blePair.eventPasscodeInputRequested();
-}
-
-void KeyFob::eventBondingEstablished()
-{
-    _blePair.eventBondingEstablished();
-}
-
-void bleEvent(bleControl::EVENT ev)
+void KeyFob::event(bleControl::EVENT ev)
 {
     switch(ev)
     {
     case bleControl::EV_PASSCODE_WANTED:
-        thiskeyfob->eventPasscodeInputRequested();
+        _blePair.eventPasscodeInputRequested();
         break;
     case bleControl::EV_CONNECTION_DOWN:
         debug_println("Connection down");
+            //After connection goes down, advertizing must be restarted or the module will no longer be connectable.
+            if(!_ble->startAdvertizement(5000))
+            {
+                debug_print("Can't start advertizing.");
+                return;
+            }
         bConnected=false;
         break;
     case bleControl::EV_CONNECTION_UP:
         debug_println("Connection up");
         bConnected=true;
         break;
-    case bleControl::EV_BONDING_ESTABLISHED:
-        thiskeyfob->eventBondingEstablished();
+    case bleControl::EV_BONDING_BONDED:
+        _blePair.eventBondingBonded();
         break;
     default:
         debug_print("Unknown event: ");
         debug_println(ev, DEC);
         break;
     }
+
+}
+
+
+void bleEvent(bleControl::EVENT ev)
+{
+    thiskeyfob->event(ev);
 }
 
 bool KeyFob::initBlePeripheral()
@@ -219,5 +225,24 @@ void alertLevelEvent(byte* value, byte &length)
     debug_print("Characteristic changed to: ");
     debug_printArray(value, length);
 }
+
+void rfidEvent(byte* value, byte &length)
+{
+    thiskeyfob->rfidEvent(value, length);
+}
+
+void KeyFob::rfidEvent(byte* value, byte &length)
+{
+    if(_ble->isBonded() && _ble->isSecured())
+    {
+        debug_print("Characteristic changed to: ");
+        debug_printArray(value, length);
+    }
+    else
+    {
+        debug_println("Illegal write of event");
+    }
+}
+
 
 

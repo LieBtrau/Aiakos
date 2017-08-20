@@ -29,8 +29,14 @@ bleControl ble(&rn);
 blePairingCentral blePair(writeDataSer, readDataSer, &ble);
 byte peerAddress;
 bool bConnected;
-Bounce cableDetect;
+Bounce cableDetect=Bounce();
+Bounce pushButton=Bounce();
 const byte CABLE_DETECT_PIN=6;
+const byte BUTTON_PIN=25;
+btCharacteristic rfid_key("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
+                          "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
+                          btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
+                          btCharacteristic::ENCR_W);                     //security
 }
 
 void setup()
@@ -46,6 +52,9 @@ void setup()
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
     cableDetect.interval(100); // interval in ms
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+    pushButton.attach(BUTTON_PIN);
+    pushButton.interval(100); // interval in ms
     ble.setEventListener(bleEvent);
     if(!initBleCentral())
     {
@@ -59,6 +68,7 @@ void setup()
 void loop()
 {
     cableDetect.update();
+    pushButton.update();
     if(!cableDetect.read())
     {
         //Secure pairing mode
@@ -76,6 +86,18 @@ void loop()
     }else
     {
         //Keyfob wake up mode
+        ble.loop();
+        if(pushButton.fell())
+        {
+            if(ble.secureConnect(blePair.getRemoteBleAddress()))
+            {
+                if(ble.writeRemoteCharacteristic(&rfid_key, 0xAA))
+                {
+                    debug_println("Value written");
+                }
+                ble.disconnect();
+            }
+        }
     }
 }
 

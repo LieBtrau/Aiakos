@@ -10,6 +10,7 @@ public:
         BlePairing(tx_func, rx_func, ble){}
     void eventPasscodeGenerated();
     AUTHENTICATION_RESULT loop();
+    byte* getRemoteBleAddress();
 private:
     typedef enum
     {

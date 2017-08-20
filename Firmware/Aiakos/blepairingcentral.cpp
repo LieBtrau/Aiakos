@@ -1,5 +1,10 @@
 #include "blepairingcentral.h"
 
+byte* blePairingCentral::getRemoteBleAddress()
+{
+    return _remoteBleAddress;
+}
+
 void blePairingCentral::eventPasscodeGenerated()
 {
     //Central reads passcode that has been generated inside the BLE module.
@@ -7,7 +12,6 @@ void blePairingCentral::eventPasscodeGenerated()
     //Passcode is sent over the wired serial link to the peripheral
     if(_state==PAIR_BLE_PERIPHERAL && setPinCode(passcode))
     {
-        debug_print("Passcode sent & ack'd.");
         pinCodeSent=true;
     }
 }
@@ -31,7 +35,6 @@ bool blePairingCentral::getRemoteBleAddress(byte* address)
 
 blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
 {
-
     _ble->loop();
     if(millis()>_commTimeOut+7000)
     {

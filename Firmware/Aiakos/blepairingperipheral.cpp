@@ -9,6 +9,12 @@ bool blePairingPeripheral::startPairing()
     {
         return false;
     }
+    if(!_ble->unbond())
+    {
+        return false;
+    }
+    //Use 100ms beacon interval, so that connecting works smoother.
+    _ble->startAdvertizement(100);
     //Peripheral get its MAC address from BLE module
     if(!_ble->getLocalMacAddress(address, length) || length!=6)
     {
@@ -19,11 +25,9 @@ bool blePairingPeripheral::startPairing()
     {
         return false;
     }
-    //Use 100ms beacon interval, so that connecting works smoother.
-    _ble->startUndirectedAdvertizement(100);
     _commTimeOut=millis();
     bleRequestsPin=false;
-    bondingEstablished=false;
+    bondingBonded=false;
     pincode=0;
     debug_println("MAC-address sent");
     _state=WAITING_FOR_PINCODE;
@@ -53,9 +57,9 @@ void blePairingPeripheral::eventPasscodeInputRequested()
     debug_println("BLE requests pincode");
 }
 
-void blePairingPeripheral::eventBondingEstablished()
+void blePairingPeripheral::eventBondingBonded()
 {
-    bondingEstablished=true;
+    bondingBonded=true;
     debug_println("Bonding established");
 }
 
@@ -91,10 +95,9 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
         }
         return AUTHENTICATION_BUSY;
     case PINCODE_SENT:
-        if(bondingEstablished)
+        if(bondingBonded)
         {
             _state=WAITING_FOR_START;
-            _ble->disconnect();
             return AUTHENTICATION_OK;
         }
         return AUTHENTICATION_BUSY;

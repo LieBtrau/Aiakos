@@ -9,7 +9,7 @@ public:
         BlePairing(tx_func, rx_func, ble){}
     bool startPairing();
     void eventPasscodeInputRequested();
-    void eventBondingEstablished();
+    void eventBondingBonded();
     AUTHENTICATION_RESULT loop();
 private:
     typedef enum
@@ -24,7 +24,7 @@ private:
     AUTHENTICATION_STATE _state=WAITING_FOR_START;
     uint32_t pincode=0;
     bool bleRequestsPin=false;
-    bool bondingEstablished=false;
+    bool bondingBonded=false;
 };
 
 #endif // BLEPAIRINGPERIPHERAL_H
