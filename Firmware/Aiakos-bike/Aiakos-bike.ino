@@ -91,7 +91,8 @@ void loop()
         {
             if(ble.secureConnect(blePair.getRemoteBleAddress()))
             {
-                if(ble.writeRemoteCharacteristic(&rfid_key, 0xAA))
+                byte array[4]={0xAA,0xAB,0xAC,0xAD};
+                if(ble.writeRemoteCharacteristic(&rfid_key, array,4))
                 {
                     debug_println("Value written");
                 }
