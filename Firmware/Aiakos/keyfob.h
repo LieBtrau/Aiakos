@@ -14,12 +14,14 @@ public:
            RH_Serial*prhSerial,
            byte buttonPin,
            byte cableDetectPin,
-           bleControl* pble
+           bleControl* pble,
+           byte tonePin
            );
     bool setup();
     void loop();
     void event(bleControl::EVENT ev);
     void rfidEvent(byte* value, byte &length);
+    void alertEvent(byte* value, byte &length);
 private:
     typedef enum
     {
@@ -30,7 +32,8 @@ private:
 
     bool initBlePeripheral();
 
-    byte BUTTON_PIN;
+    byte buttonPin;
+    byte tonePin;
     Bounce pushButton;
     SER_PROTOCOL serProtocol;
     bleControl* _ble;

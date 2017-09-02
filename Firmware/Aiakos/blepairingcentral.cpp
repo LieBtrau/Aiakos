@@ -1,5 +1,10 @@
 #include "blepairingcentral.h"
 
+bool blePairingCentral::init()
+{
+    return _ble->isBondedTo(_remoteBleAddress);
+}
+
 byte* blePairingCentral::getRemoteBleAddress()
 {
     return _remoteBleAddress;
@@ -55,6 +60,7 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
         }
         return AUTHENTICATION_BUSY;
     case DETECT_BLE_PERIPHERAL:
+        //Unbonding is performed in this step
         if(!_ble->findUnboundPeripheral(_remoteBleAddress))
         {
             _state=WAITING_FOR_REMOTE_MAC;

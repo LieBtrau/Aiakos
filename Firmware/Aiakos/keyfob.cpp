@@ -1,9 +1,9 @@
 #include "keyfob.h"
 #define DEBUG
 
-void bleEvent(bleControl::EVENT ev);
-void alertLevelEvent(byte *value, byte& length);
-void rfidEvent(byte *value, byte& length);
+static void bleEvent(bleControl::EVENT ev);
+static void alertLevelEvent(byte *value, byte& length);
+static void rfidEvent(byte *value, byte& length);
 extern bool readDataSer(byte** data, byte& length);
 extern bool writeDataSer(byte* data, byte length);
 
@@ -35,12 +35,14 @@ KeyFob::KeyFob(byte ownAddress,
                RH_Serial *prhSerial,
                byte buttonPin,
                byte cableDetectPin,
-               bleControl* pble):
+               bleControl* pble,
+               byte tonePin):
     LoRaDevice(ownAddress, prhLora, prhSerial, cableDetectPin),
-    BUTTON_PIN(buttonPin),
+    buttonPin(buttonPin),
     serProtocol(ECDHCOMM),
     _ble(pble),
-    _blePair(writeDataSer, readDataSer, pble)
+    _blePair(writeDataSer, readDataSer, pble),
+    tonePin(tonePin)
 {
     pushButton = Bounce();
     cfg=config;
@@ -60,8 +62,8 @@ bool KeyFob::setup()
         debug_println("Ble init failed.");
         return false;
     }
-    pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pushButton.attach(BUTTON_PIN);
+    pinMode(buttonPin, INPUT_PULLUP);
+    pushButton.attach(buttonPin);
     pushButton.interval(100); // interval in ms
     return true;
 }
@@ -217,18 +219,22 @@ bool KeyFob::initBlePeripheral()
             return false;
         }
     }
-    return _ble->beginPeripheral(_localCharacteristics,2);
+    if(!_ble->beginPeripheral(_localCharacteristics,2))
+    {
+        return false;
+    }
+    if(_ble->isBonded())
+    {
+        return _ble->startAdvertizement(5000);
+    }
+    return true;
 }
 
-void alertLevelEvent(byte* value, byte &length)
+void KeyFob::alertEvent(byte* value, byte &length)
 {
     debug_print("Characteristic changed to: ");
     debug_printArray(value, length);
-}
-
-void rfidEvent(byte* value, byte &length)
-{
-    thiskeyfob->rfidEvent(value, length);
+    tone(tonePin, 3120, 500);
 }
 
 void KeyFob::rfidEvent(byte* value, byte &length)
@@ -243,6 +249,18 @@ void KeyFob::rfidEvent(byte* value, byte &length)
         debug_println("Illegal write of event");
     }
 }
+
+void alertLevelEvent(byte* value, byte &length)
+{
+    thiskeyfob->alertEvent(value, length);
+}
+
+void rfidEvent(byte* value, byte &length)
+{
+    thiskeyfob->rfidEvent(value, length);
+}
+
+
 
 
 

@@ -29,6 +29,7 @@ bleControl ble(&rn);
 blePairingCentral blePair(writeDataSer, readDataSer, &ble);
 byte peerAddress;
 bool bConnected;
+unsigned long buttonTimer=0;
 Bounce cableDetect=Bounce();
 Bounce pushButton=Bounce();
 const byte CABLE_DETECT_PIN=6;
@@ -37,6 +38,11 @@ btCharacteristic rfid_key("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //priva
                           "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
                           btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
                           btCharacteristic::ENCR_W);                     //security
+btCharacteristic ias_alertLevel("1802",                                  //IAS Alert Service
+                                "2A06",                                  //Alert Level characteristic
+                                btCharacteristic::WRITE_WOUT_RESP, 1,    //properties+length
+                                btCharacteristic::NOTHING                //security
+                                );
 }
 
 void setup()
@@ -89,14 +95,41 @@ void loop()
         ble.loop();
         if(pushButton.fell())
         {
-            if(ble.secureConnect(blePair.getRemoteBleAddress()))
+            buttonTimer=millis();
+        }
+        if(pushButton.rose())
+        {
+            if(millis()-buttonTimer<1000)
             {
-                byte array[4]={0xAA,0xAB,0xAC,0xAD};
-                if(ble.writeRemoteCharacteristic(&rfid_key, array,4))
+                //open door
+                if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
-                    debug_println("Value written");
+                    byte array[4]={0xAA,0xAB,0xAC,0xAD};
+                    if(ble.writeRemoteCharacteristic(&rfid_key, array,4))
+                    {
+                        debug_println("RFID Value written");
+                    }
+                    ble.disconnect();
                 }
-                ble.disconnect();
+            }
+            else
+            {
+                //find key
+                if(!bConnected)
+                {
+                    if(ble.secureConnect(blePair.getRemoteBleAddress()))
+                    {
+                        byte array[1]={0xBB};
+                        if(ble.writeRemoteCharacteristic(&ias_alertLevel, array,1))
+                        {
+                            debug_println("Alert value written");
+                        }
+                    }
+                }
+                else
+                {
+                    ble.disconnect();
+                }
             }
         }
     }
@@ -176,8 +209,15 @@ bool initBleCentral()
             return false;
         }
     }
+    rn.getRemoteHandle(&rfid_key);
+    if(!blePair.init())
+    {
+        return false;
+    }
+    rn.getRemoteHandle(&rfid_key);
     return ble.beginCentral();
 }
 
+//2. Before trying to connect, it should be tested that connection is already present.
 
 

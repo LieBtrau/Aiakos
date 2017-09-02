@@ -40,6 +40,11 @@
  *****************************************************
  * Pulse                 5
  *
+ *****************************************************
+ * Tone output on key fob
+ *****************************************************
+ * Tone                  A1
+ *
  * Pairing procedure:
  * ------------------
  * Interconnect the keyfob and the garage controller with the stereo jack cable.  Press the blue button on the Nucleo
@@ -89,7 +94,7 @@ RH_Serial rhStereoJack(Serial2);                                    //UART3: Ser
 RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
 rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //for short range wireless
 bleControl ble(&rn);
-KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble);
+KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
 #endif
 }
 #endif
