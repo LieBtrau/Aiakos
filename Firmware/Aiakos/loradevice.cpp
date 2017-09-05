@@ -7,8 +7,8 @@ RHReliableDatagram* pmgrSer;
 byte peerAddress;
 }
 bool writeDataLoRa(byte* data, byte length);
-bool readDataLoRa(byte** data, byte& length);
-bool readDataSer(byte** data, byte& length);
+bool readDataLoRa(byte* data, byte& length);
+bool readDataSer(byte *data, byte& length);
 bool writeDataSer(byte* data, byte length);
 
 LoRaDevice::LoRaDevice(byte ownAddress, RH_RF95 *prhLora, RH_Serial *prhSerial, byte cableDetectPin):
@@ -70,14 +70,14 @@ bool writeDataLoRa(byte* data, byte length)
     return pmgrLoRa->sendtoWait(data, length, peerAddress);
 }
 
-bool readDataSer(byte** data, byte& length)
+bool readDataSer(byte* data, byte& length)
 {
     byte from;
     if (!pmgrSer->available())
     {
         return false;
     }
-    if(!pmgrSer->recvfromAck(*data, &length, &from))
+    if(!pmgrSer->recvfromAck(data, &length, &from))
     {
         return false;
     }
@@ -86,18 +86,18 @@ bool readDataSer(byte** data, byte& length)
         debug_print("Sender doesn't match");
         return false;
     }
-    debug_print("Received data: ");debug_printArray(*data, length);
+    debug_print("Received data: ");debug_printArray(data, length);
     return true;
 }
 
-bool readDataLoRa(byte** data, byte& length)
+bool readDataLoRa(byte *data, byte& length)
 {
     byte from;
     if (!pmgrLoRa->available())
     {
         return false;
     }
-    if(!pmgrLoRa->recvfromAck(*data, &length, &from))
+    if(!pmgrLoRa->recvfromAck(data, &length, &from))
     {
         return false;
     }

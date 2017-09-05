@@ -11,16 +11,15 @@ public:
     void eventPasscodeGenerated();
     AUTHENTICATION_RESULT loop();
     byte* getRemoteBleAddress();
-    bool init();
+    bool init(byte key[]);
 private:
     typedef enum
     {
         WAITING_FOR_REMOTE_MAC,
+        SENDING_RFID_CODE,
         DETECT_BLE_PERIPHERAL,
         PAIR_BLE_PERIPHERAL,
     }AUTHENTICATION_STATE;
-    bool getRemoteBleAddress(byte *address);
-    bool setPinCode(uint32_t pinCode);
     byte _remoteBleAddress[6];
     AUTHENTICATION_STATE _state=WAITING_FOR_REMOTE_MAC;
     bool pinCodeSent=false;

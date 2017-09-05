@@ -10,7 +10,7 @@ class BlePairing
 {
 public:
     typedef bool(*TX_Function)(byte* data, byte length);
-    typedef bool(*RX_Function)(byte** data, byte& length);
+    typedef bool(*RX_Function)(byte* data, byte& length);
 
     typedef enum
     {
@@ -22,10 +22,20 @@ public:
     BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl* ble);
     virtual AUTHENTICATION_RESULT loop()=0;
 protected:
-    TX_Function _txfunc;
-    RX_Function _rxfunc;
+    typedef enum
+    {
+        REMOTE_MAC,
+        PASSCODE,
+        RFID_KEY
+    }PAIRING_MSGS;
+    bool sendData(byte data[], byte id);
+    bool receiveData(byte data[], byte id);
     bleControl* _ble;
     unsigned long _commTimeOut;
+    byte rfidkey[4];
+private:
+    TX_Function _txfunc;
+    RX_Function _rxfunc;
 };
 
 #endif // BLEPAIRING_H

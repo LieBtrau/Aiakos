@@ -10,20 +10,20 @@ public:
     bool startPairing();
     void eventPasscodeInputRequested();
     void eventBondingBonded();
+    bool getRfidKey(byte key[]);
     AUTHENTICATION_RESULT loop();
 private:
     typedef enum
     {
         WAITING_FOR_START,
-        WAITING_FOR_PINCODE,
-        PINCODE_RECEIVED,
-        PINCODE_SENT
+        WAITING_FOR_RFID_KEY,
+        WAITING_FOR_PASSCODE,
+        PASSCODE_RECEIVED,
+        PASSCODE_SENT
     }AUTHENTICATION_STATE;
-    bool setRemoteBleAddress(byte *address, byte length);
-    bool getPinCode(uint32_t& pinCode);
     AUTHENTICATION_STATE _state=WAITING_FOR_START;
-    uint32_t pincode=0;
-    bool bleRequestsPin=false;
+    uint32_t passcode=0;
+    bool bleRequestsPass=false;
     bool bondingBonded=false;
 };
 

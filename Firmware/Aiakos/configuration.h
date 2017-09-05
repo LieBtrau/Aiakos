@@ -13,6 +13,8 @@ public:
     byte* getDefaultKey();
     byte* getDefaultId();
     byte* findKey(const byte* remoteId, byte length);
+    bool setRfidKey(byte key[]);
+    bool getRfidKey(byte key[]);
 private:
     static const byte KEY_SIZE=16;
     static const byte KEY_COUNT=2;
@@ -25,6 +27,7 @@ private:
     {
         byte nrOfValidKeys;
         SHARED_KEY keys[KEY_COUNT];
+        byte rfidkey[4];
     }CONFIG;
     void initializeEEPROM();
     void saveData();

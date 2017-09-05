@@ -3,7 +3,7 @@
 
 bool blePairingPeripheral::startPairing()
 {
-    byte address[6];
+    byte rmac[6];
     byte length;
     if( (_state!=WAITING_FOR_START) )
     {
@@ -16,44 +16,26 @@ bool blePairingPeripheral::startPairing()
     //Use 100ms beacon interval, so that connecting works smoother.
     _ble->startAdvertizement(100);
     //Peripheral get its MAC address from BLE module
-    if(!_ble->getLocalMacAddress(address, length) || length!=6)
+    if(!_ble->getLocalMacAddress(rmac, length) || length!=6)
     {
         return false;
     }
     //MAC address is sent through (wired) serial connection to the central.
-    if(!setRemoteBleAddress(address, length))
+    if(!sendData(rmac,REMOTE_MAC))
     {
         return false;
     }
     _commTimeOut=millis();
-    bleRequestsPin=false;
+    bleRequestsPass=false;
     bondingBonded=false;
-    pincode=0;
+    passcode=0;
     debug_println("MAC-address sent");
-    _state=WAITING_FOR_PINCODE;
-}
-
-bool blePairingPeripheral::setRemoteBleAddress(byte *address, byte length)
-{
-    return _txfunc(address, length);
-}
-
-bool blePairingPeripheral::getPinCode(uint32_t& pinCode)
-{
-    byte length=4;
-    byte array[4];
-    byte* array2=array;
-    if(_rxfunc(&array2, length) && length==4)
-    {
-        memcpy(&pinCode, array2, 4);
-        return true;
-    }
-    return false;
+    _state=WAITING_FOR_RFID_KEY;
 }
 
 void blePairingPeripheral::eventPasscodeInputRequested()
 {
-    bleRequestsPin=true;
+    bleRequestsPass=true;
     debug_println("BLE requests pincode");
 }
 
@@ -77,24 +59,36 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
     {
     case WAITING_FOR_START:
         return NO_AUTHENTICATION;
-    case WAITING_FOR_PINCODE:
-        if(getPinCode(pincode))
+    case WAITING_FOR_RFID_KEY:
+        if(receiveData(rfidkey,RFID_KEY))
         {
-            debug_print("Passcode received: ");
-            debug_println(pincode, DEC);
-            _state=PINCODE_RECEIVED;
+            _state=WAITING_FOR_PASSCODE;
         }
         return AUTHENTICATION_BUSY;
-    case PINCODE_RECEIVED:
-        if(bleRequestsPin)
+    case WAITING_FOR_PASSCODE:
+        byte passArray[4];
+        if(receiveData(passArray, PASSCODE))
+        {
+            for(byte i=0;i<4;i++)
+            {
+                passcode<<=8;
+                passcode+=passArray[3-i];
+            }
+            debug_print("Passcode received: ");
+            debug_println(passcode, DEC);
+            _state=PASSCODE_RECEIVED;
+        }
+        return AUTHENTICATION_BUSY;
+    case PASSCODE_RECEIVED:
+        if(bleRequestsPass)
         {
             //Peripheral sends the passcode to its BLE module
-            _ble->setPasscode(pincode);
-            debug_println("Pincode sent to BLE module");
-            _state=PINCODE_SENT;
+            _ble->setPasscode(passcode);
+            debug_println("Passcode sent to BLE module");
+            _state=PASSCODE_SENT;
         }
         return AUTHENTICATION_BUSY;
-    case PINCODE_SENT:
+    case PASSCODE_SENT:
         if(bondingBonded)
         {
             _state=WAITING_FOR_START;
@@ -104,6 +98,16 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
     default:
         return NO_AUTHENTICATION;
     }
+}
+
+bool blePairingPeripheral::getRfidKey(byte key[])
+{
+    if(!key || sizeof(key)!=sizeof(rfidkey))
+    {
+        return false;
+    }
+    memcpy(key, rfidkey, sizeof(rfidkey));
+    return true;
 }
 
 

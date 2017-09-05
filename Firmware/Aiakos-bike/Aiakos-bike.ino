@@ -16,7 +16,7 @@
 #include <Bounce2.h>            //for switch debouncing
 
 void bleEvent(bleControl::EVENT ev);
-bool readDataSer(byte** data, byte& length);
+bool readDataSer(byte* data, byte& length);
 bool writeDataSer(byte* data, byte length);
 
 namespace
@@ -102,9 +102,9 @@ void loop()
             if(millis()-buttonTimer<1000)
             {
                 //open door
+                byte array[4]={0xAA,0xAB,0xAC,0xAD};
                 if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
-                    byte array[4]={0xAA,0xAB,0xAC,0xAD};
                     if(ble.writeRemoteCharacteristic(&rfid_key, array,4))
                     {
                         debug_println("RFID Value written");
@@ -115,25 +115,19 @@ void loop()
             else
             {
                 //find key
-                if(!bConnected)
+                if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
-                    if(ble.secureConnect(blePair.getRemoteBleAddress()))
+                    byte array[1]={0xBB};
+                    if(ble.writeRemoteCharacteristic(&ias_alertLevel, array,1))
                     {
-                        byte array[1]={0xBB};
-                        if(ble.writeRemoteCharacteristic(&ias_alertLevel, array,1))
-                        {
-                            debug_println("Alert value written");
-                        }
+                        debug_println("Alert value written");
                     }
-                }
-                else
-                {
-                    ble.disconnect();
                 }
             }
         }
     }
 }
+
 
 bool writeDataSer(byte* data, byte length)
 {
@@ -142,14 +136,14 @@ bool writeDataSer(byte* data, byte length)
     return pmgrSer->sendtoWait(data, length, peerAddress);
 }
 
-bool readDataSer(byte** data, byte& length)
+bool readDataSer(byte *data, byte& length)
 {
     byte from;
     if (!pmgrSer->available())
     {
         return false;
     }
-    if(!pmgrSer->recvfromAck(*data, &length, &from))
+    if(!pmgrSer->recvfromAck(data, &length, &from))
     {
         return false;
     }
@@ -158,7 +152,7 @@ bool readDataSer(byte** data, byte& length)
         debug_print("Sender doesn't match");
         return false;
     }
-    debug_print("Received data: ");debug_printArray(*data, length);
+    debug_print("Received data: ");debug_printArray(data, length);
     return true;
 }
 
@@ -210,14 +204,12 @@ bool initBleCentral()
         }
     }
     rn.getRemoteHandle(&rfid_key);
-    if(!blePair.init())
+    byte array[4]={0xAA,0xAB,0xAC,0xAD};
+    if(!blePair.init(array))
     {
         return false;
     }
     rn.getRemoteHandle(&rfid_key);
     return ble.beginCentral();
 }
-
-//2. Before trying to connect, it should be tested that connection is already present.
-
 

@@ -15,9 +15,33 @@
 BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble):
     _txfunc(tx_func),
     _rxfunc(rx_func),
-    _ble(ble),
-    _commTimeOut(0)
+    _ble(ble)
 {
+}
+
+bool BlePairing::sendData(byte data[], byte id)
+{
+    byte lengthIn=sizeof(data);
+    byte dataOut[1+lengthIn];
+    dataOut[0]=id;
+    memcpy(dataOut+1, data, lengthIn);
+    return _txfunc(dataOut, 1+lengthIn);
+}
+
+bool BlePairing::receiveData(byte data[], byte id)
+{
+    if(!data)
+    {
+        return false;
+    }
+    byte length=sizeof(data)+1;
+    byte dataIn[length];
+    if(!_rxfunc(dataIn, length) || length!=sizeof(data)+1 || dataIn[0]!=id)
+    {
+        return false;
+    }
+    memcpy(data, dataIn+1, length-1);
+    return true;
 }
 
 

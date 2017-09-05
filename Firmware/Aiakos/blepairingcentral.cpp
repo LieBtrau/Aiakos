@@ -1,7 +1,12 @@
 #include "blepairingcentral.h"
 
-bool blePairingCentral::init()
+bool blePairingCentral::init(byte key[])
 {
+    if(sizeof(rfidkey) != sizeof(key))
+    {
+        return false;
+    }
+    memcpy(rfidkey, key, sizeof(key));
     return _ble->isBondedTo(_remoteBleAddress);
 }
 
@@ -15,27 +20,16 @@ void blePairingCentral::eventPasscodeGenerated()
     //Central reads passcode that has been generated inside the BLE module.
     unsigned long passcode=_ble->getPasscode();
     //Passcode is sent over the wired serial link to the peripheral
-    if(_state==PAIR_BLE_PERIPHERAL && setPinCode(passcode))
+    byte data[4];
+    for(byte i=0;i<4;i++)
+    {
+        data[i]=passcode & 0xFF;
+        passcode>>=8;
+    }
+    if(_state==PAIR_BLE_PERIPHERAL && sendData(data,PASSCODE))
     {
         pinCodeSent=true;
     }
-}
-
-bool blePairingCentral::setPinCode(uint32_t pinCode)
-{
-    byte array[4];
-    memcpy(array, &pinCode, 4);
-    return _txfunc(array, 4);
-}
-
-bool blePairingCentral::getRemoteBleAddress(byte* address)
-{
-    byte length=6;
-    if(!address)
-    {
-        return false;
-    }
-    return _rxfunc(&address, length) && length==6;
 }
 
 blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
@@ -51,13 +45,21 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
     switch(_state)
     {
     case WAITING_FOR_REMOTE_MAC:
-        if(getRemoteBleAddress(_remoteBleAddress))
+        if(receiveData(_remoteBleAddress, REMOTE_MAC))
         {
             _commTimeOut=millis();
-            _state=DETECT_BLE_PERIPHERAL;
+            _state=SENDING_RFID_CODE;
             debug_print("Remote MAC-address received:");
             debug_printArray(_remoteBleAddress, 6);
         }
+        return AUTHENTICATION_BUSY;
+    case SENDING_RFID_CODE:
+        if(!sendData(rfidkey,RFID_KEY))
+        {
+            _state=WAITING_FOR_REMOTE_MAC;
+            return NO_AUTHENTICATION;
+        }
+        _state=DETECT_BLE_PERIPHERAL;
         return AUTHENTICATION_BUSY;
     case DETECT_BLE_PERIPHERAL:
         //Unbonding is performed in this step
