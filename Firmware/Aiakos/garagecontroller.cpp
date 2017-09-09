@@ -5,9 +5,10 @@ namespace
 KryptoKnightComm* pk;
 Configuration* cfg;
 const byte PULSE_PIN=5;
+bool slowMcu=false;
 }
 void dataReceived(byte* data, byte length);
-void setHighMcuSpeed(bool bHigh);
+void setSlowMcuSpeed(bool bSlow);
 
 extern void setKeyInfo(byte* remoteId, byte length);
 
@@ -73,7 +74,7 @@ bool GarageController::setup()
 #endif    
     pinMode(13, OUTPUT);
     digitalWrite(13, LOW);
-    setHighMcuSpeed(false);
+    setSlowMcuSpeed(true);
 #endif
     k.setMessageReceivedHandler(dataReceived);
     k.setKeyRequestHandler(setKeyInfo);
@@ -90,7 +91,7 @@ void GarageController::loop()
         {
             //on falling edge of cable detect, all keys must be cleared.
             debug_println("Entering pairing mode");
-            setHighMcuSpeed(true);
+            setSlowMcuSpeed(false);
             k.reset();
             cfg->removeAllKeys();
         }
@@ -113,12 +114,12 @@ void GarageController::loop()
         {
         case KryptoKnightComm::AUTHENTICATION_AS_PEER_OK:
             debug_println("Message received by remote initiator");
-            setHighMcuSpeed(false);
             break;
         case KryptoKnightComm::NO_AUTHENTICATION:
+            setSlowMcuSpeed(true);
             break;
         case KryptoKnightComm::AUTHENTICATION_BUSY:
-            setHighMcuSpeed(true);
+            setSlowMcuSpeed(false);
             break;
         }
     }
@@ -138,14 +139,18 @@ void dataReceived(byte* data, byte length)
     }
 }
 
-void setHighMcuSpeed(bool bHigh)
+void setSlowMcuSpeed(bool bSlow)
 {
 #ifdef ARDUINO_SAM_DUE
 #ifndef DEBUG
-    pmc_set_writeprotect(false);
-    pmc_mck_set_prescaler(bHigh ? 16 : 96);   // 84 MHz or 2.6MHz
+    if(slowMcu!=bSlow)
+    {
+        slowMcu=bSlow;
+        pmc_set_writeprotect(false);
+        pmc_mck_set_prescaler(bSlow ? 96 : 16);   // 2.6 MHz or 84MHz
+    }
 #else
-    debug_print("DEBUG: MCU speed throttling disabled: ");debug_println(bHigh ? "up" : "down");
+    debug_print("DEBUG: MCU speed throttling disabled: ");debug_println(bSlow ? "down" : "up");
 #endif
 #endif
 }
