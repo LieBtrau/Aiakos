@@ -1,5 +1,4 @@
 #include "keyfob.h"
-#define DEBUG
 
 static void bleEvent(bleControl::EVENT ev);
 static void alertLevelEvent(byte *value, byte& length);
@@ -251,7 +250,9 @@ void KeyFob::alertEvent(byte* value, byte &length)
 {
     debug_print("Characteristic changed to: ");
     debug_printArray(value, length);
+#ifndef ARDUINO_SAM_DUE
     tone(tonePin, 3120, 500);
+#endif
 }
 
 void KeyFob::rfidEvent(byte* value, byte &length)
@@ -265,7 +266,7 @@ void KeyFob::rfidEvent(byte* value, byte &length)
     if(!_blePair.getRfidKey(array) || memcmp(array,value,4))
     {
     debug_println("Wrong data doesn't equal key");
-    print(value, length);
+    debug_printArray(value, length);
     return;
     }
     debug_print("Characteristic changed to: ");
@@ -279,7 +280,9 @@ bool KeyFob::storeKey()
     {
     return false;
     }
-    return cfg->setRfidKey(rfidkey);
+#ifndef ARDUINO_SAM_DUE
+return cfg->setRfidKey(rfidkey);
+#endif
 }
 
 void alertLevelEvent(byte* value, byte &length)

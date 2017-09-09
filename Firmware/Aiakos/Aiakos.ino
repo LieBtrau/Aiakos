@@ -102,19 +102,17 @@ KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
 void setup()
 {
     openDebug(9600);
+    debug_println("Waking up");
     ld=&device;
-    if(ld->setup() && ld->init())
+    if(!ld->setup() || !ld->init())
     {
-        debug_println("Init Ok");
-    }
-    else
-    {
-        debug_println("Init false");
+        debug_println("Setup failed");
         while(1);
     }
-    if(cfg.init())
+    if(!cfg.init())
     {
-        debug_println("Config valid");
+        debug_println("Config invalid");
+        while(1);
     }
 }
 
@@ -122,4 +120,5 @@ void loop()
 {
     ld->loop();
 }
+
 

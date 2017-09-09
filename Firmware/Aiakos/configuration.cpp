@@ -34,7 +34,9 @@ bool Configuration::loadData(){
         debug_print("Shared key: ");print(_config.keys[0].sharedKey,KEY_SIZE);
         debug_print("Remote ID: ");print(_config.keys[0].peerId,IDLENGTH);
     }
+#ifndef ARDUINO_SAM_DUE
     debug_print("rfidkey");print(_config.rfidkey, 4);
+#endif
 #endif
     return bResult;
 }
@@ -121,6 +123,7 @@ void Configuration::saveData(){
     EEPROM_writeAnything(0,_config);
 }
 
+#ifndef ARDUINO_SAM_DUE
 bool Configuration::setRfidKey(byte key[])
 {
     if(sizeof(key)!=sizeof(_config.rfidkey))
@@ -141,6 +144,6 @@ bool Configuration::getRfidKey(byte key[])
     memcpy(key, _config.rfidkey, sizeof(key));
     return true;
 }
-
+#endif
 
 

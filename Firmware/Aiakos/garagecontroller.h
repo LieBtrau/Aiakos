@@ -10,8 +10,6 @@ public:
     GarageController(byte ownAddress, Configuration* config, RH_RF95* rhLora, RH_Serial *prhSerial, byte cableDetectPin);
     bool setup();
     void loop();
-private:
-    const byte PULSE_PIN=5;
 };
 
 #endif // GARAGECONTROLLER_H

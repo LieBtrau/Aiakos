@@ -4,6 +4,7 @@ namespace
 {
 KryptoKnightComm* pk;
 Configuration* cfg;
+const byte PULSE_PIN=5;
 }
 void dataReceived(byte* data, byte length);
 void setHighMcuSpeed(bool bHigh);
@@ -28,6 +29,7 @@ bool GarageController::setup()
     }
 #ifdef ARDUINO_SAM_DUE
     initRng();
+#ifndef DEBUG
     //See §9.1 Peripheral identifiers of the SAM3X datasheet
     pmc_disable_periph_clk(2);      // real-time clock
     pmc_disable_periph_clk(3);      // real-time timer
@@ -66,6 +68,9 @@ bool GarageController::setup()
     pmc_disable_periph_clk(42);     // ethernet MAC - N/C
     pmc_disable_periph_clk(43);     // CAN controller 0
     pmc_disable_periph_clk(44);     // CAN controller 1
+#else
+    debug_println("Debug: No peripherals disabled to save power.");
+#endif    
     pinMode(13, OUTPUT);
     digitalWrite(13, LOW);
     setHighMcuSpeed(false);
@@ -73,6 +78,7 @@ bool GarageController::setup()
     k.setMessageReceivedHandler(dataReceived);
     k.setKeyRequestHandler(setKeyInfo);
     pinMode(PULSE_PIN, OUTPUT);
+    return true;
 }
 
 void GarageController::loop()
@@ -99,20 +105,17 @@ void GarageController::loop()
         }
     }else
     {
-#ifdef DEBUG
         if(cableDetect.rose())
         {
-            //on falling edge of cable detect, all keys must be cleared.
             debug_println("Leaving pairing mode");
         }
-#endif
         switch(k.loop())
         {
         case KryptoKnightComm::AUTHENTICATION_AS_PEER_OK:
-            Serial.println("Message received by remote initiator");
+            debug_println("Message received by remote initiator");
+            setHighMcuSpeed(false);
             break;
         case KryptoKnightComm::NO_AUTHENTICATION:
-            setHighMcuSpeed(false);
             break;
         case KryptoKnightComm::AUTHENTICATION_BUSY:
             setHighMcuSpeed(true);
@@ -123,9 +126,8 @@ void GarageController::loop()
 
 void dataReceived(byte* data, byte length)
 {
-    Serial.println("Event received with the following data:");
+    debug_println("Event received with the following data:");
     debug_printArray(data, length);
-#ifdef ROLE_GARAGE_CONTROLLER
     const byte PORTPULSE[4]={0xFE, 0xDC, 0xBA, 0x98};
     if(!memcmp(data,PORTPULSE,sizeof(PORTPULSE)))
     {
@@ -134,14 +136,17 @@ void dataReceived(byte* data, byte length)
         delay(500);
         digitalWrite(PULSE_PIN, LOW);
     }
-#endif
 }
 
 void setHighMcuSpeed(bool bHigh)
 {
 #ifdef ARDUINO_SAM_DUE
+#ifndef DEBUG
     pmc_set_writeprotect(false);
     pmc_mck_set_prescaler(bHigh ? 16 : 96);   // 84 MHz or 2.6MHz
+#else
+    debug_print("DEBUG: MCU speed throttling disabled: ");debug_println(bHigh ? "up" : "down");
+#endif
 #endif
 }
 

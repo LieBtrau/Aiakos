@@ -1,5 +1,7 @@
 #include "Arduino.h"
-#include "cryptoauthlib.h"      //for TRNG & serial number
+#ifndef ARDUINO_SAM_DUE
+#include "cryptoauthlib.h"      //for ATSHA204A chip for TRNG & serial number
+#endif
 #include "debug.h"
 
 //bool getSerialNumber(byte* bufout, byte length)

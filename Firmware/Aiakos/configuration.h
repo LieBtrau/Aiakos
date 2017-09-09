@@ -13,8 +13,10 @@ public:
     byte* getDefaultKey();
     byte* getDefaultId();
     byte* findKey(const byte* remoteId, byte length);
+#ifndef ARDUINO_SAM_DUE
     bool setRfidKey(byte key[]);
     bool getRfidKey(byte key[]);
+#endif
 private:
     static const byte KEY_SIZE=16;
     static const byte KEY_COUNT=2;
@@ -27,7 +29,9 @@ private:
     {
         byte nrOfValidKeys;
         SHARED_KEY keys[KEY_COUNT];
+#ifndef ARDUINO_SAM_DUE
         byte rfidkey[4];
+#endif
     }CONFIG;
     void initializeEEPROM();
     void saveData();
