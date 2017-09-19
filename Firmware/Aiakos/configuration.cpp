@@ -36,6 +36,9 @@ bool Configuration::loadData(){
     }
 #ifndef ARDUINO_SAM_DUE
     debug_print("rfidkey");print(_config.rfidkey, 4);
+    debug_print("rfidhandle: ");debug_println(_config.handleRfid, DEC);
+    debug_print("iashandle: ");debug_println(_config.handleIas, DEC);
+
 #endif
 #endif
     return bResult;
@@ -120,6 +123,9 @@ void Configuration::saveData(){
     debug_println("Saving data");
     debug_printArray(&_config.nrOfValidKeys,1);
     debug_printArray(_config.keys[0].sharedKey,16);
+    debug_println(_config.handleRfid, DEC);
+    debug_println(_config.handleIas, DEC);
+
     EEPROM_writeAnything(0,_config);
 }
 
@@ -144,6 +150,30 @@ bool Configuration::getRfidKey(byte key[])
     memcpy(key, _config.rfidkey, sizeof(key));
     return true;
 }
+
+word  Configuration::getRfidHandle()
+{
+    return _config.handleRfid;
+}
+
+word  Configuration::getIasHandle()
+{
+    return _config.handleIas;
+}
+
+void  Configuration::setRfidHandle(word handle)
+{
+    _config.handleRfid=handle;
+    saveData();
+}
+
+void  Configuration::setIasHandle(word handle)
+{
+    _config .handleIas=handle;
+    saveData();
+}
+
+
 #endif
 
 

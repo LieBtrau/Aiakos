@@ -31,7 +31,8 @@ private:
     }SER_PROTOCOL;
 
     bool initBlePeripheral();
-    bool storeKey();
+    bool storeBleData();
+    void sleep();
     byte buttonPin;
     byte tonePin;
     Bounce pushButton;

@@ -18,7 +18,7 @@
  * GND       G           GND     GND    G
  *
  *****************************************************
- * ATSHA204A for TRNG and unique serial number (bitbanged-I²C)
+ * ATSHA204A for TRNG and unique serial number (bitbanged-I²C, because Arduino Hardwire I²C buffers are too small)
  *****************************************************
                 Blue Pill   Nucleo   ATSHA204A
  *****************************************************
@@ -92,7 +92,7 @@ KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
 #elif defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
 RH_Serial rhStereoJack(Serial2);                                    //UART3: Serial port for pairing
 RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
-rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //for short range wireless
+rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //UART2
 bleControl ble(&rn);
 KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
 #endif
@@ -103,15 +103,15 @@ void setup()
 {
     openDebug(9600);
     debug_println("Waking up");
+    if(!cfg.init())
+    {
+        debug_println("Config invalid");
+        while(1);
+    }
     ld=&device;
     if(!ld->setup() || !ld->init())
     {
         debug_println("Setup failed");
-        while(1);
-    }
-    if(!cfg.init())
-    {
-        debug_println("Config invalid");
         while(1);
     }
 }

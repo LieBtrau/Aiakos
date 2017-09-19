@@ -16,6 +16,10 @@ public:
 #ifndef ARDUINO_SAM_DUE
     bool setRfidKey(byte key[]);
     bool getRfidKey(byte key[]);
+    word getRfidHandle();
+    word getIasHandle();
+    void setRfidHandle(word handle);
+    void setIasHandle(word handle);
 #endif
 private:
     static const byte KEY_SIZE=16;
@@ -31,6 +35,8 @@ private:
         SHARED_KEY keys[KEY_COUNT];
 #ifndef ARDUINO_SAM_DUE
         byte rfidkey[4];
+        word handleRfid;
+        word handleIas;
 #endif
     }CONFIG;
     void initializeEEPROM();
