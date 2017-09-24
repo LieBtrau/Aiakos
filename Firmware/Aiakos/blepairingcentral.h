@@ -6,8 +6,8 @@
 class blePairingCentral : BlePairing
 {
 public:
-    blePairingCentral(TX_Function tx_func, RX_Function rx_func, bleControl* ble):
-        BlePairing(tx_func, rx_func, ble){}
+    blePairingCentral(TX_Function tx_func, RX_Function rx_func, bleControl* ble, byte rfidKeyLength):
+    BlePairing(tx_func, rx_func, ble, rfidKeyLength){}
     void eventPasscodeGenerated();
     AUTHENTICATION_RESULT loop();
     byte* getRemoteBleAddress();

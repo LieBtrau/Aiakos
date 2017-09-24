@@ -19,7 +19,7 @@ public:
         AUTHENTICATION_BUSY,
     }AUTHENTICATION_RESULT;
 
-    BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl* ble);
+    BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl* ble, byte rfidKeyLength);
     virtual AUTHENTICATION_RESULT loop()=0;
 protected:
     typedef enum
@@ -32,7 +32,8 @@ protected:
     bool receiveData(byte data[], byte id);
     bleControl* _ble;
     unsigned long _commTimeOut;
-    byte rfidkey[4];
+    byte* rfidkey;
+    byte _rfidKeyLength;
 private:
     TX_Function _txfunc;
     RX_Function _rxfunc;

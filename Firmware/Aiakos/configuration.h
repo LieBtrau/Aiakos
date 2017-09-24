@@ -15,11 +15,12 @@ public:
     byte* findKey(const byte* remoteId, byte length);
 #ifndef ARDUINO_SAM_DUE
     bool setRfidKey(byte key[]);
-    bool getRfidKey(byte key[]);
+    bool equalsRfidKey(byte key[]);
     word getRfidHandle();
     word getIasHandle();
     void setRfidHandle(word handle);
     void setIasHandle(word handle);
+    static const byte RFID_KEY_SIZE=5;
 #endif
 private:
     static const byte KEY_SIZE=16;
@@ -31,12 +32,17 @@ private:
     }SHARED_KEY;
     typedef struct
     {
+        byte rfidkey[RFID_KEY_SIZE];
+        bool keyValid;
+    }RFID;
+    typedef struct
+    {
         byte nrOfValidKeys;
         SHARED_KEY keys[KEY_COUNT];
 #ifndef ARDUINO_SAM_DUE
-        byte rfidkey[4];
         word handleRfid;
         word handleIas;
+        RFID rfid;
 #endif
     }CONFIG;
     void initializeEEPROM();

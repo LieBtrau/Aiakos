@@ -12,11 +12,13 @@
 #include "blepairing.h"
 #include "debug.h"
 
-BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble):
+BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble, byte rfidKeyLength):
     _txfunc(tx_func),
     _rxfunc(rx_func),
-    _ble(ble)
+    _ble(ble),
+    _rfidKeyLength(rfidKeyLength)
 {
+    rfidkey=(byte*)malloc(rfidKeyLength);
 }
 
 bool BlePairing::sendData(byte data[], byte id)

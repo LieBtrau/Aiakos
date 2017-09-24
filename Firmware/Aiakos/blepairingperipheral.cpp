@@ -102,11 +102,11 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
 
 bool blePairingPeripheral::getRfidKey(byte key[])
 {
-    if(!key || sizeof(key)!=sizeof(rfidkey))
+    if(!key)
     {
         return false;
     }
-    memcpy(key, rfidkey, sizeof(rfidkey));
+    memcpy(key, rfidkey, _rfidKeyLength);
     return true;
 }
 

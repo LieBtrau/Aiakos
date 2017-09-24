@@ -35,7 +35,7 @@ bool Configuration::loadData(){
         debug_print("Remote ID: ");print(_config.keys[0].peerId,IDLENGTH);
     }
 #ifndef ARDUINO_SAM_DUE
-    debug_print("rfidkey");print(_config.rfidkey, 4);
+    debug_print("rfidkey");print(_config.rfid.rfidkey, RFID_KEY_SIZE);
     debug_print("rfidhandle: ");debug_println(_config.handleRfid, DEC);
     debug_print("iashandle: ");debug_println(_config.handleIas, DEC);
 
@@ -132,22 +132,24 @@ void Configuration::saveData(){
 #ifndef ARDUINO_SAM_DUE
 bool Configuration::setRfidKey(byte key[])
 {
-    if(sizeof(key)!=sizeof(_config.rfidkey))
-    {
-        return false;
-    }
-    memcpy(_config.rfidkey, key, sizeof(key));
+    memcpy(_config.rfid.rfidkey, key, RFID_KEY_SIZE);
+    _config.rfid.keyValid=true;
     saveData();
     return true;
 }
 
-bool Configuration::getRfidKey(byte key[])
+bool Configuration::equalsRfidKey(byte key[])
 {
-    if(sizeof(key)!=sizeof(_config.rfidkey))
+    if(!_config.rfid.keyValid)
     {
         return false;
     }
-    memcpy(key, _config.rfidkey, sizeof(key));
+    if(memcmp(_config.rfid.rfidkey, key, RFID_KEY_SIZE))
+    {
+        debug_println("Wrong data doesn't equal key");
+        debug_printArray(key, RFID_KEY_SIZE);
+        return false;
+    }
     return true;
 }
 

@@ -5,8 +5,8 @@
 class blePairingPeripheral : BlePairing
 {
 public:
-    blePairingPeripheral(TX_Function tx_func, RX_Function rx_func, bleControl* ble):
-        BlePairing(tx_func, rx_func, ble){}
+    blePairingPeripheral(TX_Function tx_func, RX_Function rx_func, bleControl* ble, byte rfidKeyLength):
+        BlePairing(tx_func, rx_func, ble, rfidKeyLength){}
     bool startPairing();
     void eventPasscodeInputRequested();
     void eventBondingBonded();
