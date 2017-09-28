@@ -11,7 +11,7 @@ public:
     void eventPasscodeGenerated();
     AUTHENTICATION_RESULT loop();
     byte* getRemoteBleAddress();
-    bool init(byte key[]);
+    void init(byte key[]);
 private:
     typedef enum
     {

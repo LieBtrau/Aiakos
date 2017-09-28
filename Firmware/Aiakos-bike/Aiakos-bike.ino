@@ -21,20 +21,27 @@ bool writeDataSer(byte* data, byte length);
 
 namespace
 {
+const byte RFID_KEY_SIZE=5;
+const byte CABLE_DETECT_PIN=6;
+const byte BUTTON_PIN=25;
+byte rfid_key[RFID_KEY_SIZE]={0xAA,0xAB,0xAC,0xAD,0xAE};
 RH_Serial rhSerial(Serial2);                    //UART3
 RHReliableDatagram mgrSerial(rhSerial, 3);
 RHReliableDatagram* pmgrSer;
+/* WAKE_SW (7)  ->  3
+ * BT_ACTIVE(12)->  4
+ * WAKE_HW(15)  ->  5
+ * enPwr        ->  7
+ */
 rn4020 rn(Serial1, 3, 4, 5, 7);                 //UART1, for short range wireless
 bleControl ble(&rn);
-blePairingCentral blePair(writeDataSer, readDataSer, &ble);
+blePairingCentral blePair(writeDataSer, readDataSer, &ble, RFID_KEY_SIZE);
 byte peerAddress;
 bool bConnected;
 unsigned long buttonTimer=0;
 Bounce cableDetect=Bounce();
 Bounce pushButton=Bounce();
-const byte CABLE_DETECT_PIN=6;
-const byte BUTTON_PIN=25;
-btCharacteristic rfid_key("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
+btCharacteristic rfid("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
                           "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
                           btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
                           btCharacteristic::ENCR_W);                     //security
@@ -102,10 +109,10 @@ void loop()
             if(millis()-buttonTimer<1000)
             {
                 //open door
-                byte array[4]={0xAA,0xAB,0xAC,0xAD};
+
                 if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
-                    if(ble.writeRemoteCharacteristic(&rfid_key, array,4))
+                    if(ble.writeRemoteCharacteristic(&rfid, rfid_key,RFID_KEY_SIZE))
                     {
                         debug_println("RFID Value written");
                     }
@@ -182,7 +189,7 @@ bool initBleCentral()
 {
     char dataname[20];
     const char BT_NAME_BIKE[]="AiakosBike";
-    if(!ble.init())
+    if(!ble.init(115200))
     {
         debug_println("RN4020 not set up");
         return false;
@@ -203,13 +210,8 @@ bool initBleCentral()
             return false;
         }
     }
-    rn.getRemoteHandle(&rfid_key);
-    byte array[4]={0xAA,0xAB,0xAC,0xAD};
-    if(!blePair.init(array))
-    {
-        return false;
-    }
-    rn.getRemoteHandle(&rfid_key);
+    rn.getRemoteHandle(&rfid);
+    blePair.init(rfid_key);
     return ble.beginCentral();
 }
 

@@ -21,7 +21,7 @@ bool blePairingPeripheral::startPairing()
         return false;
     }
     //MAC address is sent through (wired) serial connection to the central.
-    if(!sendData(rmac,REMOTE_MAC))
+    if(!sendData(rmac,length,REMOTE_MAC))
     {
         return false;
     }
@@ -47,6 +47,7 @@ void blePairingPeripheral::eventBondingBonded()
 
 blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
 {
+    byte length;
     _ble->loop();
     if(millis()>_commTimeOut+7000)
     {
@@ -60,14 +61,16 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
     case WAITING_FOR_START:
         return NO_AUTHENTICATION;
     case WAITING_FOR_RFID_KEY:
-        if(receiveData(rfidkey,RFID_KEY))
+        length=5;
+        if(receiveData(rfidkey,length, RFID_KEY))
         {
             _state=WAITING_FOR_PASSCODE;
         }
         return AUTHENTICATION_BUSY;
     case WAITING_FOR_PASSCODE:
         byte passArray[4];
-        if(receiveData(passArray, PASSCODE))
+        length=4;
+        if(receiveData(passArray, length, PASSCODE))
         {
             for(byte i=0;i<4;i++)
             {

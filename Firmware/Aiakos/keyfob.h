@@ -33,6 +33,7 @@ private:
     bool initBlePeripheral();
     bool storeBleData();
     void sleep();
+    bool verifyRfidKey(byte *value);
     byte buttonPin;
     byte tonePin;
     Bounce pushButton;

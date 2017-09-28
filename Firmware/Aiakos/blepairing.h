@@ -28,8 +28,8 @@ protected:
         PASSCODE,
         RFID_KEY
     }PAIRING_MSGS;
-    bool sendData(byte data[], byte id);
-    bool receiveData(byte data[], byte id);
+    bool sendData(byte data[], byte length, byte id);
+    bool receiveData(byte data[], byte &length, byte id);
     bleControl* _ble;
     unsigned long _commTimeOut;
     byte* rfidkey;

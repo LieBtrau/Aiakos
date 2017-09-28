@@ -21,24 +21,22 @@ BlePairing::BlePairing(TX_Function tx_func, RX_Function rx_func, bleControl *ble
     rfidkey=(byte*)malloc(rfidKeyLength);
 }
 
-bool BlePairing::sendData(byte data[], byte id)
+bool BlePairing::sendData(byte data[], byte length, byte id)
 {
-    byte lengthIn=sizeof(data);
-    byte dataOut[1+lengthIn];
+    byte dataOut[1+length];
     dataOut[0]=id;
-    memcpy(dataOut+1, data, lengthIn);
-    return _txfunc(dataOut, 1+lengthIn);
+    memcpy(dataOut+1, data, length);
+    return _txfunc(dataOut, 1+length);
 }
 
-bool BlePairing::receiveData(byte data[], byte id)
+bool BlePairing::receiveData(byte data[], byte& length, byte id)
 {
     if(!data)
     {
         return false;
     }
-    byte length=sizeof(data)+1;
-    byte dataIn[length];
-    if(!_rxfunc(dataIn, length) || length!=sizeof(data)+1 || dataIn[0]!=id)
+    byte dataIn[++length];
+    if(!_rxfunc(dataIn, length) || dataIn[0]!=id)
     {
         return false;
     }

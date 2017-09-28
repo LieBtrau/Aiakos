@@ -1,13 +1,8 @@
 #include "blepairingcentral.h"
 
-bool blePairingCentral::init(byte key[])
+void blePairingCentral::init(byte key[])
 {
-    if(sizeof(rfidkey) != sizeof(key))
-    {
-        return false;
-    }
-    memcpy(rfidkey, key, sizeof(key));
-    return _ble->isBondedTo(_remoteBleAddress);
+    memcpy(rfidkey, key, _rfidKeyLength);
 }
 
 byte* blePairingCentral::getRemoteBleAddress()
@@ -26,7 +21,7 @@ void blePairingCentral::eventPasscodeGenerated()
         data[i]=passcode & 0xFF;
         passcode>>=8;
     }
-    if(_state==PAIR_BLE_PERIPHERAL && sendData(data,PASSCODE))
+    if(_state==PAIR_BLE_PERIPHERAL && sendData(data, 4, PASSCODE))
     {
         pinCodeSent=true;
     }
@@ -34,6 +29,7 @@ void blePairingCentral::eventPasscodeGenerated()
 
 blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
 {
+    byte length=sizeof(_remoteBleAddress);
     _ble->loop();
     if(millis()>_commTimeOut+7000)
     {
@@ -45,7 +41,7 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
     switch(_state)
     {
     case WAITING_FOR_REMOTE_MAC:
-        if(receiveData(_remoteBleAddress, REMOTE_MAC))
+        if(receiveData(_remoteBleAddress, length, REMOTE_MAC))
         {
             _commTimeOut=millis();
             _state=SENDING_RFID_CODE;
@@ -54,7 +50,7 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
         }
         return AUTHENTICATION_BUSY;
     case SENDING_RFID_CODE:
-        if(!sendData(rfidkey,RFID_KEY))
+        if(!sendData(rfidkey, _rfidKeyLength, RFID_KEY))
         {
             _state=WAITING_FOR_REMOTE_MAC;
             return NO_AUTHENTICATION;
