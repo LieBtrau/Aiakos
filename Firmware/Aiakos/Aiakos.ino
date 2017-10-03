@@ -1,5 +1,8 @@
-#include "loradevice.h"
+
+//#include "loradevice.h"
 #include "debug.h"
+#include "STM32Sleep.h"
+#include <RTClock.h>
 
 /* Hardware Connections
  * **************************************************
@@ -66,59 +69,74 @@
 #error No device type defined.
 #endif
 
-namespace
-{
-Configuration cfg;
-LoRaDevice* ld;
-}
+//namespace
+//{
+//Configuration cfg;
+//LoRaDevice* ld;
+//}
 
-#ifdef ROLE_GARAGE_CONTROLLER
-#include "garagecontroller.h"
+//#ifdef ROLE_GARAGE_CONTROLLER
+//#include "garagecontroller.h"
+//namespace
+//{
+//RH_RF95 rhLoRa(4,3);
+//RH_Serial rhStereoJack(Serial1);
+//GarageController device(1, &cfg, &rhLoRa, &rhStereoJack, 2);
+//}
+//#elif defined(ROLE_KEYFOB)
+//#include "keyfob.h"
+//#include "blecontrol.h"
 namespace
 {
-RH_RF95 rhLoRa(4,3);
-RH_Serial rhStereoJack(Serial1);
-GarageController device(1, &cfg, &rhLoRa, &rhStereoJack, 2);
+//#ifdef ARDUINO_STM_NUCLEO_F103RB
+//RH_Serial rhStereoJack(Serial1);
+//RH_RF95 rhLoRa(A2,5);//NSS, DIO0
+//KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
+//#elif defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
+//RH_Serial rhStereoJack(Serial2);                                    //UART3: Serial port for pairing
+//RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
+//rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //UART2
+//bleControl ble(&rn);
+//KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
+RTClock rt(RTCSEL_LSE);
+const byte pinLED=PC13; //Active low
+unsigned long ledTimer;
+//#endif
 }
-#elif defined(ROLE_KEYFOB)
-#include "keyfob.h"
-#include "blecontrol.h"
-namespace
-{
-#ifdef ARDUINO_STM_NUCLEO_F103RB
-RH_Serial rhStereoJack(Serial1);
-RH_RF95 rhLoRa(A2,5);//NSS, DIO0
-KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
-#elif defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
-RH_Serial rhStereoJack(Serial2);                                    //UART3: Serial port for pairing
-RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
-rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //UART2
-bleControl ble(&rn);
-KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
-#endif
-}
-#endif
+//#endif
 
 void setup()
 {
+    pinMode(pinLED, OUTPUT);
+    ledTimer=millis();
     openDebug(9600);
     debug_println("Waking up");
-    if(!cfg.init())
-    {
-        debug_println("Config invalid");
-        while(1);
-    }
-    ld=&device;
-    if(!ld->setup() || !ld->init())
-    {
-        debug_println("Setup failed");
-        while(1);
-    }
+    delay(1000);
+    sleepAndWakeUp(STANDBY);
+//    if(!cfg.init())
+//    {
+//        debug_println("Config invalid");
+//        while(1);
+//    }
+//    ld=&device;
+//    if(!ld->setup() || !ld->init())
+//    {
+//        debug_println("Setup failed");
+////        while(1);
+//    }
 }
 
 void loop()
 {
-    ld->loop();
+//    ld->loop();
+    ledToggle(500);
 }
 
-
+void ledToggle(unsigned long timeOut)
+{
+    if(millis()>ledTimer+timeOut)
+    {
+        digitalWrite(pinLED, digitalRead(pinLED) ? 0 : 1);
+        ledTimer=millis();
+    }
+}

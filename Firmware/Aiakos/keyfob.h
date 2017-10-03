@@ -4,6 +4,7 @@
 #include "loradevice.h"
 #include "blepairingperipheral.h"
 #include "blecontrol.h"
+#include "STM32Sleep.h"
 
 class KeyFob : public LoRaDevice
 {

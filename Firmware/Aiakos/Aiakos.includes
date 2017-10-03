@@ -119,3 +119,4 @@
 ../../../RadioHead
 ../../../Click_BLE2_RN4020/library/Arduino
 ../../../arduino-debug
+../../../STM32Sleep/src

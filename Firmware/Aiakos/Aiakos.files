@@ -92,3 +92,5 @@ blepairing.h
 ../../../arduino-debug/debug.h
 ../../../arduino-debug/insist.h
 ../../../arduino-debug/log.h
+../../../STM32Sleep/src/STM32Sleep.cpp
+../../../STM32Sleep/src/STM32Sleep.h

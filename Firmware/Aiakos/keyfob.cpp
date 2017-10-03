@@ -294,6 +294,8 @@ void KeyFob::sleep()
     debug_println("Zzz...zzz...");
     rhLoRa->sleep();
     _ble->sleep();
+    delay(500);
+    sleepAndWakeUp(STANDBY);
 }
 
 bool KeyFob::verifyRfidKey(byte* value)
