@@ -134,6 +134,7 @@ void setup()
 void loop()
 {
     ld->loop();
+#ifdef DEBUG
     ledToggle(500);
 }
 
@@ -144,4 +145,5 @@ void ledToggle(unsigned long timeOut)
         digitalWrite(pinLED, digitalRead(pinLED) ? 0 : 1);
         ledTimer=millis();
     }
+#endif
 }
