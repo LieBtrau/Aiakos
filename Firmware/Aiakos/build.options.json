@@ -1,0 +1,10 @@
+{
+  "builtInLibrariesFolders": "/home/ctack/Downloads/arduino-1.6.9/libraries",
+  "customBuildProperties": "build.warn_data_percentage=75",
+  "fqbn": "Arduino_STM32:STM32F1:genericSTM32F103C:device_variant=STM32F103CB,upload_method=serialMethod,cpu_speed=speed_72mhz",
+  "hardwareFolders": "/home/ctack/Downloads/arduino-1.6.9/hardware,/home/ctack/.arduino15/packages",
+  "otherLibrariesFolders": "/home/ctack/Arduino/libraries",
+  "runtime.ide.version": "10609",
+  "sketchLocation": "/home/ctack/git/Aiakos/Firmware/Aiakos/Aiakos.ino",
+  "toolsFolders": "/home/ctack/Downloads/arduino-1.6.9/tools-builder,/home/ctack/.arduino15/packages"
+}
