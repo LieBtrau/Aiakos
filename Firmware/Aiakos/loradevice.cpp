@@ -37,17 +37,6 @@ bool LoRaDevice::setup()
         debug_println("Serial init failed");
         return false;
     }
-    return true;
-}
-
-void LoRaDevice::setPeerAddress(byte address)
-{
-    peerAddress=address;
-}
-
-
-bool LoRaDevice::init()
-{
     pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
     cableDetect.attach(CABLE_DETECT_PIN);
     cableDetect.interval(100); // interval in ms
@@ -55,6 +44,11 @@ bool LoRaDevice::init()
     return (getSerialNumber(buf, Configuration::IDLENGTH)
             && k.init(buf,Configuration::IDLENGTH)
             && ecdh.init(buf, Configuration::IDLENGTH));
+}
+
+void LoRaDevice::setPeerAddress(byte address)
+{
+    peerAddress=address;
 }
 
 bool writeDataSer(byte* data, byte length)

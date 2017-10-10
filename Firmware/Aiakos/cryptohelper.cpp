@@ -90,15 +90,22 @@ int RNG(byte *dest, unsigned size)
 }
 #elif defined(ARDUINO_SAM_DUE)
 
+static byte rngEnabled=false;
 void initRng()
 {
     pmc_enable_periph_clk(ID_TRNG);
     trng_enable(TRNG);
     delay(10);
+    rngEnabled=true;
 }
 
 int RNG(byte *dest, unsigned size)
 {
+    if(!rngEnabled)
+    {
+        debug_println("RNG not enabled.");
+        return 0;
+    }
     while (size)
     {
         uint32_t randomnum = trng_read_output_data(TRNG);

@@ -28,7 +28,7 @@ bool Configuration::loadData(){
         debug_println("Loading: config invalid");
     }
     debug_println("Loading data");
-    debug_print("Number of valid keys: "); print(&_config.nrOfValidKeys, 1);
+    debug_print("Number of valid keys: "); debug_println(_config.nrOfValidKeys, DEC);
     if(_config.nrOfValidKeys)
     {
         debug_print("Shared key: ");print(_config.keys[0].sharedKey,KEY_SIZE);
@@ -88,12 +88,12 @@ void Configuration::addKey(const byte *remoteId, const byte* key)
 
 byte* Configuration::getDefaultKey()
 {
-    return _config.nrOfValidKeys ? _config.keys[0].sharedKey : 0;
-    }
+    return (_config.nrOfValidKeys ? _config.keys[0].sharedKey : 0);
+}
 
-    byte* Configuration::getDefaultId()
-    {
-    return _config.nrOfValidKeys ? _config.keys[0].peerId : 0;
+byte* Configuration::getDefaultId()
+{
+    return (_config.nrOfValidKeys ? _config.keys[0].peerId : 0);
 }
 
 byte Configuration::getIdLength()
@@ -123,9 +123,10 @@ void Configuration::saveData(){
     debug_println("Saving data");
     debug_printArray(&_config.nrOfValidKeys,1);
     debug_printArray(_config.keys[0].sharedKey,16);
+#ifndef ARDUINO_SAM_DUE
     debug_println(_config.handleRfid, DEC);
     debug_println(_config.handleIas, DEC);
-
+#endif
     EEPROM_writeAnything(0,_config);
 }
 

@@ -94,3 +94,5 @@ blepairing.h
 ../../../arduino-debug/log.h
 ../../../STM32Sleep/src/STM32Sleep.cpp
 ../../../STM32Sleep/src/STM32Sleep.h
+../../../bounce2/Bounce2.cpp
+../../../bounce2/Bounce2.h

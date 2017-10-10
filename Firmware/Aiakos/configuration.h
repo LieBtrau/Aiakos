@@ -30,11 +30,13 @@ private:
         byte sharedKey[KEY_SIZE];
         byte peerId[IDLENGTH];
     }SHARED_KEY;
+#ifndef ARDUINO_SAM_DUE
     typedef struct
     {
         byte rfidkey[RFID_KEY_SIZE];
         bool keyValid;
     }RFID;
+#endif
     typedef struct
     {
         byte nrOfValidKeys;

@@ -33,7 +33,7 @@ blePairingCentral::AUTHENTICATION_RESULT blePairingCentral::loop()
     _ble->loop();
     if(millis()>_commTimeOut+7000)
     {
-        debug_println("Timeout");
+        debug_println("Blepairing Timeout");
         _commTimeOut=millis();
         _state=WAITING_FOR_REMOTE_MAC;
         return NO_AUTHENTICATION;

@@ -18,7 +18,6 @@ class LoRaDevice
 public:
     virtual bool setup();
     virtual void loop()=0;
-    bool init();
 protected:
     LoRaDevice(byte ownAddress, RH_RF95* prhLora, RH_Serial* prhSerial, byte cableDetectPin);
     void setPeerAddress(byte address);

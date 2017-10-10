@@ -24,10 +24,6 @@ GarageController::GarageController(byte ownAddress,
 
 bool GarageController::setup()
 {
-    if(!LoRaDevice::setup())
-    {
-        return false;
-    }
 #ifdef ARDUINO_SAM_DUE
     initRng();
 #ifndef DEBUG
@@ -76,6 +72,10 @@ bool GarageController::setup()
     digitalWrite(13, LOW);
     setSlowMcuSpeed(true);
 #endif
+    if(!LoRaDevice::setup())
+    {
+        return false;
+    }
     k.setMessageReceivedHandler(dataReceived);
     k.setKeyRequestHandler(setKeyInfo);
     pinMode(PULSE_PIN, OUTPUT);
@@ -150,7 +150,11 @@ void setSlowMcuSpeed(bool bSlow)
         pmc_mck_set_prescaler(bSlow ? 96 : 16);   // 2.6 MHz or 84MHz
     }
 #else
-    debug_print("DEBUG: MCU speed throttling disabled: ");debug_println(bSlow ? "down" : "up");
+    if(slowMcu!=bSlow)
+    {
+        slowMcu=bSlow;
+        debug_print("DEBUG: MCU speed throttling disabled: ");debug_println(bSlow ? "down" : "up");
+    }
 #endif
 #endif
 }

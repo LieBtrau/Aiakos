@@ -1,3 +1,5 @@
+#ifndef ARDUINO_SAM_DUE
+
 #include "keyfob.h"
 
 static void bleEvent(bleControl::EVENT ev);
@@ -66,6 +68,41 @@ bool KeyFob::setup()
     pinMode(buttonPin, INPUT_PULLUP);
     pushButton.attach(buttonPin);
     pushButton.interval(100); // interval in ms
+    if(!wokeUpFromStandby())
+    {
+        sleep();
+    }
+    loopmode=(!cableDetect.read() ? PAIRING : NORMAL);
+    switch(loopmode)
+    {
+    case PAIRING:
+        debug_println("Starting BLE pairing...");
+        serProtocol=BLE_BOND;
+        setPeerAddress(3);
+        if(_blePair.startPairing())
+        {
+            return true;
+        }
+        debug_println("Starting ECDH pairing...");
+        serProtocol=ECDHCOMM;
+        setPeerAddress(1);
+        k.reset();
+        if(!ecdh.startPairing())
+        {
+            debug_println("ECDH pairing doesn't start");
+            return false;
+        }
+        break;
+    case NORMAL:
+        ecdh.reset();
+        debug_println("Initiator starts authentication");
+        if(!k.sendMessage(payloadKryptoKnight,sizeof(payloadKryptoKnight), cfg->getDefaultId(), cfg->getIdLength(), cfg->getDefaultKey()))
+        {
+            debug_println("Sending message failed.");
+            return false;
+        }
+        break;
+    }
     return true;
 }
 
@@ -80,29 +117,9 @@ void KeyFob::loop()
         }
         connectionTimeout=millis();
     }
-    cableDetect.update();
-    pushButton.update();
-    if(!cableDetect.read())
+    switch(loopmode)
     {
-        //Secure pairing mode
-        if(pushButton.fell())
-        {
-            debug_println("Starting BLE pairing...");
-            serProtocol=BLE_BOND;
-            setPeerAddress(3);
-            if(!_blePair.startPairing())
-            {
-                debug_println("Starting ECDH pairing...");
-                serProtocol=ECDHCOMM;
-                setPeerAddress(1);
-                k.reset();
-                if(!ecdh.startPairing())
-                {
-                    debug_println("ECDH pairing doesn't start");
-                }
-                return;
-            }
-        }
+    case PAIRING:
         switch(serProtocol)
         {
         case ECDHCOMM:
@@ -113,6 +130,8 @@ void KeyFob::loop()
                 cfg->addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
                 break;
             case EcdhComm::NO_AUTHENTICATION:
+                sleep();
+                break;
             case EcdhComm::AUTHENTICATION_BUSY:
                 break;
             case EcdhComm::UNKNOWN_DATA:
@@ -142,24 +161,19 @@ void KeyFob::loop()
             }
             break;
         }
-    }else
-    {
-        //Authenticating remote peer mode
-        if(pushButton.fell())
+        break;
+    case NORMAL:
+        switch(k.loop())
         {
-            ecdh.reset();
-            debug_println("Initiator starts authentication");
-            if(!k.sendMessage(payloadKryptoKnight,sizeof(payloadKryptoKnight), cfg->getDefaultId(), cfg->getIdLength(), cfg->getDefaultKey()))
-            {
-                debug_println("Sending message failed.");
-                return;
-            }
-        }
-        if(k.loop()==KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK)
-        {
-            debug_println("Message received by peer and acknowledged");
+            case KryptoKnightComm::AUTHENTICATION_AS_INITIATOR_OK:
+                debug_println("Message received by peer and acknowledged");
+                break;
+            case KryptoKnightComm::NO_AUTHENTICATION:
+                sleep();
+            break;
         }
         _ble->loop();
+        break;
     }
 }
 
@@ -284,17 +298,17 @@ bool KeyFob::storeBleData()
     {
         return false;
     }
-#ifndef ARDUINO_SAM_DUE
     return cfg->setRfidKey(rfidkey);
-#endif
 }
 
 void KeyFob::sleep()
 {
     debug_println("Zzz...zzz...");
+#ifdef DEBUG
+    delay(500);
+#endif
     rhLoRa->sleep();
     _ble->sleep();
-    delay(500);
     sleepAndWakeUp(STANDBY);
 }
 
@@ -322,3 +336,4 @@ void rfidEvent(byte* value, byte &length)
 {
     thiskeyfob->rfidEvent(value, length);
 }
+#endif

@@ -1,6 +1,8 @@
 #ifndef KEYFOB_H
 #define KEYFOB_H
 
+#ifndef ARDUINO_SAM_DUE
+
 #include "loradevice.h"
 #include "blepairingperipheral.h"
 #include "blecontrol.h"
@@ -30,7 +32,12 @@ private:
         BLE_BOND,
         UNKNOWN
     }SER_PROTOCOL;
-
+    typedef enum
+    {
+        NONE,
+        PAIRING,
+        NORMAL
+    }LOOP_MODE;
     bool initBlePeripheral();
     bool storeBleData();
     void sleep();
@@ -41,5 +48,7 @@ private:
     SER_PROTOCOL serProtocol;
     bleControl* _ble;
     blePairingPeripheral _blePair;
+    LOOP_MODE loopmode;
 };
 #endif // KEYFOB_H
+#endif

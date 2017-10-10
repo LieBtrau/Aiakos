@@ -51,7 +51,7 @@ blePairingPeripheral::AUTHENTICATION_RESULT blePairingPeripheral::loop()
     _ble->loop();
     if(millis()>_commTimeOut+7000)
     {
-        debug_println("Timeout");
+        debug_println("Blepairing Timeout");
         _commTimeOut=millis();
         _state = WAITING_FOR_START;
         return NO_AUTHENTICATION;
