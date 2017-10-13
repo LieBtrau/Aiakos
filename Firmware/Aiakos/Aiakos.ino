@@ -102,7 +102,7 @@ KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, 25, 6, &ble);
 #elif defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
 RH_Serial rhStereoJack(Serial2);                                    //UART3: Serial port for pairing
 RH_RF95 rhLoRa(PA4,PA12);                                           //NSS, DIO0 : for long range wireless
-rn4020 rn(Serial1, PB12, PB15, PB14, PB13);                         //UART2
+rn4020 rn(Serial1, PB12, PB15, PB14, PB13, PA15);                   //UART2
 bleControl ble(&rn);
 KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA11, PB1, &ble, PA1);
 RTClock rt(RTCSEL_LSE);

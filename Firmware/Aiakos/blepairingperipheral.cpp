@@ -7,10 +7,12 @@ bool blePairingPeripheral::startPairing()
     byte length;
     if( (_state!=WAITING_FOR_START) )
     {
+        debug_println("Wrong state");
         return false;
     }
     if(!_ble->unbond())
     {
+        debug_println("Can't unbond");
         return false;
     }
     //Use 100ms beacon interval, so that connecting works smoother.
@@ -18,11 +20,13 @@ bool blePairingPeripheral::startPairing()
     //Peripheral get its MAC address from BLE module
     if(!_ble->getLocalMacAddress(rmac, length) || length!=6)
     {
+        debug_println("Local MAC-address invalid");
         return false;
     }
     //MAC address is sent through (wired) serial connection to the central.
     if(!sendData(rmac,length,REMOTE_MAC))
     {
+        debug_println("Sending MAC failed.");
         return false;
     }
     _commTimeOut=millis();

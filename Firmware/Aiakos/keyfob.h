@@ -38,7 +38,7 @@ private:
         PAIRING,
         NORMAL
     }LOOP_MODE;
-    bool initBlePeripheral();
+    bool initBlePeripheral(bool &rfidKeyVerified);
     bool storeBleData();
     void sleep();
     bool verifyRfidKey(byte *value);
