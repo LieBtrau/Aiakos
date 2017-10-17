@@ -22,6 +22,7 @@ public:
            );
     bool setup();
     void loop();
+    void getInitialPinStates();
     void event(bleControl::EVENT ev);
     void rfidEvent(byte* value, byte &length);
     void alertEvent(byte* value, byte &length);
@@ -38,6 +39,12 @@ private:
         PAIRING,
         NORMAL
     }LOOP_MODE;
+    typedef enum
+    {
+        NO_SOURCE,
+        PUSHBUTTON,
+        BLE_CONNECTION
+    }WAKEUP_SOURCE;
     bool initBlePeripheral(bool &rfidKeyVerified);
     bool storeBleData();
     void sleep();
@@ -49,6 +56,7 @@ private:
     bleControl* _ble;
     blePairingPeripheral _blePair;
     LOOP_MODE loopmode;
+    WAKEUP_SOURCE wakeupsource;
 };
 #endif // KEYFOB_H
 #endif

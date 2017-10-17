@@ -126,6 +126,8 @@ void Configuration::saveData(){
 #ifndef ARDUINO_SAM_DUE
     debug_println(_config.handleRfid, DEC);
     debug_println(_config.handleIas, DEC);
+    debug_printArray(_config.rfid.rfidkey,RFID_KEY_SIZE);
+    debug_println(_config.rfid.keyValid);
 #endif
     EEPROM_writeAnything(0,_config);
 }

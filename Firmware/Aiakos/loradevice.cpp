@@ -37,13 +37,17 @@ bool LoRaDevice::setup()
         debug_println("Serial init failed");
         return false;
     }
-    pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
-    cableDetect.attach(CABLE_DETECT_PIN);
-    cableDetect.interval(100); // interval in ms
     byte buf[10];
     return (getSerialNumber(buf, Configuration::IDLENGTH)
             && k.init(buf,Configuration::IDLENGTH)
             && ecdh.init(buf, Configuration::IDLENGTH));
+}
+
+void LoRaDevice::getInitialPinStates()
+{
+    pinMode(CABLE_DETECT_PIN, INPUT_PULLUP);
+    cableDetect.attach(CABLE_DETECT_PIN);
+    cableDetect.interval(100); // interval in ms
 }
 
 void LoRaDevice::setPeerAddress(byte address)

@@ -114,6 +114,11 @@ const byte pinLED=PC13; //Active low
 
 void setup()
 {
+    ld=&device;
+    ld->getInitialPinStates();
+//    pinMode(PA8, OUTPUT);
+//    digitalWrite(PA8, HIGH);//It takes 463ms to get here
+//    delay(100);
     pinMode(pinLED, OUTPUT);
     ledTimer=millis();
     openDebug(9600);
@@ -123,7 +128,6 @@ void setup()
         debug_println("Config invalid");
         while(1);
     }
-    ld=&device;
     if(!ld->setup())
     {
         debug_println("Setup failed");

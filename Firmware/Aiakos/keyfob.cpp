@@ -54,6 +54,34 @@ KeyFob::KeyFob(byte ownAddress,
     thiskeyfob=this;
 }
 
+/* Getting status of some GPIOs as early as possible after startup.
+ * This allows to check what is the wakeup source.
+ * The BLE connection only takes 280ms, it takes 460ms to get in the "Keyfob::setup()" function, so we would
+ * always be too late to detect it.
+ * The same holds for the pushbutton.  If the user only gives it a short push, the "Keyfob::setup()" function
+ * would be too late to detect it.
+ */
+void KeyFob::getInitialPinStates()
+{
+    LoRaDevice::getInitialPinStates();
+    loopmode=(!cableDetect.read() ? PAIRING : NORMAL);
+    pinMode(buttonPin, INPUT);
+    pushButton.attach(buttonPin);
+    pushButton.interval(100); // interval in ms
+    //Find wakeup source : pushbutton or BLE-module
+    if(!pushButton.read())
+    {
+        wakeupsource=PUSHBUTTON;
+        return;
+    }
+    if(_ble->isConnected())
+    {
+        wakeupsource=BLE_CONNECTION;
+        return;
+    }
+}
+
+
 bool KeyFob::setup()
 {
     bool rfidKeyOk=false;
@@ -65,12 +93,11 @@ bool KeyFob::setup()
     {
         sleep();
     }
-    loopmode=(!cableDetect.read() ? PAIRING : NORMAL);
     switch(loopmode)
     {
     case PAIRING:
         ecdh.reset();
-        if(!initBlePeripheral(rfidKeyOk))
+        if((!initBlePeripheral(rfidKeyOk)) ||  (!_ble->startAdvertizement(5000)))
         {
             debug_println("Ble init failed.");
             return false;
@@ -93,13 +120,13 @@ bool KeyFob::setup()
         }
         break;
     case NORMAL:
-        pinMode(buttonPin, INPUT);
-        pushButton.attach(buttonPin);
-        pushButton.interval(100); // interval in ms
-        //Find wakeup source : pushbutton or BLE-module
-        if(_ble->isConnected())
+        switch(wakeupsource)
         {
-            //BLE-module is wakeup source
+        case NO_SOURCE:
+            debug_println("No valid wakeup source");
+            return false;
+        case BLE_CONNECTION:
+            debug_println("BleConnection waking");
             if(!initBlePeripheral(rfidKeyOk))
             {
                 debug_println("Ble init failed.");
@@ -110,12 +137,16 @@ bool KeyFob::setup()
                 debug_println("Key not ok.");
                 return false;
             }
-        }
-        debug_println("Initiator starts authentication");
-        if(!k.sendMessage(payloadKryptoKnight,sizeof(payloadKryptoKnight), cfg->getDefaultId(), cfg->getIdLength(), cfg->getDefaultKey()))
-        {
-            debug_println("Sending message failed.");
-            return false;
+            //no break here
+        case PUSHBUTTON:
+            debug_println("Pushbutton waking");
+            debug_println("Initiator starts authentication");
+            if(!k.sendMessage(payloadKryptoKnight,sizeof(payloadKryptoKnight), cfg->getDefaultId(), cfg->getIdLength(), cfg->getDefaultKey()))
+            {
+                debug_println("Sending message failed.");
+                return false;
+            }
+            break;
         }
         break;
     }
@@ -167,6 +198,7 @@ void KeyFob::loop()
                 if(!storeBleData())
                 {
                     debug_println("rfidkey can't be stored");
+                    return;
                 }
                 break;
             case BlePairing::NO_AUTHENTICATION:
@@ -213,6 +245,7 @@ void KeyFob::event(bleControl::EVENT ev)
             return;
         }
         bConnected=false;
+        sleep();
         break;
     case bleControl::EV_CONNECTION_UP:
         debug_println("Connection up");
@@ -273,18 +306,13 @@ bool KeyFob::initBlePeripheral(bool& rfidKeyVerified)
         rfidKeyVerified=verifyRfidKey(value);
     }
 
-    bool bRet=true;
     if(!_ble->beginPeripheral(_localCharacteristics, 2))
     {
         return false;
     }
 
-    if(_ble->isBonded())
-    {
-        bRet= _ble->startAdvertizement(5000);
-    }
     debug_print("BLE setup took [ms]: ");debug_println(millis()-ulStart, DEC);
-    return bRet;
+    return true;
 }
 
 void KeyFob::alertEvent(byte* value, byte &length)
@@ -323,11 +351,15 @@ bool KeyFob::storeBleData()
 void KeyFob::sleep()
 {
     debug_println("Zzz...zzz...");
+    if(loopmode==PAIRING || wakeupsource==BLE_CONNECTION)
+    {
+    _ble->startAdvertizement(5000);
+    _ble->sleep();
+    }
+    rhLoRa->sleep();
 #ifdef DEBUG
     delay(500);
 #endif
-    rhLoRa->sleep();
-    _ble->sleep();
     sleepAndWakeUp(STANDBY);
 }
 
