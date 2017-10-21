@@ -41,11 +41,11 @@ bool bConnected;
 unsigned long buttonTimer=0;
 Bounce cableDetect=Bounce();
 Bounce pushButton=Bounce();
-btCharacteristic rfid("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
+btCharacteristic ble_char_rfid("f1a87912-5950-479c-a5e5-b6cc81cd0502",        //private service
                           "855b1938-83e2-4889-80b7-ae58fcd0e6ca",        //private characteristic
                           btCharacteristic::WRITE_WOUT_RESP,5,           //properties+length
                           btCharacteristic::ENCR_W);                     //security
-btCharacteristic ias_alertLevel("1802",                                  //IAS Alert Service
+btCharacteristic ble_char_ias_alertLevel("1802",                                  //IAS Alert Service
                                 "2A06",                                  //Alert Level characteristic
                                 btCharacteristic::WRITE_WOUT_RESP, 1,    //properties+length
                                 btCharacteristic::NOTHING                //security
@@ -112,7 +112,7 @@ void loop()
 
                 if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
-                    if(ble.writeRemoteCharacteristic(&rfid, rfid_key,RFID_KEY_SIZE))
+                    if(ble.writeRemoteCharacteristic(&ble_char_rfid, rfid_key,RFID_KEY_SIZE))
                     {
                         debug_println("RFID Value written");
                     }
@@ -125,7 +125,7 @@ void loop()
                 if(ble.secureConnect(blePair.getRemoteBleAddress()))
                 {
                     byte array[1]={0xBB};
-                    if(ble.writeRemoteCharacteristic(&ias_alertLevel, array,1))
+                    if(ble.writeRemoteCharacteristic(&ble_char_ias_alertLevel, array,1))
                     {
                         debug_println("Alert value written");
                     }
@@ -210,7 +210,7 @@ bool initBleCentral()
             return false;
         }
     }
-    rn.getRemoteHandle(&rfid);
+    rn.getRemoteHandle(&ble_char_rfid);
     blePair.init(rfid_key);
     return ble.beginCentral();
 }
