@@ -7,23 +7,30 @@
 //bool getSerialNumber(byte* bufout, byte length)
 #if defined(ARDUINO_STM_NUCLEO_F103RB) || defined(ARDUINO_GENERIC_STM32F103C)
 ATCAIfaceCfg *gCfg = &cfg_sha204a_i2c_default;
+const byte POWER_PIN=PB7;
 
 bool getSerialNumber(byte* bufout, byte length)
 {
     byte buf[11];
+    pinMode(POWER_PIN, OUTPUT);
+    digitalWrite(POWER_PIN, HIGH);
     if(atcab_init( gCfg ) != ATCA_SUCCESS)
     {
+        digitalWrite(POWER_PIN, LOW);
         return false;
     }
     if(atcab_read_serial_number(buf) != ATCA_SUCCESS)
     {
+        digitalWrite(POWER_PIN, LOW);
         return false;
     }
     if(atcab_release() != ATCA_SUCCESS)
     {
+        digitalWrite(POWER_PIN, LOW);
         return false;
     }
     memcpy(bufout, buf, length > 9 ? 9 : length);
+    digitalWrite(POWER_PIN, LOW);
     return true;
 }
 
@@ -67,14 +74,18 @@ int RNG(byte *dest, unsigned size)
 {
     byte randomnum[RANDOM_RSP_SIZE];
 
+    pinMode(POWER_PIN, OUTPUT);
+    digitalWrite(POWER_PIN, HIGH);
     if(atcab_init( gCfg ) != ATCA_SUCCESS)
     {
+        digitalWrite(POWER_PIN, LOW);
         return 0;
     }
     while(size)
     {
         if(atcab_random( randomnum ) != ATCA_SUCCESS)
         {
+            digitalWrite(POWER_PIN, LOW);
             return 0;
         }
         byte nrOfBytes = size > 32 ? 32 : size;
@@ -84,8 +95,10 @@ int RNG(byte *dest, unsigned size)
     }
     if(atcab_release() != ATCA_SUCCESS)
     {
+        digitalWrite(POWER_PIN, LOW);
         return 0;
     }
+    digitalWrite(POWER_PIN, LOW);
     return 1;
 }
 #elif defined(ARDUINO_SAM_DUE)

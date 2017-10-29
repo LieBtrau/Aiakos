@@ -4,33 +4,28 @@ When arriving at home  with my bike, I find the garage door still locked.  I hav
 # Wish
 While riding and coming near to my house, press a button on my bike so that the door opens.  By the time I arrive at the door, it's fully open and I can ride in the garage without having to stop on the drive way.
 
-# Proposed solutions
-## Not implemented: Using smartphone
-An off-the-shelf bluetooth tracker is attached to the bike.  The user has a smartphone with a wireless data connection and bluetooth low energy support.  The garage is equipped with an internet connected controller.  After binding the tracker with the smartphone, the system is ready to use.  
-Pressing the button on the bluetooth tracker, wakes up the service running on the smartphone.  The smartphone uses geo-location service to check if the smartphone is in the neighbourhood of the garage.  If so, then a command is sent through the cloud to instruct the garage controller to open the door.  
-
-## Without smartphone
+# Solution
 The system will consist of three parts:  
 
 * door controller in the garage  
-* Wake up initializer
 * BLE-enabled key fob in my back pack  
+* Wake up initializer  
 
-### Door controller in the garage
-The door controller in the garage is connected to the motor that can open and close the gate.  It will only do this when an authenticated request from a paired keyfob has been received by its wireless UHF-receiver.
-During system setup, the key fob will have to be securely bound to the garage controller.  For ease of use, compliance with future addon, and prevention of man-in-the-middle (MITM) attacks, serial communication will be used.  The user will use a button to put the door controller in learn mode.  To pair the keyfob, the user connects keyfob and the controller with an audio jack cable and that's it.  Audio jack cables and connectors are cheaper and less power hungry than NFC readers and tags.
+## Door controller in the garage
+The [door controller](https://github.com/LieBtrau/Aiakos/wiki/Garage-controller) is mounted in the garage and connected to the electric motor that can open and close the door.  With its [LoRa](https://www.lora-alliance.org/) module the controller can securely communicate to the key fob.  To make the system operational, the key fob must be paired with the door controller.  The pairing is done by connecting the door controller to the key fob with an audio-jack cable and pressing the button on the key fob.  The serial connection prevents man-in-the-middle (MITM) attacks.  To prevent eavesdropping, the serial connection is secured using [ECDH](https://en.wikipedia.org/wiki/Elliptic-curve_Diffie%E2%80%93Hellman).
 
-### Wake up initializer
+## Key fob 
+The [key fob](https://github.com/LieBtrau/Aiakos/wiki/Key-fob) is the access token to the system and should be kept safely by the user.  The key fob's Lora module enables communication to the door controller.  The key fob will be asleep most of the time.  When it receives a valid awake command, it will instruct the door controller to open/close the garage door.  The user can wake the key fob in two ways: either by pushing the key fob button, or by pushing the button on the wake up initializer.  
+The key fob incorporates a [Bluetooth Low Energy](https://en.wikipedia.org/wiki/Bluetooth_Low_Energy) module to communicate with the wake up initializer.  The key fob will only allow a paired initializer to wake it up.  Pairing involves connecting the fob to the initializer using an audio jack cable and pressing the key fob button.
 
-### Key fob
-After the key fob has been paired with the controller in the garage it will return to a low power sleep mode.  Reception of the correct code on the LF-receiver will wake up the key fob.  The UHF-transmitter in the key fob will then automatically send a request to the garage controller to open the gate.
+## Wake up initializer
 
-### Used technologies
-* 434MHz LoRa wireless communication
-* Bluetooth Low Energy
-* ...
 
-# Future addon
+# Alternatives
+## Smartphone and garage controller with WiFi
+An off-the-shelf bluetooth tracker is attached to the bike.  The user has a smartphone with a wireless data connection and bluetooth low energy support.  The garage is equipped with an internet connected controller.  After binding the tracker with the smartphone, the system is ready to use.  
+Pressing the button on the bluetooth tracker, wakes up the service running on the smartphone.  The smartphone uses geo-location service to check if the smartphone is in the neighbourhood of the garage.  If so, then a command is sent through WiFi to instruct the garage controller to open the door.  
+## Smartphone and garage controller with WiFi
 The garage controller can be equipped with a bluetooth low energy peripheral IC.  The user could then operate the door using an application on a smartphone.  
 
-* [Garage controller](https://github.com/LieBtrau/Aiakos/wiki/Garage-controller)
+* 
