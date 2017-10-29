@@ -69,7 +69,7 @@ void KeyFob::getInitialPinStates()
     pushButton.attach(buttonPin);
     pushButton.interval(100); // interval in ms
     //Find wakeup source : pushbutton or BLE-module
-    if(!pushButton.read())
+    if(pushButton.read())
     {
         wakeupsource=PUSHBUTTON;
         return;
@@ -98,7 +98,7 @@ bool KeyFob::setup()
     {
     case PAIRING:
         ecdh.reset();
-        if((!initBlePeripheral(rfidKeyOk)) ||  (!_ble->startAdvertizement(5000)))
+        if((!initBlePeripheral(rfidKeyOk)) ||  (!_ble->setAdvertizement(5000)))
         {
             debug_println("Ble init failed.");
             return false;
@@ -394,7 +394,7 @@ void KeyFob::sleep()
         {
             _ble->disconnect(3000);
         }
-        _ble->startAdvertizement(5000);
+        _ble->setAdvertizement(_ble->isBonded() ? 5000 : 0);
         _ble->sleep();
     }
     rhLoRa->sleep();

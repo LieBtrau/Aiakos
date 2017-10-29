@@ -16,7 +16,7 @@ bool blePairingPeripheral::startPairing()
         return false;
     }
     //Use 100ms beacon interval, so that connecting works smoother.
-    _ble->startAdvertizement(100);
+    _ble->setAdvertizement(100);
     //Peripheral get its MAC address from BLE module
     if(!_ble->getLocalMacAddress(rmac, length) || length!=6)
     {
