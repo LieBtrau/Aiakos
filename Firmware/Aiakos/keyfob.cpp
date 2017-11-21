@@ -85,7 +85,16 @@ void KeyFob::getInitialPinStates()
 bool KeyFob::setup()
 {
     bool rfidKeyOk=false;
-
+    word vccVal=readVcc();
+    if(vccVal<2600)
+    {
+        for(byte i=0;i<10;i++)
+        {
+            tone(tonePin, alert.TONE_FREQUENCY, 50);
+            delay(100);
+        }
+        debug_print("Supply voltage too low: ");debug_println(vccVal, DEC);
+    }
     if(!LoRaDevice::setup())    //LoRa device must be setup or we won't be able to put it to sleep.
     {
         return false;

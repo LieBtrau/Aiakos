@@ -32,6 +32,7 @@ bool LoRaDevice::setup()
         debug_println("LoRa init failed");
         return false;
     }
+    rhLoRa->setTxPower(5);//minimum TX power for SX1276
     if ((!mgrSer.init()))
     {
         debug_println("Serial init failed");
@@ -53,6 +54,15 @@ void LoRaDevice::getInitialPinStates()
 void LoRaDevice::setPeerAddress(byte address)
 {
     peerAddress=address;
+}
+
+//http://www.stm32duino.com/viewtopic.php?t=707
+word LoRaDevice::readVcc()
+{
+    adc_reg_map *regs = ADC1->regs;
+    regs->CR2 |= ADC_CR2_TSVREFE;    // enable VREFINT and temp sensor
+    regs->SMPR1 =  ADC_SMPR1_SMP17;  // sample rate for VREFINT ADC channel
+    return 1200 * 4096 / adc_read(ADC1, 17);  // ADC sample to millivolts
 }
 
 bool writeDataSer(byte* data, byte length)

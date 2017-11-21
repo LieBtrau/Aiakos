@@ -22,6 +22,7 @@ public:
 protected:
     LoRaDevice(byte ownAddress, RH_RF95* prhLora, RH_Serial* prhSerial, byte cableDetectPin);
     void setPeerAddress(byte address);
+    word readVcc();
     KryptoKnightComm k;
     EcdhComm ecdh;
     Bounce cableDetect;
