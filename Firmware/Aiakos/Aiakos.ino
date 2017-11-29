@@ -117,7 +117,7 @@ RH_RF95 rhLoRa(PA4,PB0);                                           //NSS, DIO0 :
  */
 rn4020 rn(Serial1, PB12, PB15, PB14, PB13, PA15);
 bleControl ble(&rn);
-KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PA8, PB1, &ble, PA1);
+KeyFob device(2, &cfg, &rhLoRa, &rhStereoJack, PB6, PB1, &ble, PA1);
 RTClock rt(RTCSEL_LSE);
 const byte pinLED=PC13; //Active low
 #endif
