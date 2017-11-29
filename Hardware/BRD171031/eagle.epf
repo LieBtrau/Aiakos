@@ -1,0 +1,22 @@
+[Eagle]
+Version="08 02 02"
+Platform="Linux"
+Globals="Globals"
+Desktop="Desktop"
+
+[Globals]
+AutoSaveProject=1
+UsedLibrary="/home/ctack/git/electronics-design-data/CadsoftEagle/libraries/lieBtrau.lbr"
+UsedLibrary="/home/ctack/eagle/BRD161206/drilegend.lbr"
+UsedLibrary="/home/ctack/eagle/BRD161224/drilegend.lbr"
+UsedLibrary="drilegend.lbr"
+
+[Win_1]
+Type="Control Panel"
+Loc="65 140 1264 767"
+State=1
+Number=0
+
+[Desktop]
+Screen="1366 768"
+Window="Win_1"
