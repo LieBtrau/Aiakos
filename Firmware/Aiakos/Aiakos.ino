@@ -34,11 +34,11 @@
  * Serial connection for secure pairing
  *                      Due     Nucleo(Keyfob)  Blue Pill
  *****************************************************
- * Tip                   TX1     D2(UART1_RX)   PB11 (UART3_RX)
- * Ring                  RX1     D8(UART1_TX)   PB10 (UART3_TX)
- * Sleeve                GND     GND            G
- * Cable detect Contact  2       D6             PB1
- * Pushbutton                    25             PA11
+ * Tip                   18     D2(UART1_RX)   PB11 (UART3_RX)
+ * Ring1                 19     D8(UART1_TX)   PB10 (UART3_TX)
+ * Ring2                 2      D6             PB1
+ * Sleeve                GND    GND            G
+ * Pushbutton                   25             PB6
  *
  *****************************************************
  * Pulse output for opening/closing garage door
@@ -151,7 +151,7 @@ void setup()
 void loop()
 {
     ld->loop();
-#ifdef DEBUG
+//#ifdef DEBUG
     ledToggle(500);
 }
 
@@ -162,5 +162,5 @@ void ledToggle(unsigned long timeOut)
         digitalWrite(pinLED, digitalRead(pinLED) ? 0 : 1);
         ledTimer=millis();
     }
-#endif
+//#endif
 }

@@ -26,7 +26,7 @@ bool GarageController::setup()
 {
 #ifdef ARDUINO_SAM_DUE
     initRng();
-#ifndef DEBUG
+//#ifndef DEBUG
     //See §9.1 Peripheral identifiers of the SAM3X datasheet
     pmc_disable_periph_clk(2);      // real-time clock
     pmc_disable_periph_clk(3);      // real-time timer
@@ -65,11 +65,9 @@ bool GarageController::setup()
     pmc_disable_periph_clk(42);     // ethernet MAC - N/C
     pmc_disable_periph_clk(43);     // CAN controller 0
     pmc_disable_periph_clk(44);     // CAN controller 1
-#else
-    debug_println("Debug: No peripherals disabled to save power.");
-#endif    
-    pinMode(13, OUTPUT);
-    digitalWrite(13, LOW);
+//#else
+//    debug_println("Debug: No peripherals disabled to save power.");
+//#endif    
     setSlowMcuSpeed(true);
 #endif
     if(!LoRaDevice::setup())
@@ -79,6 +77,7 @@ bool GarageController::setup()
     k.setMessageReceivedHandler(dataReceived);
     k.setKeyRequestHandler(setKeyInfo);
     pinMode(PULSE_PIN, OUTPUT);
+    cableDetect.interval(10); // interval in ms
     return true;
 }
 

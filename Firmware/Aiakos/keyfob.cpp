@@ -193,6 +193,10 @@ void KeyFob::loop()
             case EcdhComm::AUTHENTICATION_OK:
                 debug_println("Securely paired");
                 cfg->addKey(ecdh.getRemoteId(), ecdh.getMasterKey());
+                tone(tonePin, alert.TONE_FREQUENCY, 50);
+                delay(50);
+                tone(tonePin, alert.TONE_FREQUENCY, 50);
+                delay(50);
                 break;
             case EcdhComm::NO_AUTHENTICATION:
                 sleep();

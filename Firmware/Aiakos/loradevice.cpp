@@ -59,10 +59,14 @@ void LoRaDevice::setPeerAddress(byte address)
 //http://www.stm32duino.com/viewtopic.php?t=707
 word LoRaDevice::readVcc()
 {
+#ifdef ARDUINO_STM_NUCLEO_F103RB || defined(ARDUINO_GENERIC_STM32F103C)                           //Blue Pill
     adc_reg_map *regs = ADC1->regs;
     regs->CR2 |= ADC_CR2_TSVREFE;    // enable VREFINT and temp sensor
     regs->SMPR1 =  ADC_SMPR1_SMP17;  // sample rate for VREFINT ADC channel
     return 1200 * 4096 / adc_read(ADC1, 17);  // ADC sample to millivolts
+#elif ARDUINO_SAM_DUE
+    return 0;
+#endif
 }
 
 bool writeDataSer(byte* data, byte length)

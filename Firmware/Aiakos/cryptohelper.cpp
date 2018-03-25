@@ -73,7 +73,7 @@ bool getSerialNumber(byte* bufout, byte length)
 int RNG(byte *dest, unsigned size)
 {
     byte randomnum[RANDOM_RSP_SIZE];
-
+    byte defaultRng[4]={0xff, 0xff, 0x00, 0x00};
     pinMode(POWER_PIN, OUTPUT);
     digitalWrite(POWER_PIN, HIGH);
     if(atcab_init( gCfg ) != ATCA_SUCCESS)
@@ -99,7 +99,7 @@ int RNG(byte *dest, unsigned size)
         return 0;
     }
     digitalWrite(POWER_PIN, LOW);
-    return 1;
+    return memcmp(randomnum, defaultRng, sizeof(defaultRng));
 }
 #elif defined(ARDUINO_SAM_DUE)
 
