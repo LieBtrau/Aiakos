@@ -3,6 +3,7 @@ Hardware/Simulations/*
 Hardware/*/*.b#*
 Hardware/*/*.l#*
 Hardware/*/*.s#*
+Hardware/*/*.zip
 *_DL.scr
 *DRILEGEND.CFG
 *drilegend.lbr
