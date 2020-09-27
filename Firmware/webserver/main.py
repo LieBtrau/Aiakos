@@ -1,84 +1,92 @@
-# Complete project details at https://RandomNerdTutorials.com
-# https://www.techcoil.com/blog/how-to-setup-micropython-on-your-esp32-development-board-to-run-python-applications/
-# https://lemariva.com/blog/2019/08/micropython-vsc-ide-intellisense
-
-from utime import sleep
-import machine
-import network
-import ujson
+# Web server to control garage door
+# ---------------------------------
+# mDNS is enabled, but it's not supported by Android devices.  A static IP is setup for those devices.
 
 try:
     import usocket as socket
 except:
     import socket
+from ssl_wrapper import wrap_in_ssl_socket
+import wifi_connect
+import machine
+import utils
 
-led = machine.Pin(2, machine.Pin.OUT)
-
-with open("wifi-credentials.json", "r") as myfile:
-    data = myfile.read()
-wificreds = ujson.loads(data)
-
-with open("index.html", "r") as myfile:
+secure_connection = True
+########################################################################""
+with open("pin_form.html", "r") as myfile:
     html = myfile.read()
 
-def connect():
-    HOSTNAME = "ESP32_WiFi" # So that the server can be found with http://ESP32_WiFi.local
 
-    wlan = network.WLAN(network.STA_IF)
-    if wlan.isconnected():
-        print("Already connected")
-        return
+HOSTNAME = "esp32_wifi"
+HOSTPORT = 443 if secure_connection else 80
+led = machine.Pin(2, machine.Pin.OUT)
 
-    wlan.active(True)
-    sleep(1)
-    wlan.config(
-        dhcp_hostname=HOSTNAME
-    )  
-    wlan.connect(wificreds["SSID"], wificreds["PASS"])
-
-    while not wlan.isconnected():
-        pass
-
-    print("Connection successful")
-    print(wlan.ifconfig())
+def parse_headers(s):
+    headers = {}
+    while True:
+        l = s.readline()
+        if l == b"" or l == b"\r\n":
+            break
+        k, v = l.split(b":", 1)
+        headers[k] = v.strip()
+    return headers
 
 
-connect()
-try:
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(("", 80))
-    s.listen(5)
-except OSError as e:
-    machine.reset()
+def main():
+    wifi_connect.station_connect(HOSTNAME, ('192.168.1.254', '255.255.255.0', '192.168.1.1', '8.8.8.8'))
+    s = wifi_connect.get_socket(HOSTPORT)
+    print(
+        "Listening, connect your browser to "
+        + "https://" if secure_connection else "http://"
+        + HOSTNAME
+        + ".local:"
+        + str(HOSTPORT)
+        + "/"
+    )
 
-while True:
-    try:
+    counter = 0
+
+    while True:
         if gc.mem_free() < 102000:
             gc.collect()
-        conn, addr = s.accept()
-        #conn.settimeout(3.0)
-        print("Got a connection from %s" % str(addr))
-        while True:
-            h = conn.readline()
-            if h == b"" or h == b"\r\n":
-                break
-            req=str(h)       
-            print(req)
-            if req.find('GET /?led=on') > 0:
-                print("LED ON")
-                led.value(1)
-            if req.find('GET /?led=off') > 0:
-                print("LED OFF")
-                led.value(0)
+        client_s, client_addr = s.accept()
+        print("Client address:", client_addr)
+        print("Client socket:", client_s)
 
-        response = html % ("OFF" if led.value == 0 else "ON")
-        # conn.settimeout(None)
-        conn.send("HTTP/1.1 200 OK\n")
-        conn.send("Content-Type: text/html\n")
-        conn.send("Connection: close\n\n")
-        conn.sendall(response)
-        conn.close()
-    except OSError as e:
-        conn.close()
-        print("Connection closed")
+        client_s.settimeout(3.0)
+        success = True
+        if secure_connection:
+            client_s, success = wrap_in_ssl_socket(client_s)
+        if success:
+            print(client_s)
+            try:
+                req = str(client_s.readline())
+                headers = parse_headers(client_s)
+                if req:
+                    if req.find("GET /?led=on") > 0:
+                        print("LED ON")
+                        led.value(1)
+                    if req.find("GET /?led=off") > 0:
+                        print("LED OFF")
+                        led.value(0)
+                    if req.find("POST") > 0:
+                        print("Reading post variables:")
+                        size = int(headers[b"Content-Length"])
+                        h=client_s.read(size)
+                        form = utils.parse_qs(h.decode())
+                        print("Pincode: "+ form['pincode'])
+                    # client_s.settimeout(None)
+                    client_s.write(
+                        "HTTP/1.1 200 OK\n"
+                        + "Content-Type: text/html\n"
+                        + "Connection: close\n\n"
+                        + html #% ("OFF" if led.value == 0 else "ON")
+                    )
+            except Exception as e:
+                print("Exception serving request:", e)
+        client_s.close()
+        counter += 1
+        print()
+
+
+main()

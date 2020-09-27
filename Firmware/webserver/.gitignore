@@ -1,0 +1,4 @@
+*.pem
+wifi-credentials.json
+*requirements.txt
+micropy.json

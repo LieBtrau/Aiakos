@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <style>
+         form {
+         font: 1em sans-serif;
+         max-width: 320px;
+         }
+         p > label {
+         display: block;
+         }
+         input[type="text"],
+         input[type="email"],
+         input[type="number"],
+         textarea,
+         fieldset {
+         width : 100%;
+         border: 1px solid #333;
+         box-sizing: border-box;
+         }
+         input:invalid {
+         box-shadow: 0 0 5px 1px red;
+         }
+         input:focus:invalid {
+         box-shadow: none;
+         }
+      </style>
+   </head>
+   <body>
+      <form action="/login" method="POST">
+         <div>
+            <label for="pin">Pincode?</label>
+            <input type="number" min="1000" max="9999" id="pin" name="pincode" required pattern="\d{4}">
+         </div>
+         <input type="submit" name="Submit" value="Submit" />
+      </form>
+   </body>
+</html>
