@@ -1,38 +1,53 @@
 <!DOCTYPE html>
 <html>
-   <head>
-      <style>
-         form {
-         font: 1em sans-serif;
-         max-width: 320px;
-         }
-         p > label {
-         display: block;
-         }
-         input[type="text"],
-         input[type="email"],
-         input[type="number"],
-         textarea,
-         fieldset {
-         width : 100%;
-         border: 1px solid #333;
-         box-sizing: border-box;
-         }
-         input:invalid {
-         box-shadow: 0 0 5px 1px red;
-         }
-         input:focus:invalid {
-         box-shadow: none;
-         }
-      </style>
-   </head>
-   <body>
-      <form action="/login" method="POST">
-         <div>
-            <label for="pin">Pincode?</label>
-            <input type="number" min="1000" max="9999" id="pin" name="pincode" required pattern="\d{4}">
-         </div>
-         <input type="submit" name="Submit" value="Submit" />
-      </form>
-   </body>
+
+<head>
+   <title>ESP Web Server</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="data:,">
+   <style>
+      html {
+         font-family: Helvetica;
+         display: inline-block;
+         margin: 0px auto;
+         text-align: center;
+      }
+
+      h1 {
+         color: #0F3376;
+         padding: 2vh;
+      }
+
+      p {
+         font-size: 1.5rem;
+      }
+
+      .button {
+         display: inline-block;
+         background-color: #e7bd3b;
+         border: none;
+         border-radius: 4px;
+         color: white;
+         padding: 16px 40px;
+         text-decoration: none;
+         font-size: 30px;
+         margin: 2px;
+         cursor: pointer;
+      }
+
+      .button2 {
+         background-color: #4286f4;
+      }
+   </style>
+</head>
+
+<body>
+   <h1>Sesam, open u!</h1>
+   <form action="/login" method="POST" autocomplete="off">
+      <p>Pin code: <strong> <input type="password" maxlength="4" id="pin" name="pincode" required pattern="\d{4}"
+               size="4" autofocus></strong></p>
+      <p><input type="submit" name="Submit" value="Submit" class="button" /></p>
+   </form>
+</body>
+
 </html>

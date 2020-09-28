@@ -10,15 +10,20 @@ from ssl_wrapper import wrap_in_ssl_socket
 import wifi_connect
 import machine
 import utils
+import ujson
 
-secure_connection = True
+
 ########################################################################""
 with open("pin_form.html", "r") as myfile:
     html = myfile.read()
+with open("door.html", "r") as myfile:
+    door = myfile.read()
+with open("config.json", "r") as myfile:
+    data = myfile.read()
+config = ujson.loads(data)
 
-
-HOSTNAME = "esp32_wifi"
-HOSTPORT = 443 if secure_connection else 80
+secure_connection = bool(config['secure-connection'])
+HOSTPORT = int(config['secure-tcp-port'] if secure_connection else config['unsecure-tcp-port'])
 led = machine.Pin(2, machine.Pin.OUT)
 
 def parse_headers(s):
@@ -31,14 +36,21 @@ def parse_headers(s):
         headers[k] = v.strip()
     return headers
 
+def write_html(s, html):
+    s.write(
+        "HTTP/1.1 200 OK\n"
+        + "Content-Type: text/html\n"
+        + "Connection: close\n\n"
+        + html
+    )
 
 def main():
-    wifi_connect.station_connect(HOSTNAME, ('192.168.1.254', '255.255.255.0', '192.168.1.1', '8.8.8.8'))
+    wifi_connect.station_connect(config['hostname'], (config['ip-address'], config['netmask'], config['default-route'], config['dns']))
     s = wifi_connect.get_socket(HOSTPORT)
     print(
         "Listening, connect your browser to "
-        + "https://" if secure_connection else "http://"
-        + HOSTNAME
+        + ("https://" if secure_connection else "http://")
+        + config['hostname']
         + ".local:"
         + str(HOSTPORT)
         + "/"
@@ -60,28 +72,23 @@ def main():
         if success:
             print(client_s)
             try:
-                req = str(client_s.readline())
+                request_line = client_s.readline()
+                request_line = request_line.decode()
+                method, path, proto = request_line.split()
                 headers = parse_headers(client_s)
-                if req:
-                    if req.find("GET /?led=on") > 0:
-                        print("LED ON")
-                        led.value(1)
-                    if req.find("GET /?led=off") > 0:
-                        print("LED OFF")
-                        led.value(0)
-                    if req.find("POST") > 0:
-                        print("Reading post variables:")
-                        size = int(headers[b"Content-Length"])
-                        h=client_s.read(size)
-                        form = utils.parse_qs(h.decode())
-                        print("Pincode: "+ form['pincode'])
-                    # client_s.settimeout(None)
-                    client_s.write(
-                        "HTTP/1.1 200 OK\n"
-                        + "Content-Type: text/html\n"
-                        + "Connection: close\n\n"
-                        + html #% ("OFF" if led.value == 0 else "ON")
-                    )
+                if method=="POST":
+                    size = int(headers[b"Content-Length"])
+                    h=client_s.read(size)
+                    form = utils.parse_qs(h.decode())
+                    print("Pincode: "+ form['pincode'])
+                    if form['pincode'] in config['pincodes']:
+                        write_html(client_s, door % 'open')
+                        print('Pin OK')
+                    else:
+                        write_html(client_s, door % 'blijft toe')
+                        print('Pin not OK')
+                else:
+                    write_html(client_s, html)
             except Exception as e:
                 print("Exception serving request:", e)
         client_s.close()

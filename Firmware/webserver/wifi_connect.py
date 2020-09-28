@@ -42,7 +42,6 @@ def get_socket(port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Binding to all interfaces - server will be accessible to other hosts!
         ai = socket.getaddrinfo("0.0.0.0", port)
-        print("Bind address info:", ai)
         addr = ai[0][-1]
 
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
