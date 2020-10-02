@@ -16,6 +16,8 @@ import ussl as ssl
 
 # Generating private key & certificate in linux using: 
 #   openssl req -x509 -newkey rsa:512 -keyout key.pem -out cert.pem -days 3650 -nodes -subj '/CN=esp32_wifi.local'
+#   
+#   Also tried ECDSA keys, but that didn't work.
 with open('key.pem', 'rb') as f:
     key = f.read()
 with open('cert.pem', 'rb') as f:

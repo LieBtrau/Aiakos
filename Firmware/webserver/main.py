@@ -8,9 +8,10 @@ except:
     import socket
 from ssl_wrapper import wrap_in_ssl_socket
 import wifi_connect
-import machine
+from machine import Pin
 import utils
 import ujson
+from utime import sleep
 
 
 ########################################################################""
@@ -24,7 +25,8 @@ config = ujson.loads(data)
 
 secure_connection = bool(config['secure-connection'])
 HOSTPORT = int(config['secure-tcp-port'] if secure_connection else config['unsecure-tcp-port'])
-led = machine.Pin(2, machine.Pin.OUT)
+led = Pin(2, Pin.OUT)
+garage_impulse = Pin(4, Pin.OUT)
 
 def parse_headers(s):
     headers = {}
@@ -84,6 +86,11 @@ def main():
                     if form['pincode'] in config['pincodes']:
                         write_html(client_s, door % 'open')
                         print('Pin OK')
+                        led.value(1)
+                        garage_impulse.value(1)
+                        sleep(0.5)
+                        led.value(0)
+                        garage_impulse.value(0)
                     else:
                         write_html(client_s, door % 'blijft toe')
                         print('Pin not OK')
