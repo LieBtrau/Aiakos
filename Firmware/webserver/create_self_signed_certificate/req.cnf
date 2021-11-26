@@ -1,0 +1,31 @@
+[ req ]
+default_bits            = 2048
+default_keyfile         = ../src/key.pem
+distinguished_name      = req_distinguished_name
+req_extensions          = req_ext
+x509_extensions         = x509_ext
+
+[req_distinguished_name]
+countryName             = Country Name (2 letter code)
+countryName_default     = BE
+organizationName        = Organization Name (eg, company)
+organizationName_default= MyOrganisation
+commonName              = Common Name (e.g. server FQDN or YOUR name)
+commonName_default      = esp32_wifi.local
+emailAddress            = Email Address
+emailAddress_default    = myEmail@email.com
+
+[ req_ext ]
+basicConstraints = CA:TRUE
+keyUsage = digitalSignature, nonRepudiation, keyEncipherment
+subjectAltName          = @alternate_names
+
+[ x509_ext ]
+subjectKeyIdentifier   = hash
+authorityKeyIdentifier = keyid:always,issuer:always
+subjectAltName         = email:myEmail@email.com
+issuerAltName          = issuer:copy
+
+[ alternate_names ]
+DNS.1                   = esp32_wifi.local
+IP.1                    = 192.168.1.254
