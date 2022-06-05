@@ -14,10 +14,13 @@ except:
 import ussl as ssl
 
 
-# Generating private key & certificate in linux using: 
+# Generating private key & self-signed certificate in linux using: 
 #   openssl req -x509 -newkey rsa:512 -keyout key.pem -out cert.pem -days 3650 -nodes -subj '/CN=esp32_wifi.local'
 #   
 #   Also tried ECDSA keys, but that didn't work.
+# 
+# Converting certificate to a format suitable for android: (https://coderwall.com/p/wv6fpq/add-self-signed-ssl-certificate-to-android-for-browsing)
+#   openssl x509 -inform PEM -outform DM -in cert.pem -out cert.crt
 with open('key.pem', 'rb') as f:
     key = f.read()
 with open('cert.pem', 'rb') as f:
